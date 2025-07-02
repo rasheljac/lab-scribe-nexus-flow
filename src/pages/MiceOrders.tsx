@@ -9,12 +9,24 @@ import { Plus, Edit, Trash2, MousePointer2 } from "lucide-react";
 import { useMiceOrders } from "@/hooks/useMiceOrders";
 import AddMiceOrderDialog from "@/components/AddMiceOrderDialog";
 import EditMiceOrderDialog from "@/components/EditMiceOrderDialog";
+import DraggableGrid from "@/components/DraggableGrid";
 import { MiceOrder } from "@/hooks/useMiceOrders";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 
 const MiceOrders = () => {
-  const { orders, loading, addOrder, updateOrder, deleteOrder } = useMiceOrders();
+  const { orders, loading, totalCount, addOrder, updateOrder, deleteOrder, reorderOrders, fetchOrders } = useMiceOrders();
   const [selectedOrder, setSelectedOrder] = useState<MiceOrder | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 8;
+  const totalPages = Math.ceil(totalCount / pageSize);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -35,16 +47,91 @@ const MiceOrders = () => {
   const handleDeleteOrder = async (orderId: string) => {
     if (window.confirm('Are you sure you want to delete this order?')) {
       await deleteOrder(orderId);
+      // Refresh current page if it becomes empty
+      if (orders.length === 1 && currentPage > 1) {
+        const newPage = currentPage - 1;
+        setCurrentPage(newPage);
+        await fetchOrders(newPage, pageSize);
+      } else {
+        await fetchOrders(currentPage, pageSize);
+      }
     }
   };
 
-  const handleAddOrder = async (order: Omit<MiceOrder, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => {
+  const handleAddOrder = async (order: Omit<MiceOrder, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'display_order'>) => {
     await addOrder(order);
+    // Go to first page to see the new order
+    if (currentPage !== 1) {
+      setCurrentPage(1);
+      await fetchOrders(1, pageSize);
+    } else {
+      await fetchOrders(currentPage, pageSize);
+    }
   };
 
   const handleUpdateOrder = async (id: string, updates: Partial<MiceOrder>) => {
     await updateOrder(id, updates);
   };
+
+  const handleReorder = async (reorderedOrders: MiceOrder[]) => {
+    await reorderOrders(reorderedOrders);
+  };
+
+  const handlePageChange = async (page: number) => {
+    setCurrentPage(page);
+    await fetchOrders(page, pageSize);
+  };
+
+  const renderOrderCard = (order: MiceOrder, index: number) => (
+    <Card key={order.id} className="hover:shadow-md transition-shadow">
+      <CardHeader className="pb-3">
+        <div className="flex justify-between items-start">
+          <CardTitle className="text-lg">{order.strain_name}</CardTitle>
+          <Badge className={getStatusColor(order.order_status)}>
+            {order.order_status}
+          </Badge>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-2 text-sm">
+          <div><strong>Supplier:</strong> {order.supplier}</div>
+          <div><strong>Quantity:</strong> {order.quantity_ordered}</div>
+          <div><strong>Sex:</strong> {order.sex}</div>
+          {order.age_weeks && <div><strong>Age:</strong> {order.age_weeks} weeks</div>}
+          <div><strong>Order Date:</strong> {new Date(order.order_date).toLocaleDateString()}</div>
+          {order.expected_delivery_date && (
+            <div><strong>Expected:</strong> {new Date(order.expected_delivery_date).toLocaleDateString()}</div>
+          )}
+          {order.actual_delivery_date && (
+            <div><strong>Delivered:</strong> {new Date(order.actual_delivery_date).toLocaleDateDate()}</div>
+          )}
+          {order.release_date && (
+            <div><strong>Release Date:</strong> {new Date(order.release_date).toLocaleDateString()}</div>
+          )}
+          {order.housing_location && <div><strong>Housing:</strong> {order.housing_location}</div>}
+        </div>
+        <div className="flex gap-2 mt-4">
+          <Button 
+            size="sm" 
+            variant="outline" 
+            onClick={() => handleEditOrder(order)}
+            className="flex-1"
+          >
+            <Edit className="h-4 w-4 mr-1" />
+            Edit
+          </Button>
+          <Button 
+            size="sm" 
+            variant="outline" 
+            onClick={() => handleDeleteOrder(order.id)}
+            className="text-red-600 hover:text-red-700"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
 
   if (loading) {
     return (
@@ -71,6 +158,9 @@ const MiceOrders = () => {
               <div className="flex items-center gap-2">
                 <MousePointer2 className="h-8 w-8 text-blue-600" />
                 <h1 className="text-3xl font-bold text-gray-900">Mice Orders</h1>
+                {totalCount > 0 && (
+                  <span className="text-lg text-gray-500">({totalCount} total)</span>
+                )}
               </div>
               <AddMiceOrderDialog onAddOrder={handleAddOrder} />
             </div>
@@ -85,58 +175,48 @@ const MiceOrders = () => {
                 </CardContent>
               </Card>
             ) : (
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {orders.map((order) => (
-                  <Card key={order.id} className="hover:shadow-md transition-shadow">
-                    <CardHeader className="pb-3">
-                      <div className="flex justify-between items-start">
-                        <CardTitle className="text-lg">{order.strain_name}</CardTitle>
-                        <Badge className={getStatusColor(order.order_status)}>
-                          {order.order_status}
-                        </Badge>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-2 text-sm">
-                        <div><strong>Supplier:</strong> {order.supplier}</div>
-                        <div><strong>Quantity:</strong> {order.quantity_ordered}</div>
-                        <div><strong>Sex:</strong> {order.sex}</div>
-                        {order.age_weeks && <div><strong>Age:</strong> {order.age_weeks} weeks</div>}
-                        <div><strong>Order Date:</strong> {new Date(order.order_date).toLocaleDateString()}</div>
-                        {order.expected_delivery_date && (
-                          <div><strong>Expected:</strong> {new Date(order.expected_delivery_date).toLocaleDateString()}</div>
-                        )}
-                        {order.actual_delivery_date && (
-                          <div><strong>Delivered:</strong> {new Date(order.actual_delivery_date).toLocaleDateString()}</div>
-                        )}
-                        {order.release_date && (
-                          <div><strong>Release Date:</strong> {new Date(order.release_date).toLocaleDateString()}</div>
-                        )}
-                        {order.housing_location && <div><strong>Housing:</strong> {order.housing_location}</div>}
-                      </div>
-                      <div className="flex gap-2 mt-4">
-                        <Button 
-                          size="sm" 
-                          variant="outline" 
-                          onClick={() => handleEditOrder(order)}
-                          className="flex-1"
-                        >
-                          <Edit className="h-4 w-4 mr-1" />
-                          Edit
-                        </Button>
-                        <Button 
-                          size="sm" 
-                          variant="outline" 
-                          onClick={() => handleDeleteOrder(order.id)}
-                          className="text-red-600 hover:text-red-700"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
+              <>
+                <DraggableGrid
+                  items={orders}
+                  onReorder={handleReorder}
+                  renderItem={renderOrderCard}
+                  droppableId="mice-orders"
+                />
+
+                {totalPages > 1 && (
+                  <div className="mt-8 flex justify-center">
+                    <Pagination>
+                      <PaginationContent>
+                        <PaginationItem>
+                          <PaginationPrevious 
+                            onClick={() => currentPage > 1 && handlePageChange(currentPage - 1)}
+                            className={currentPage <= 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                          />
+                        </PaginationItem>
+                        
+                        {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                          <PaginationItem key={page}>
+                            <PaginationLink
+                              onClick={() => handlePageChange(page)}
+                              isActive={currentPage === page}
+                              className="cursor-pointer"
+                            >
+                              {page}
+                            </PaginationLink>
+                          </PaginationItem>
+                        ))}
+                        
+                        <PaginationItem>
+                          <PaginationNext 
+                            onClick={() => currentPage < totalPages && handlePageChange(currentPage + 1)}
+                            className={currentPage >= totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                          />
+                        </PaginationItem>
+                      </PaginationContent>
+                    </Pagination>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </main>
