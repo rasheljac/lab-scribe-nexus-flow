@@ -1,12 +1,13 @@
+
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { MiceOrder } from "@/hooks/useMiceOrders";
+import RichTextEditor from "@/components/RichTextEditor";
 
 interface EditMiceOrderDialogProps {
   order: MiceOrder;
@@ -26,9 +27,8 @@ const EditMiceOrderDialog = ({ order, open, onOpenChange, onUpdateOrder }: EditM
     order_date: "",
     expected_delivery_date: "",
     actual_delivery_date: "",
+    release_date: "",
     order_status: "pending",
-    cost_per_mouse: "",
-    total_cost: "",
     order_reference: "",
     special_requirements: "",
     housing_location: "",
@@ -46,9 +46,8 @@ const EditMiceOrderDialog = ({ order, open, onOpenChange, onUpdateOrder }: EditM
         order_date: order.order_date,
         expected_delivery_date: order.expected_delivery_date || "",
         actual_delivery_date: order.actual_delivery_date || "",
+        release_date: order.release_date || "",
         order_status: order.order_status,
-        cost_per_mouse: order.cost_per_mouse ? order.cost_per_mouse.toString() : "",
-        total_cost: order.total_cost ? order.total_cost.toString() : "",
         order_reference: order.order_reference || "",
         special_requirements: order.special_requirements || "",
         housing_location: order.housing_location || "",
@@ -79,9 +78,8 @@ const EditMiceOrderDialog = ({ order, open, onOpenChange, onUpdateOrder }: EditM
         order_date: formData.order_date,
         expected_delivery_date: formData.expected_delivery_date || null,
         actual_delivery_date: formData.actual_delivery_date || null,
+        release_date: formData.release_date || null,
         order_status: formData.order_status,
-        cost_per_mouse: formData.cost_per_mouse ? parseFloat(formData.cost_per_mouse) : null,
-        total_cost: formData.total_cost ? parseFloat(formData.total_cost) : null,
         order_reference: formData.order_reference || null,
         special_requirements: formData.special_requirements || null,
         housing_location: formData.housing_location || null,
@@ -96,7 +94,7 @@ const EditMiceOrderDialog = ({ order, open, onOpenChange, onUpdateOrder }: EditM
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Edit Mice Order</DialogTitle>
         </DialogHeader>
@@ -195,37 +193,23 @@ const EditMiceOrderDialog = ({ order, open, onOpenChange, onUpdateOrder }: EditM
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="actual_delivery_date">Actual Delivery Date</Label>
-            <Input
-              id="actual_delivery_date"
-              type="date"
-              value={formData.actual_delivery_date}
-              onChange={(e) => setFormData(prev => ({ ...prev, actual_delivery_date: e.target.value }))}
-            />
-          </div>
-
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="cost_per_mouse">Cost per Mouse ($)</Label>
+              <Label htmlFor="actual_delivery_date">Actual Delivery Date</Label>
               <Input
-                id="cost_per_mouse"
-                type="number"
-                step="0.01"
-                min="0"
-                value={formData.cost_per_mouse}
-                onChange={(e) => setFormData(prev => ({ ...prev, cost_per_mouse: e.target.value }))}
+                id="actual_delivery_date"
+                type="date"
+                value={formData.actual_delivery_date}
+                onChange={(e) => setFormData(prev => ({ ...prev, actual_delivery_date: e.target.value }))}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="total_cost">Total Cost ($)</Label>
+              <Label htmlFor="release_date">Release Date</Label>
               <Input
-                id="total_cost"
-                type="number"
-                step="0.01"
-                min="0"
-                value={formData.total_cost}
-                onChange={(e) => setFormData(prev => ({ ...prev, total_cost: e.target.value }))}
+                id="release_date"
+                type="date"
+                value={formData.release_date}
+                onChange={(e) => setFormData(prev => ({ ...prev, release_date: e.target.value }))}
               />
             </div>
           </div>
@@ -251,21 +235,21 @@ const EditMiceOrderDialog = ({ order, open, onOpenChange, onUpdateOrder }: EditM
 
           <div className="space-y-2">
             <Label htmlFor="special_requirements">Special Requirements</Label>
-            <Textarea
-              id="special_requirements"
+            <RichTextEditor
               value={formData.special_requirements}
-              onChange={(e) => setFormData(prev => ({ ...prev, special_requirements: e.target.value }))}
-              rows={2}
+              onChange={(value) => setFormData(prev => ({ ...prev, special_requirements: value }))}
+              placeholder="Enter special requirements..."
+              className="min-h-[120px]"
             />
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="notes">Notes</Label>
-            <Textarea
-              id="notes"
+            <RichTextEditor
               value={formData.notes}
-              onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
-              rows={2}
+              onChange={(value) => setFormData(prev => ({ ...prev, notes: value }))}
+              placeholder="Enter notes..."
+              className="min-h-[120px]"
             />
           </div>
 

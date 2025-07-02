@@ -106,7 +106,12 @@ const MiceOrders = () => {
                         {order.expected_delivery_date && (
                           <div><strong>Expected:</strong> {new Date(order.expected_delivery_date).toLocaleDateString()}</div>
                         )}
-                        {order.total_cost && <div><strong>Total Cost:</strong> ${order.total_cost}</div>}
+                        {order.actual_delivery_date && (
+                          <div><strong>Delivered:</strong> {new Date(order.actual_delivery_date).toLocaleDateString()}</div>
+                        )}
+                        {order.release_date && (
+                          <div><strong>Release Date:</strong> {new Date(order.release_date).toLocaleDateString()}</div>
+                        )}
                         {order.housing_location && <div><strong>Housing:</strong> {order.housing_location}</div>}
                       </div>
                       <div className="flex gap-2 mt-4">

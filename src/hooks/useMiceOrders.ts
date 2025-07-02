@@ -15,9 +15,8 @@ export interface MiceOrder {
   order_date: string;
   expected_delivery_date: string | null;
   actual_delivery_date: string | null;
+  release_date: string | null;
   order_status: string;
-  cost_per_mouse: number | null;
-  total_cost: number | null;
   order_reference: string | null;
   special_requirements: string | null;
   housing_location: string | null;
@@ -68,9 +67,8 @@ export const useMiceOrders = () => {
         order_date: order.order_date,
         expected_delivery_date: order.expected_delivery_date,
         actual_delivery_date: order.actual_delivery_date,
+        release_date: order.release_date,
         order_status: order.order_status,
-        cost_per_mouse: order.cost_per_mouse,
-        total_cost: order.total_cost,
         order_reference: order.order_reference,
         special_requirements: order.special_requirements,
         housing_location: order.housing_location,
@@ -91,7 +89,6 @@ export const useMiceOrders = () => {
         title: "Success",
         description: "Mice order added successfully",
       });
-      return data;
     } catch (error) {
       console.error('Error adding mice order:', error);
       toast({
@@ -118,7 +115,6 @@ export const useMiceOrders = () => {
         title: "Success",
         description: "Mice order updated successfully",
       });
-      return data;
     } catch (error) {
       console.error('Error updating mice order:', error);
       toast({
