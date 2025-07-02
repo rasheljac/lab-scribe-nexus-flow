@@ -103,7 +103,7 @@ const MiceOrders = () => {
             <div><strong>Expected:</strong> {new Date(order.expected_delivery_date).toLocaleDateString()}</div>
           )}
           {order.actual_delivery_date && (
-            <div><strong>Delivered:</strong> {new Date(order.actual_delivery_date).toLocaleDateDate()}</div>
+            <div><strong>Delivered:</strong> {new Date(order.actual_delivery_date).toLocaleDateString()}</div>
           )}
           {order.release_date && (
             <div><strong>Release Date:</strong> {new Date(order.release_date).toLocaleDateString()}</div>

@@ -11,7 +11,7 @@ import { MiceOrder } from "@/hooks/useMiceOrders";
 import RichTextEditor from "@/components/RichTextEditor";
 
 interface AddMiceOrderDialogProps {
-  onAddOrder: (order: Omit<MiceOrder, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => Promise<void>;
+  onAddOrder: (order: Omit<MiceOrder, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'display_order'>) => Promise<void>;
 }
 
 const AddMiceOrderDialog = ({ onAddOrder }: AddMiceOrderDialogProps) => {

@@ -633,6 +633,7 @@ export type Database = {
           age_weeks: number | null
           cost_per_mouse: number | null
           created_at: string
+          display_order: number | null
           expected_delivery_date: string | null
           housing_location: string | null
           id: string
@@ -655,6 +656,7 @@ export type Database = {
           age_weeks?: number | null
           cost_per_mouse?: number | null
           created_at?: string
+          display_order?: number | null
           expected_delivery_date?: string | null
           housing_location?: string | null
           id?: string
@@ -677,6 +679,7 @@ export type Database = {
           age_weeks?: number | null
           cost_per_mouse?: number | null
           created_at?: string
+          display_order?: number | null
           expected_delivery_date?: string | null
           housing_location?: string | null
           id?: string
