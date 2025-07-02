@@ -13,9 +13,9 @@ export interface InventoryItem {
   current_stock: number;
   unit: string;
   location: string;
-  expiry_date: string;
+  expiry_date: string | null;
   status: string;
-  last_ordered: string;
+  last_ordered: string | null;
   cost: string;
   url: string;
   created_at: string;
@@ -55,13 +55,35 @@ export const useInventoryItems = () => {
     if (!user) return;
 
     try {
+      // Prepare the data for insertion, ensuring proper null handling
+      const insertData = {
+        name: item.name,
+        category: item.category,
+        supplier: item.supplier,
+        current_stock: item.current_stock,
+        unit: item.unit || null,
+        location: item.location || null,
+        expiry_date: item.expiry_date || null,
+        status: item.status,
+        last_ordered: item.last_ordered,
+        cost: item.cost || null,
+        url: item.url || null,
+        user_id: user.id
+      };
+
+      console.log('Inserting item data:', insertData);
+
       const { data, error } = await supabase
         .from('inventory_items')
-        .insert([{ ...item, user_id: user.id }])
+        .insert([insertData])
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error:', error);
+        throw error;
+      }
+      
       setItems(prev => [data, ...prev]);
       return data;
     } catch (error) {
@@ -71,6 +93,7 @@ export const useInventoryItems = () => {
         description: "Failed to add inventory item",
         variant: "destructive",
       });
+      throw error;
     }
   };
 

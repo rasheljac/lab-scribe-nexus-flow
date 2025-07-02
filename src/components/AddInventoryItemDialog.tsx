@@ -44,9 +44,17 @@ const AddInventoryItemDialog = ({ onAddItem }: AddInventoryItemDialogProps) => {
 
     try {
       await onAddItem({
-        ...formData,
+        name: formData.name,
+        category: formData.category,
+        supplier: formData.supplier,
+        current_stock: formData.current_stock,
+        unit: formData.unit,
+        location: formData.location,
+        expiry_date: formData.expiry_date || null,
         status,
         last_ordered: null,
+        cost: formData.cost,
+        url: formData.url,
       });
 
       setFormData({
@@ -66,6 +74,7 @@ const AddInventoryItemDialog = ({ onAddItem }: AddInventoryItemDialogProps) => {
         description: "Item added successfully",
       });
     } catch (error) {
+      console.error('Error adding item:', error);
       toast({
         title: "Error",
         description: "Failed to add item",
