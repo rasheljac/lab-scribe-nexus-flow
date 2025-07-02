@@ -627,6 +627,72 @@ export type Database = {
         }
         Relationships: []
       }
+      mice_orders: {
+        Row: {
+          actual_delivery_date: string | null
+          age_weeks: number | null
+          cost_per_mouse: number | null
+          created_at: string
+          expected_delivery_date: string | null
+          housing_location: string | null
+          id: string
+          notes: string | null
+          order_date: string
+          order_reference: string | null
+          order_status: string
+          quantity_ordered: number
+          sex: string
+          special_requirements: string | null
+          strain_name: string
+          supplier: string
+          total_cost: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          actual_delivery_date?: string | null
+          age_weeks?: number | null
+          cost_per_mouse?: number | null
+          created_at?: string
+          expected_delivery_date?: string | null
+          housing_location?: string | null
+          id?: string
+          notes?: string | null
+          order_date?: string
+          order_reference?: string | null
+          order_status?: string
+          quantity_ordered?: number
+          sex: string
+          special_requirements?: string | null
+          strain_name: string
+          supplier: string
+          total_cost?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          actual_delivery_date?: string | null
+          age_weeks?: number | null
+          cost_per_mouse?: number | null
+          created_at?: string
+          expected_delivery_date?: string | null
+          housing_location?: string | null
+          id?: string
+          notes?: string | null
+          order_date?: string
+          order_reference?: string | null
+          order_status?: string
+          quantity_ordered?: number
+          sex?: string
+          special_requirements?: string | null
+          strain_name?: string
+          supplier?: string
+          total_cost?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       projects: {
         Row: {
           budget: string | null

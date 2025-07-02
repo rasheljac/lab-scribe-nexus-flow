@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -30,6 +29,7 @@ import SystemSettings from "./pages/SystemSettings";
 import NotFound from "./pages/NotFound";
 import Protocols from "./pages/Protocols";
 import ProtocolDetails from "./pages/ProtocolDetails";
+import MiceOrders from "./pages/MiceOrders";
 
 const queryClient = new QueryClient();
 
@@ -120,6 +120,11 @@ const App = () => (
             <Route path="/orders" element={
               <ProtectedRoute>
                 <Orders />
+              </ProtectedRoute>
+            } />
+            <Route path="/mice-orders" element={
+              <ProtectedRoute>
+                <MiceOrders />
               </ProtectedRoute>
             } />
             <Route path="/messages" element={
