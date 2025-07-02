@@ -37,7 +37,26 @@ export const useMiceOrders = () => {
     try {
       const { data, error } = await supabase
         .from('mice_orders')
-        .select('*')
+        .select(`
+          id,
+          user_id,
+          strain_name,
+          supplier,
+          quantity_ordered,
+          sex,
+          age_weeks,
+          order_date,
+          expected_delivery_date,
+          actual_delivery_date,
+          release_date,
+          order_status,
+          order_reference,
+          special_requirements,
+          housing_location,
+          notes,
+          created_at,
+          updated_at
+        `)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -79,7 +98,26 @@ export const useMiceOrders = () => {
       const { data, error } = await supabase
         .from('mice_orders')
         .insert([insertData])
-        .select()
+        .select(`
+          id,
+          user_id,
+          strain_name,
+          supplier,
+          quantity_ordered,
+          sex,
+          age_weeks,
+          order_date,
+          expected_delivery_date,
+          actual_delivery_date,
+          release_date,
+          order_status,
+          order_reference,
+          special_requirements,
+          housing_location,
+          notes,
+          created_at,
+          updated_at
+        `)
         .single();
 
       if (error) throw error;
@@ -106,7 +144,26 @@ export const useMiceOrders = () => {
         .from('mice_orders')
         .update(updates)
         .eq('id', id)
-        .select()
+        .select(`
+          id,
+          user_id,
+          strain_name,
+          supplier,
+          quantity_ordered,
+          sex,
+          age_weeks,
+          order_date,
+          expected_delivery_date,
+          actual_delivery_date,
+          release_date,
+          order_status,
+          order_reference,
+          special_requirements,
+          housing_location,
+          notes,
+          created_at,
+          updated_at
+        `)
         .single();
 
       if (error) throw error;
