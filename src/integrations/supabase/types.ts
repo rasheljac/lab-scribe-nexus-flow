@@ -641,6 +641,7 @@ export type Database = {
           order_reference: string | null
           order_status: string
           quantity_ordered: number
+          release_date: string | null
           sex: string
           special_requirements: string | null
           strain_name: string
@@ -662,6 +663,7 @@ export type Database = {
           order_reference?: string | null
           order_status?: string
           quantity_ordered?: number
+          release_date?: string | null
           sex: string
           special_requirements?: string | null
           strain_name: string
@@ -683,6 +685,7 @@ export type Database = {
           order_reference?: string | null
           order_status?: string
           quantity_ordered?: number
+          release_date?: string | null
           sex?: string
           special_requirements?: string | null
           strain_name?: string
