@@ -1,7 +1,7 @@
 
 import { useState } from "react";
-import { Header } from "@/components/Header";
-import { Sidebar } from "@/components/Sidebar";
+import Header from "@/components/Header";
+import Sidebar from "@/components/Sidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -9,10 +9,11 @@ import { Plus, Edit, Trash2, MousePointer2 } from "lucide-react";
 import { useMiceOrders } from "@/hooks/useMiceOrders";
 import AddMiceOrderDialog from "@/components/AddMiceOrderDialog";
 import EditMiceOrderDialog from "@/components/EditMiceOrderDialog";
+import { MiceOrder } from "@/hooks/useMiceOrders";
 
 const MiceOrders = () => {
   const { orders, loading, addOrder, updateOrder, deleteOrder } = useMiceOrders();
-  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [selectedOrder, setSelectedOrder] = useState<MiceOrder | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
   const getStatusColor = (status: string) => {
@@ -26,7 +27,7 @@ const MiceOrders = () => {
     }
   };
 
-  const handleEditOrder = (order) => {
+  const handleEditOrder = (order: MiceOrder) => {
     setSelectedOrder(order);
     setIsEditDialogOpen(true);
   };
@@ -35,6 +36,14 @@ const MiceOrders = () => {
     if (window.confirm('Are you sure you want to delete this order?')) {
       await deleteOrder(orderId);
     }
+  };
+
+  const handleAddOrder = async (order: Omit<MiceOrder, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => {
+    await addOrder(order);
+  };
+
+  const handleUpdateOrder = async (id: string, updates: Partial<MiceOrder>) => {
+    await updateOrder(id, updates);
   };
 
   if (loading) {
@@ -63,7 +72,7 @@ const MiceOrders = () => {
                 <MousePointer2 className="h-8 w-8 text-blue-600" />
                 <h1 className="text-3xl font-bold text-gray-900">Mice Orders</h1>
               </div>
-              <AddMiceOrderDialog onAddOrder={addOrder} />
+              <AddMiceOrderDialog onAddOrder={handleAddOrder} />
             </div>
 
             {orders.length === 0 ? (
@@ -72,7 +81,7 @@ const MiceOrders = () => {
                   <MousePointer2 className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                   <h3 className="text-lg font-medium text-gray-900 mb-2">No mice orders yet</h3>
                   <p className="text-gray-500 mb-4">Start by creating your first mice order</p>
-                  <AddMiceOrderDialog onAddOrder={addOrder} />
+                  <AddMiceOrderDialog onAddOrder={handleAddOrder} />
                 </CardContent>
               </Card>
             ) : (
@@ -133,7 +142,7 @@ const MiceOrders = () => {
           order={selectedOrder}
           open={isEditDialogOpen}
           onOpenChange={setIsEditDialogOpen}
-          onUpdateOrder={updateOrder}
+          onUpdateOrder={handleUpdateOrder}
         />
       )}
     </div>

@@ -19,7 +19,8 @@ import {
   ShoppingCart,
   ChevronLeft,
   ChevronRight,
-  Lightbulb
+  Lightbulb,
+  MousePointer2
 } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useExperiments } from "@/hooks/useExperiments";
@@ -28,6 +29,7 @@ import { useProjects } from "@/hooks/useProjects";
 import { useTasks } from "@/hooks/useTasks";
 import { useReports } from "@/hooks/useReports";
 import { useProtocols } from "@/hooks/useProtocols";
+import { useMiceOrders } from "@/hooks/useMiceOrders";
 import { useUserPreferences } from "@/hooks/useUserPreferences";
 
 const Sidebar = () => {
@@ -43,6 +45,7 @@ const Sidebar = () => {
   const { tasks } = useTasks();
   const { reports } = useReports();
   const { protocols } = useProtocols();
+  const { orders } = useMiceOrders();
 
   // Filter uncompleted tasks
   const uncompletedTasksCount = tasks.filter(task => task.status !== 'completed').length;
@@ -60,6 +63,7 @@ const Sidebar = () => {
     { icon: Package, label: "Inventory", path: "/inventory", badge: null, key: "inventory" },
     { icon: Printer, label: "Label Printer", path: "/labels", badge: null, key: "labels" },
     { icon: ShoppingCart, label: "Order Portal", path: "/orders", badge: "2", key: "orders" },
+    { icon: MousePointer2, label: "Mice Orders", path: "/mice-orders", badge: orders.length.toString(), key: "mice-orders" },
     { icon: MessageSquare, label: "Messages", path: "/messages", badge: "5", key: "messages" },
     { icon: Video, label: "Video Chat", path: "/video-chat", badge: null, key: "video-chat" },
     { icon: Users, label: "Team", path: "/team", badge: null, key: "team" },
