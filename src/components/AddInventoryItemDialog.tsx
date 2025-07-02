@@ -21,8 +21,6 @@ const AddInventoryItemDialog = ({ onAddItem }: AddInventoryItemDialogProps) => {
     category: "",
     supplier: "",
     current_stock: 0,
-    min_stock: 0,
-    max_stock: 0,
     unit: "",
     location: "",
     expiry_date: "",
@@ -42,8 +40,7 @@ const AddInventoryItemDialog = ({ onAddItem }: AddInventoryItemDialogProps) => {
       return;
     }
 
-    const status = formData.current_stock === 0 ? "out_of_stock" : 
-                   formData.current_stock <= formData.min_stock ? "low_stock" : "in_stock";
+    const status = formData.current_stock === 0 ? "out_of_stock" : "in_stock";
 
     try {
       await onAddItem({
@@ -57,8 +54,6 @@ const AddInventoryItemDialog = ({ onAddItem }: AddInventoryItemDialogProps) => {
         category: "",
         supplier: "",
         current_stock: 0,
-        min_stock: 0,
-        max_stock: 0,
         unit: "",
         location: "",
         expiry_date: "",
@@ -147,37 +142,15 @@ const AddInventoryItemDialog = ({ onAddItem }: AddInventoryItemDialogProps) => {
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="current_stock">Current Stock</Label>
-              <Input
-                id="current_stock"
-                type="number"
-                value={formData.current_stock}
-                onChange={(e) => setFormData(prev => ({ ...prev, current_stock: parseInt(e.target.value) || 0 }))}
-                min="0"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="min_stock">Min Stock</Label>
-              <Input
-                id="min_stock"
-                type="number"
-                value={formData.min_stock}
-                onChange={(e) => setFormData(prev => ({ ...prev, min_stock: parseInt(e.target.value) || 0 }))}
-                min="0"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="max_stock">Max Stock</Label>
-              <Input
-                id="max_stock"
-                type="number"
-                value={formData.max_stock}
-                onChange={(e) => setFormData(prev => ({ ...prev, max_stock: parseInt(e.target.value) || 0 }))}
-                min="0"
-              />
-            </div>
+          <div className="space-y-2">
+            <Label htmlFor="current_stock">Current Stock</Label>
+            <Input
+              id="current_stock"
+              type="number"
+              value={formData.current_stock}
+              onChange={(e) => setFormData(prev => ({ ...prev, current_stock: parseInt(e.target.value) || 0 }))}
+              min="0"
+            />
           </div>
 
           <div className="grid grid-cols-2 gap-4">

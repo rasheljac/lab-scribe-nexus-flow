@@ -57,27 +57,13 @@ const InventoryItemDetailsDialog = ({
           </div>
 
           {/* Stock Information */}
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 gap-4">
             <div className="space-y-2">
               <div className="flex items-center gap-2 text-sm font-medium text-gray-600">
                 <Hash className="h-4 w-4" />
                 Current Stock
               </div>
               <p className="text-2xl font-bold">{item.current_stock} {item.unit}</p>
-            </div>
-            <div className="space-y-2">
-              <div className="flex items-center gap-2 text-sm font-medium text-gray-600">
-                <Package className="h-4 w-4" />
-                Min Stock
-              </div>
-              <p className="text-lg">{item.min_stock} {item.unit}</p>
-            </div>
-            <div className="space-y-2">
-              <div className="flex items-center gap-2 text-sm font-medium text-gray-600">
-                <Package className="h-4 w-4" />
-                Max Stock
-              </div>
-              <p className="text-lg">{item.max_stock} {item.unit}</p>
             </div>
           </div>
 

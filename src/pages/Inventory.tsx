@@ -273,7 +273,6 @@ const Inventory = () => {
                           </div>
                           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 text-sm text-gray-600">
                             <span>Stock: {item.current_stock} {item.unit}</span>
-                            <span>Min: {item.min_stock} {item.unit}</span>
                             <span>Location: {item.location}</span>
                             <span>Supplier: {item.supplier}</span>
                           </div>

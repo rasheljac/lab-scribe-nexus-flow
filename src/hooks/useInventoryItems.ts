@@ -11,8 +11,6 @@ export interface InventoryItem {
   category: string;
   supplier: string;
   current_stock: number;
-  min_stock: number;
-  max_stock: number;
   unit: string;
   location: string;
   expiry_date: string;
