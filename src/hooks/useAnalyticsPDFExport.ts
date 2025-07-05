@@ -25,59 +25,105 @@ export const useAnalyticsPDFExport = () => {
     }
     
     const maxValue = Math.max(...data.map(d => Math.max(d.experiments || 0, d.reports || 0, d.tasks || 0)));
-    const barWidth = (width - 20) / data.length;
-    const chartHeight = height - 30;
+    if (maxValue === 0) {
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text('No data available', x + width/2 - 20, y + height/2);
+      return;
+    }
+    
+    const chartPadding = 15;
+    const chartWidth = width - (chartPadding * 2);
+    const chartHeight = height - 40; // More space for labels
+    const chartX = x + chartPadding;
+    const chartY = y + 10;
+    const barGroupWidth = chartWidth / data.length;
+    const barWidth = Math.max(barGroupWidth * 0.2, 3); // Minimum bar width
+    const barGap = barWidth * 0.3;
+    
+    // Draw grid lines
+    pdf.setDrawColor(240, 240, 240);
+    pdf.setLineWidth(0.5);
+    for (let i = 0; i <= 4; i++) {
+      const gridY = chartY + (i * chartHeight / 4);
+      pdf.line(chartX, gridY, chartX + chartWidth, gridY);
+    }
+    
+    // Draw Y-axis
+    pdf.setDrawColor(200, 200, 200);
+    pdf.setLineWidth(1);
+    pdf.line(chartX, chartY, chartX, chartY + chartHeight);
+    
+    // Draw X-axis
+    pdf.line(chartX, chartY + chartHeight, chartX + chartWidth, chartY + chartHeight);
+    
+    // Draw Y-axis labels
+    pdf.setFontSize(8);
+    pdf.setFont('helvetica', 'normal');
+    pdf.setTextColor(100, 100, 100);
+    for (let i = 0; i <= 4; i++) {
+      const value = Math.round((maxValue / 4) * (4 - i));
+      const labelY = chartY + (i * chartHeight / 4) + 2;
+      pdf.text(value.toString(), chartX - 8, labelY);
+    }
     
     data.forEach((item, index) => {
-      const barX = x + 10 + (index * barWidth);
+      const groupX = chartX + (index * barGroupWidth) + (barGroupWidth - (barWidth * 3 + barGap * 2)) / 2;
       
       // Draw experiments bar (blue)
-      if (item.experiments) {
+      if (item.experiments > 0) {
         const barHeight = (item.experiments / maxValue) * chartHeight;
         pdf.setFillColor(59, 130, 246);
-        pdf.rect(barX, y + height - 20 - barHeight, barWidth * 0.25, barHeight, 'F');
+        pdf.rect(groupX, chartY + chartHeight - barHeight, barWidth, barHeight, 'F');
       }
       
       // Draw reports bar (green)
-      if (item.reports) {
+      if (item.reports > 0) {
         const barHeight = (item.reports / maxValue) * chartHeight;
         pdf.setFillColor(16, 185, 129);
-        pdf.rect(barX + barWidth * 0.3, y + height - 20 - barHeight, barWidth * 0.25, barHeight, 'F');
+        pdf.rect(groupX + barWidth + barGap, chartY + chartHeight - barHeight, barWidth, barHeight, 'F');
       }
       
       // Draw tasks bar (yellow)
-      if (item.tasks) {
+      if (item.tasks > 0) {
         const barHeight = (item.tasks / maxValue) * chartHeight;
         pdf.setFillColor(245, 158, 11);
-        pdf.rect(barX + barWidth * 0.6, y + height - 20 - barHeight, barWidth * 0.25, barHeight, 'F');
+        pdf.rect(groupX + (barWidth + barGap) * 2, chartY + chartHeight - barHeight, barWidth, barHeight, 'F');
       }
       
       // Draw month label
       pdf.setFontSize(8);
       pdf.setFont('helvetica', 'normal');
-      pdf.text(item.month, barX + barWidth/2 - 5, y + height - 5);
+      pdf.setTextColor(0, 0, 0);
+      const labelX = chartX + (index * barGroupWidth) + (barGroupWidth / 2) - 8;
+      pdf.text(item.month, labelX, chartY + chartHeight + 12);
     });
     
-    // Draw legend
+    // Draw legend with better positioning
     pdf.setFontSize(8);
+    pdf.setTextColor(0, 0, 0);
+    const legendX = x + width - 90;
+    const legendY = y + 15;
+    
     pdf.setFillColor(59, 130, 246);
-    pdf.rect(x + width - 80, y + 5, 8, 4, 'F');
-    pdf.text('Experiments', x + width - 65, y + 8);
+    pdf.rect(legendX, legendY, 8, 4, 'F');
+    pdf.text('Experiments', legendX + 12, legendY + 3);
     
     pdf.setFillColor(16, 185, 129);
-    pdf.rect(x + width - 80, y + 12, 8, 4, 'F');
-    pdf.text('Reports', x + width - 65, y + 15);
+    pdf.rect(legendX, legendY + 8, 8, 4, 'F');
+    pdf.text('Reports', legendX + 12, legendY + 11);
     
     pdf.setFillColor(245, 158, 11);
-    pdf.rect(x + width - 80, y + 19, 8, 4, 'F');
-    pdf.text('Tasks', x + width - 65, y + 22);
+    pdf.rect(legendX, legendY + 16, 8, 4, 'F');
+    pdf.text('Tasks', legendX + 12, legendY + 19);
   };
 
   const drawPieChart = (pdf: jsPDF, data: any[], x: number, y: number, radius: number, title: string) => {
     // Draw chart title
     pdf.setFontSize(12);
     pdf.setFont('helvetica', 'bold');
-    pdf.text(title, x - 30, y - radius - 10);
+    pdf.setTextColor(0, 0, 0);
+    pdf.text(title, x - 40, y - radius - 15);
     
     if (!data || data.length === 0) {
       pdf.setFontSize(10);
@@ -95,7 +141,14 @@ export const useAnalyticsPDFExport = () => {
     ];
     
     const total = data.reduce((sum, item) => sum + item.value, 0);
-    let currentAngle = 0;
+    if (total === 0) {
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text('No data available', x - 20, y);
+      return;
+    }
+    
+    let currentAngle = -Math.PI / 2; // Start from top
     
     data.forEach((item, index) => {
       const sliceAngle = (item.value / total) * 2 * Math.PI;
@@ -104,37 +157,45 @@ export const useAnalyticsPDFExport = () => {
       const color = colors[index % colors.length];
       pdf.setFillColor(color[0], color[1], color[2]);
       
-      // Draw pie slice (approximated with lines)
-      const steps = Math.max(3, Math.floor(sliceAngle * 10));
+      // Draw pie slice using arc approximation
+      const steps = Math.max(8, Math.floor(sliceAngle * 20)); // More steps for smoother arcs
       const stepAngle = sliceAngle / steps;
       
-      for (let i = 0; i < steps; i++) {
-        const angle1 = currentAngle + (i * stepAngle);
-        const angle2 = currentAngle + ((i + 1) * stepAngle);
-        
-        const x1 = x + Math.cos(angle1) * radius;
-        const y1 = y + Math.sin(angle1) * radius;
-        const x2 = x + Math.cos(angle2) * radius;
-        const y2 = y + Math.sin(angle2) * radius;
-        
-        // Draw triangle slice
-        pdf.setDrawColor(255, 255, 255);
-        pdf.triangle(x, y, x1, y1, x2, y2, 'FD');
+      // Create path for pie slice
+      const points = [[x, y]]; // Center point
+      
+      for (let i = 0; i <= steps; i++) {
+        const angle = currentAngle + (i * stepAngle);
+        const pointX = x + Math.cos(angle) * radius;
+        const pointY = y + Math.sin(angle) * radius;
+        points.push([pointX, pointY]);
+      }
+      
+      // Draw the slice
+      pdf.setDrawColor(255, 255, 255);
+      pdf.setLineWidth(1);
+      
+      // Draw triangles to fill the slice
+      for (let i = 1; i < points.length - 1; i++) {
+        pdf.triangle(points[0][0], points[0][1], points[i][0], points[i][1], points[i+1][0], points[i+1][1], 'FD');
       }
       
       currentAngle += sliceAngle;
     });
     
-    // Draw legend
+    // Draw legend with better spacing
+    pdf.setFontSize(8);
+    pdf.setFont('helvetica', 'normal');
+    pdf.setTextColor(0, 0, 0);
+    
     data.forEach((item, index) => {
-      const legendY = y + radius + 15 + (index * 8);
+      const legendY = y + radius + 20 + (index * 10);
       const color = colors[index % colors.length];
       pdf.setFillColor(color[0], color[1], color[2]);
-      pdf.rect(x - 40, legendY - 3, 6, 4, 'F');
+      pdf.rect(x - 50, legendY - 3, 8, 6, 'F');
       
-      pdf.setFontSize(8);
-      pdf.setFont('helvetica', 'normal');
-      pdf.text(`${item.name}: ${item.value}`, x - 30, legendY);
+      const percentage = ((item.value / total) * 100).toFixed(1);
+      pdf.text(`${item.name}: ${item.value} (${percentage}%)`, x - 38, legendY + 2);
     });
   };
 
@@ -142,6 +203,7 @@ export const useAnalyticsPDFExport = () => {
     // Draw chart title
     pdf.setFontSize(12);
     pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(0, 0, 0);
     pdf.text(title, x, y - 5);
     
     // Draw chart border
@@ -157,49 +219,66 @@ export const useAnalyticsPDFExport = () => {
     
     const maxValue = Math.max(...data.map(d => d.productivity || 0));
     const minValue = Math.min(...data.map(d => d.productivity || 0));
-    const chartWidth = width - 20;
-    const chartHeight = height - 30;
+    const valueRange = maxValue - minValue || 1;
+    
+    const chartPadding = 15;
+    const chartWidth = width - (chartPadding * 2);
+    const chartHeight = height - 40;
+    const chartX = x + chartPadding;
+    const chartY = y + 10;
     const stepWidth = chartWidth / (data.length - 1);
     
     // Draw grid lines
     pdf.setDrawColor(240, 240, 240);
+    pdf.setLineWidth(0.5);
     for (let i = 0; i <= 4; i++) {
-      const gridY = y + 10 + (i * chartHeight / 4);
-      pdf.line(x + 10, gridY, x + width - 10, gridY);
+      const gridY = chartY + (i * chartHeight / 4);
+      pdf.line(chartX, gridY, chartX + chartWidth, gridY);
     }
     
-    // Draw line
+    // Draw axes
+    pdf.setDrawColor(200, 200, 200);
+    pdf.setLineWidth(1);
+    pdf.line(chartX, chartY, chartX, chartY + chartHeight); // Y-axis
+    pdf.line(chartX, chartY + chartHeight, chartX + chartWidth, chartY + chartHeight); // X-axis
+    
+    // Draw Y-axis labels
+    pdf.setFontSize(8);
+    pdf.setFont('helvetica', 'normal');
+    pdf.setTextColor(100, 100, 100);
+    for (let i = 0; i <= 4; i++) {
+      const value = minValue + (valueRange / 4) * (4 - i);
+      const labelY = chartY + (i * chartHeight / 4) + 2;
+      pdf.text(Math.round(value).toString(), chartX - 12, labelY);
+    }
+    
+    // Draw line and points
     pdf.setDrawColor(139, 92, 246);
     pdf.setLineWidth(2);
     
-    let prevX = x + 10;
-    let prevY = y + height - 20 - ((data[0].productivity - minValue) / (maxValue - minValue)) * chartHeight;
+    const points = data.map((item, index) => ({
+      x: chartX + (index * stepWidth),
+      y: chartY + chartHeight - ((item.productivity - minValue) / valueRange) * chartHeight
+    }));
     
-    data.forEach((item, index) => {
-      if (index === 0) return;
-      
-      const currentX = x + 10 + (index * stepWidth);
-      const currentY = y + height - 20 - ((item.productivity - minValue) / (maxValue - minValue)) * chartHeight;
-      
-      pdf.line(prevX, prevY, currentX, currentY);
-      
-      // Draw data points
-      pdf.setFillColor(139, 92, 246);
-      pdf.circle(currentX, currentY, 1.5, 'F');
-      
-      prevX = currentX;
-      prevY = currentY;
+    // Draw line segments
+    for (let i = 0; i < points.length - 1; i++) {
+      pdf.line(points[i].x, points[i].y, points[i + 1].x, points[i + 1].y);
+    }
+    
+    // Draw data points
+    pdf.setFillColor(139, 92, 246);
+    points.forEach(point => {
+      pdf.circle(point.x, point.y, 2, 'F');
     });
-    
-    // Draw first data point
-    pdf.circle(x + 10, y + height - 20 - ((data[0].productivity - minValue) / (maxValue - minValue)) * chartHeight, 1.5, 'F');
     
     // Draw x-axis labels
     pdf.setFontSize(8);
     pdf.setFont('helvetica', 'normal');
+    pdf.setTextColor(0, 0, 0);
     data.forEach((item, index) => {
-      const labelX = x + 10 + (index * stepWidth);
-      pdf.text(item.week, labelX - 8, y + height - 5);
+      const labelX = chartX + (index * stepWidth) - 10;
+      pdf.text(item.week, labelX, chartY + chartHeight + 12);
     });
     
     pdf.setLineWidth(0.5);
