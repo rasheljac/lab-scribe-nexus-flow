@@ -1,3 +1,4 @@
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -124,7 +125,7 @@ const Analytics = () => {
 
       toast({
         title: "Export Successful",
-        description: "Analytics report has been exported to PDF successfully!",
+        description: "Analytics report with charts has been exported to PDF successfully!",
       });
     } catch (error) {
       console.error("Error exporting PDF:", error);
