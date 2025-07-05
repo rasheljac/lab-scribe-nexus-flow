@@ -86,6 +86,14 @@ export const useAnalyticsPDFExport = () => {
       return;
     }
     
+    // Define colors array at the function scope
+    const colors = [
+      [34, 197, 94],   // green
+      [59, 130, 246],  // blue
+      [245, 158, 11],  // yellow
+      [239, 68, 68]    // red
+    ];
+    
     const total = data.reduce((sum, item) => sum + item.value, 0);
     let currentAngle = 0;
     
@@ -93,12 +101,6 @@ export const useAnalyticsPDFExport = () => {
       const sliceAngle = (item.value / total) * 2 * Math.PI;
       
       // Set color based on item color or default colors
-      const colors = [
-        [34, 197, 94],   // green
-        [59, 130, 246],  // blue
-        [245, 158, 11],  // yellow
-        [239, 68, 68]    // red
-      ];
       const color = colors[index % colors.length];
       pdf.setFillColor(color[0], color[1], color[2]);
       
