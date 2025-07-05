@@ -1,8 +1,8 @@
-
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from "recharts";
-import { BarChart3, TrendingUp, Calendar, Users, Beaker, CheckSquare } from "lucide-react";
+import { BarChart3, TrendingUp, Calendar, Users, Beaker, CheckSquare, Download, Loader2 } from "lucide-react";
 import Sidebar from "@/components/Sidebar";
 import Header from "@/components/Header";
 import { useProjects } from "@/hooks/useProjects";
@@ -10,6 +10,9 @@ import { useExperiments } from "@/hooks/useExperiments";
 import { useTasks } from "@/hooks/useTasks";
 import { useReports } from "@/hooks/useReports";
 import { useTeamMembers } from "@/hooks/useTeamMembers";
+import { useAnalyticsPDFExport } from "@/hooks/useAnalyticsPDFExport";
+import { useToast } from "@/hooks/use-toast";
+import { useState } from "react";
 
 const Analytics = () => {
   const { projects } = useProjects();
@@ -17,6 +20,9 @@ const Analytics = () => {
   const { tasks } = useTasks();
   const { reports } = useReports();
   const { teamMembers } = useTeamMembers();
+  const { exportAnalyticsToPDF } = useAnalyticsPDFExport();
+  const { toast } = useToast();
+  const [isExporting, setIsExporting] = useState(false);
 
   // Calculate real statistics
   const totalExperiments = experiments.length;
@@ -91,6 +97,47 @@ const Analytics = () => {
       }, 0) / completedExperiments).toFixed(1)
     : "N/A";
 
+  const handleExportPDF = async () => {
+    setIsExporting(true);
+    try {
+      const analyticsData = {
+        totalExperiments,
+        completedExperiments,
+        inProgressExperiments,
+        planningExperiments,
+        onHoldExperiments,
+        totalTasks,
+        completedTasks,
+        totalProjects,
+        totalReports,
+        activeTeamMembers,
+        avgCompletionTime,
+        experimentStatusData,
+        monthlyData,
+        productivityData,
+      };
+
+      await exportAnalyticsToPDF.mutateAsync({
+        data: analyticsData,
+        reportTitle: "KAPELCZAK LABORATORY - ANALYTICS REPORT"
+      });
+
+      toast({
+        title: "Export Successful",
+        description: "Analytics report has been exported to PDF successfully!",
+      });
+    } catch (error) {
+      console.error("Error exporting PDF:", error);
+      toast({
+        title: "Export Failed",
+        description: "Failed to export analytics report. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 flex">
       <Sidebar />
@@ -104,9 +151,23 @@ const Analytics = () => {
                 <h1 className="text-3xl font-bold text-gray-900">Analytics Dashboard</h1>
                 <p className="text-gray-600 mt-1">Performance metrics and laboratory insights</p>
               </div>
-              <div className="flex items-center gap-2">
-                <Badge variant="outline">Live Data</Badge>
-                <BarChart3 className="h-5 w-5 text-gray-500" />
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline">Live Data</Badge>
+                  <BarChart3 className="h-5 w-5 text-gray-500" />
+                </div>
+                <Button 
+                  onClick={handleExportPDF}
+                  disabled={isExporting}
+                  className="gap-2"
+                >
+                  {isExporting ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Download className="h-4 w-4" />
+                  )}
+                  {isExporting ? "Exporting..." : "Export PDF"}
+                </Button>
               </div>
             </div>
 
