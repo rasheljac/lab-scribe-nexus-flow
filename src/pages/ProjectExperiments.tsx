@@ -34,7 +34,8 @@ import Sidebar from "@/components/Sidebar";
 import Header from "@/components/Header";
 import EditExperimentDialog from "@/components/EditExperimentDialog";
 import CreateExperimentDialog from "@/components/CreateExperimentDialog";
-import { useExperiments } from "@/hooks/useExperiments";
+import DraggableGrid from "@/components/DraggableGrid";
+import { useExperiments, Experiment } from "@/hooks/useExperiments";
 import { useProjects } from "@/hooks/useProjects";
 import { useToast } from "@/hooks/use-toast";
 
@@ -46,7 +47,7 @@ const ProjectExperiments = () => {
   const [createExperimentOpen, setCreateExperimentOpen] = useState(false);
   const { toast } = useToast();
   
-  const { experiments, isLoading, error, deleteExperiment } = useExperiments();
+  const { experiments, isLoading, error, deleteExperiment, updateExperimentOrder } = useExperiments();
   const { projects } = useProjects();
 
   const project = projects.find(p => p.id === projectId);
@@ -124,6 +125,115 @@ const ProjectExperiments = () => {
     setCreateExperimentOpen(true);
   };
 
+  const handleReorder = async (reorderedExperiments: Experiment[]) => {
+    try {
+      // Update display_order for all experiments
+      const updates = reorderedExperiments.map((exp, index) => ({
+        id: exp.id,
+        display_order: index + 1
+      }));
+
+      await updateExperimentOrder.mutateAsync(updates);
+    } catch (error) {
+      console.error("Error updating experiment order:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update experiment order",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const renderExperimentCard = (experiment: Experiment) => (
+    <Card key={experiment.id} className="hover:shadow-md transition-shadow">
+      <CardHeader className="pb-3">
+        <div className="flex items-start justify-between">
+          <div className="flex items-center gap-2 flex-1">
+            {getStatusIcon(experiment.status)}
+            <CardTitle 
+              className="text-lg cursor-pointer hover:text-blue-600"
+              onClick={() => handleExperimentClick(experiment.id)}
+            >
+              {experiment.title}
+            </CardTitle>
+          </div>
+          <div className="flex gap-1 items-center">
+            <Badge className={getStatusColor(experiment.status)}>
+              {experiment.status.replace('_', ' ')}
+            </Badge>
+            <EditExperimentDialog experiment={experiment} />
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button size="sm" variant="outline" className="text-red-600 hover:text-red-700 p-1 h-6 w-6">
+                  <Trash2 className="h-3 w-3" />
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete Experiment</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Are you sure you want to delete "{experiment.title}"? This action cannot be undone and will also delete all associated notes.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() => handleDeleteExperiment(experiment.id)}
+                    className="bg-red-600 hover:bg-red-700"
+                  >
+                    Delete
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
+        </div>
+        <p 
+          className="text-sm text-gray-600 mt-2 cursor-pointer"
+          onClick={() => handleExperimentClick(experiment.id)}
+        >
+          {experiment.description ? stripHtmlTags(experiment.description) : ""}
+        </p>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {/* Progress Bar */}
+        <div>
+          <div className="flex justify-between text-sm mb-1">
+            <span>Progress</span>
+            <span>{experiment.progress}%</span>
+          </div>
+          <div className="w-full bg-gray-200 rounded-full h-2">
+            <div 
+              className="bg-blue-600 h-2 rounded-full transition-all"
+              style={{ width: `${experiment.progress}%` }}
+            />
+          </div>
+        </div>
+
+        {/* Experiment Details */}
+        <div className="space-y-2 text-sm">
+          <div className="flex items-center gap-2">
+            <User className="h-4 w-4 text-gray-400" />
+            <span>{experiment.researcher}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Calendar className="h-4 w-4 text-gray-400" />
+            <span>{experiment.start_date} - {experiment.end_date || "Ongoing"}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <FileText className="h-4 w-4 text-gray-400" />
+            <span>{experiment.protocols} protocols, {experiment.samples} samples</span>
+          </div>
+        </div>
+
+        {/* Category Badge */}
+        <div className="pt-2">
+          <Badge variant="outline">{experiment.category}</Badge>
+        </div>
+      </CardContent>
+    </Card>
+  );
+
   if (error) {
     return (
       <div className="min-h-screen bg-gray-50 flex">
@@ -195,98 +305,16 @@ const ProjectExperiments = () => {
                 <Loader2 className="h-8 w-8 animate-spin" />
               </div>
             ) : (
-              <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-                {filteredExperiments.map((experiment) => (
-                  <Card key={experiment.id} className="hover:shadow-md transition-shadow">
-                    <CardHeader className="pb-3">
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-center gap-2 flex-1">
-                          {getStatusIcon(experiment.status)}
-                          <CardTitle 
-                            className="text-lg cursor-pointer hover:text-blue-600"
-                            onClick={() => handleExperimentClick(experiment.id)}
-                          >
-                            {experiment.title}
-                          </CardTitle>
-                        </div>
-                        <div className="flex gap-1 items-center">
-                          <Badge className={getStatusColor(experiment.status)}>
-                            {experiment.status.replace('_', ' ')}
-                          </Badge>
-                          <EditExperimentDialog experiment={experiment} />
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button size="sm" variant="outline" className="text-red-600 hover:text-red-700 p-1 h-6 w-6">
-                                <Trash2 className="h-3 w-3" />
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Delete Experiment</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  Are you sure you want to delete "{experiment.title}"? This action cannot be undone and will also delete all associated notes.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction
-                                  onClick={() => handleDeleteExperiment(experiment.id)}
-                                  className="bg-red-600 hover:bg-red-700"
-                                >
-                                  Delete
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        </div>
-                      </div>
-                      <p 
-                        className="text-sm text-gray-600 mt-2 cursor-pointer"
-                        onClick={() => handleExperimentClick(experiment.id)}
-                      >
-                        {experiment.description ? stripHtmlTags(experiment.description) : ""}
-                      </p>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      {/* Progress Bar */}
-                      <div>
-                        <div className="flex justify-between text-sm mb-1">
-                          <span>Progress</span>
-                          <span>{experiment.progress}%</span>
-                        </div>
-                        <div className="w-full bg-gray-200 rounded-full h-2">
-                          <div 
-                            className="bg-blue-600 h-2 rounded-full transition-all"
-                            style={{ width: `${experiment.progress}%` }}
-                          />
-                        </div>
-                      </div>
-
-                      {/* Experiment Details */}
-                      <div className="space-y-2 text-sm">
-                        <div className="flex items-center gap-2">
-                          <User className="h-4 w-4 text-gray-400" />
-                          <span>{experiment.researcher}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Calendar className="h-4 w-4 text-gray-400" />
-                          <span>{experiment.start_date} - {experiment.end_date || "Ongoing"}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <FileText className="h-4 w-4 text-gray-400" />
-                          <span>{experiment.protocols} protocols, {experiment.samples} samples</span>
-                        </div>
-                      </div>
-
-                      {/* Category Badge */}
-                      <div className="pt-2">
-                        <Badge variant="outline">{experiment.category}</Badge>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-                {filteredExperiments.length === 0 && !isLoading && (
-                  <div className="col-span-full text-center py-12">
+              <>
+                {filteredExperiments.length > 0 ? (
+                  <DraggableGrid
+                    items={filteredExperiments}
+                    onReorder={handleReorder}
+                    renderItem={renderExperimentCard}
+                    droppableId="project-experiments"
+                  />
+                ) : (
+                  <div className="text-center py-12">
                     <Beaker className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                     <p className="text-gray-600">
                       {searchTerm ? "No experiments found matching your criteria." : "No experiments found in this project."}
@@ -300,7 +328,7 @@ const ProjectExperiments = () => {
                     </Button>
                   </div>
                 )}
-              </div>
+              </>
             )}
           </div>
         </main>

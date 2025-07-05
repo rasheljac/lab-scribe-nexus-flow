@@ -4,8 +4,8 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
   Pagination,
   PaginationContent,
@@ -26,26 +26,38 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Search, Calendar, FolderOpen, BarChart3, Loader2, Eye, Trash2 } from "lucide-react";
+import { 
+  Search, 
+  FolderOpen, 
+  Calendar, 
+  Users, 
+  BarChart,
+  Clock,
+  CheckCircle,
+  AlertCircle,
+  Loader2,
+  Trash2
+} from "lucide-react";
 import Sidebar from "@/components/Sidebar";
 import Header from "@/components/Header";
 import CreateProjectDialog from "@/components/CreateProjectDialog";
 import EditProjectDialog from "@/components/EditProjectDialog";
 import DraggableGrid from "@/components/DraggableGrid";
 import { useProjects, Project } from "@/hooks/useProjects";
-import { useExperiments } from "@/hooks/useExperiments";
 import { useToast } from "@/hooks/use-toast";
 
 const Projects = () => {
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [searchTerm, setSearchTerm] = useState(searchParams.get('search') || "");
+  const [filterStatus, setFilterStatus] = useState("all");
+  const [filterCategory, setFilterCategory] = useState("all");
+  const [createProjectOpen, setCreateProjectOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 8;
-  const navigate = useNavigate();
   const { toast } = useToast();
 
   const { projects, isLoading, error, deleteProject, updateProjectOrder } = useProjects();
-  const { experiments } = useExperiments();
 
   // Update search params when search term changes
   useEffect(() => {
@@ -56,31 +68,41 @@ const Projects = () => {
     }
   }, [searchTerm, setSearchParams]);
 
-  // Reset to first page when search term changes
+  // Reset to first page when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm]);
+  }, [searchTerm, filterStatus, filterCategory]);
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case "completed":
+        return <CheckCircle className="h-4 w-4 text-green-600" />;
+      case "active":
+        return <Clock className="h-4 w-4 text-blue-600" />;
+      case "planning":
+        return <AlertCircle className="h-4 w-4 text-yellow-600" />;
+      default:
+        return <FolderOpen className="h-4 w-4 text-gray-600" />;
+    }
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "active":
-        return "bg-blue-100 text-blue-800";
       case "completed":
         return "bg-green-100 text-green-800";
+      case "active":
+        return "bg-blue-100 text-blue-800";
       case "planning":
         return "bg-yellow-100 text-yellow-800";
       case "on_hold":
-        return "bg-red-100 text-red-800";
+        return "bg-gray-100 text-gray-800";
       default:
         return "bg-gray-100 text-gray-800";
     }
   };
 
-  const getProjectExperiments = (projectId: string) => {
-    return experiments.filter(exp => exp.project_id === projectId);
-  };
-
   const stripHtmlTags = (html: string) => {
+    if (!html) return "";
     const tmp = document.createElement("div");
     tmp.innerHTML = html;
     return tmp.textContent || tmp.innerText || "";
@@ -89,7 +111,9 @@ const Projects = () => {
   const filteredProjects = projects.filter(project => {
     const matchesSearch = project.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          (project.description && stripHtmlTags(project.description).toLowerCase().includes(searchTerm.toLowerCase()));
-    return matchesSearch;
+    const matchesStatus = filterStatus === "all" || project.status === filterStatus;
+    const matchesCategory = filterCategory === "all" || project.category === filterCategory;
+    return matchesSearch && matchesStatus && matchesCategory;
   });
 
   // Calculate pagination
@@ -140,6 +164,10 @@ const Projects = () => {
     }
   };
 
+  const handleCreateProject = () => {
+    setCreateProjectOpen(true);
+  };
+
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -148,8 +176,8 @@ const Projects = () => {
   const handleReorder = async (reorderedProjects: Project[]) => {
     try {
       // Update display_order for all projects in the current page
-      const updates = reorderedProjects.map((proj, index) => ({
-        id: proj.id,
+      const updates = reorderedProjects.map((project, index) => ({
+        id: project.id,
         display_order: startIndex + index + 1
       }));
 
@@ -164,103 +192,97 @@ const Projects = () => {
     }
   };
 
-  const renderProjectCard = (project: Project) => {
-    const projectExperiments = getProjectExperiments(project.id);
-    return (
-      <Card key={project.id} className="hover:shadow-md transition-shadow cursor-pointer">
-        <CardHeader className="pb-3" onClick={() => handleProjectClick(project.id)}>
-          <div className="flex items-start justify-between">
-            <div className="flex items-center gap-2">
-              <FolderOpen className="h-5 w-5 text-blue-600" />
-              <CardTitle className="text-lg hover:text-blue-600">
-                {project.title}
-              </CardTitle>
-            </div>
-            <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
-              <Badge className={getStatusColor(project.status)}>
-                {project.status}
-              </Badge>
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button size="sm" variant="outline" className="text-red-600 hover:text-red-700 p-1 h-6 w-6">
-                    <Trash2 className="h-3 w-3" />
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Delete Project</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Are you sure you want to delete "{project.title}"? This action cannot be undone and will also delete all associated experiments.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction
-                      onClick={() => handleDeleteProject(project.id)}
-                      className="bg-red-600 hover:bg-red-700"
-                    >
-                      Delete
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            </div>
+  const renderProjectCard = (project: Project) => (
+    <Card key={project.id} className="hover:shadow-md transition-shadow">
+      <CardHeader className="pb-3">
+        <div className="flex items-start justify-between">
+          <div className="flex items-center gap-2 flex-1">
+            {getStatusIcon(project.status)}
+            <CardTitle 
+              className="text-lg cursor-pointer hover:text-blue-600"
+              onClick={() => handleProjectClick(project.id)}
+            >
+              {project.title}
+            </CardTitle>
           </div>
-          <p className="text-sm text-gray-600 mt-2">
-            {project.description ? stripHtmlTags(project.description) : ""}
-          </p>
-        </CardHeader>
-        <CardContent className="space-y-4" onClick={() => handleProjectClick(project.id)}>
-          {/* Progress */}
-          <div>
-            <div className="flex justify-between text-sm mb-2">
-              <span>Progress</span>
-              <span>{project.progress}%</span>
-            </div>
-            <Progress value={project.progress} className="h-2" />
+          <div className="flex gap-1 items-center">
+            <Badge className={getStatusColor(project.status)}>
+              {project.status.replace('_', ' ')}
+            </Badge>
+            <EditProjectDialog project={project} />
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button size="sm" variant="outline" className="text-red-600 hover:text-red-700 p-1 h-6 w-6">
+                  <Trash2 className="h-3 w-3" />
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete Project</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Are you sure you want to delete "{project.title}"? This action cannot be undone and will also delete all associated experiments.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() => handleDeleteProject(project.id)}
+                    className="bg-red-600 hover:bg-red-700"
+                  >
+                    Delete
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
+        </div>
+        <p 
+          className="text-sm text-gray-600 mt-2 cursor-pointer"
+          onClick={() => handleProjectClick(project.id)}
+        >
+          {project.description ? stripHtmlTags(project.description) : ""}
+        </p>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {/* Progress Bar */}
+        <div>
+          <div className="flex justify-between text-sm mb-1">
+            <span>Progress</span>
+            <span>{project.progress}%</span>
+          </div>
+          <div className="w-full bg-gray-200 rounded-full h-2">
+            <div 
+              className="bg-blue-600 h-2 rounded-full transition-all"
+              style={{ width: `${project.progress}%` }}
+            />
+          </div>
+        </div>
 
-          {/* Project Details */}
-          <div className="space-y-2 text-sm">
-            <div className="flex items-center gap-2">
-              <Calendar className="h-4 w-4 text-gray-400" />
-              <span>{project.start_date} - {project.end_date || "Ongoing"}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <BarChart3 className="h-4 w-4 text-gray-400" />
-              <span>{projectExperiments.length} experiments</span>
-            </div>
+        {/* Project Details */}
+        <div className="space-y-2 text-sm">
+          <div className="flex items-center gap-2">
+            <Calendar className="h-4 w-4 text-gray-400" />
+            <span>{project.start_date} - {project.end_date || "Ongoing"}</span>
           </div>
-
-          {/* Actions */}
-          <div className="flex justify-between items-center pt-2">
-            <Badge variant="outline">{project.category}</Badge>
-            <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
-              <EditProjectDialog project={project} />
-              <Button 
-                size="sm" 
-                variant="outline" 
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleProjectClick(project.id);
-                }}
-                className="gap-1"
-              >
-                <Eye className="h-3 w-3" />
-                View
-              </Button>
-            </div>
+          <div className="flex items-center gap-2">
+            <Users className="h-4 w-4 text-gray-400" />
+            <span>{project.experiments_count} experiments</span>
           </div>
-          
           {project.budget && (
-            <div className="text-sm font-medium text-green-600 text-center">
-              Budget: {project.budget}
+            <div className="flex items-center gap-2">
+              <BarChart className="h-4 w-4 text-gray-400" />
+              <span>Budget: {project.budget}</span>
             </div>
           )}
-        </CardContent>
-      </Card>
-    );
-  };
+        </div>
+
+        {/* Category Badge */}
+        <div className="pt-2">
+          <Badge variant="outline">{project.category}</Badge>
+        </div>
+      </CardContent>
+    </Card>
+  );
 
   if (error) {
     return (
@@ -290,13 +312,16 @@ const Projects = () => {
             {/* Header */}
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-3xl font-bold text-gray-900">Project Management</h1>
-                <p className="text-gray-600 mt-1">Organize and track your research projects</p>
+                <h1 className="text-3xl font-bold text-gray-900">Research Projects</h1>
+                <p className="text-gray-600 mt-1">Organize and track your research initiatives</p>
               </div>
-              <CreateProjectDialog />
+              <Button onClick={handleCreateProject} className="gap-2">
+                <FolderOpen className="h-4 w-4" />
+                Create Project
+              </Button>
             </div>
 
-            {/* Search */}
+            {/* Filters */}
             <div className="flex items-center gap-4">
               <div className="flex-1 relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
@@ -307,6 +332,32 @@ const Projects = () => {
                   className="pl-10"
                 />
               </div>
+              <Select value={filterStatus} onValueChange={setFilterStatus}>
+                <SelectTrigger className="w-[150px]">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="planning">Planning</SelectItem>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
+                  <SelectItem value="on_hold">On Hold</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={filterCategory} onValueChange={setFilterCategory}>
+                <SelectTrigger className="w-[150px]">
+                  <SelectValue placeholder="Category" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Categories</SelectItem>
+                  <SelectItem value="research">Research</SelectItem>
+                  <SelectItem value="development">Development</SelectItem>
+                  <SelectItem value="clinical-trial">Clinical Trial</SelectItem>
+                  <SelectItem value="quality-control">Quality Control</SelectItem>
+                  <SelectItem value="regulatory">Regulatory</SelectItem>
+                  <SelectItem value="educational">Educational</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             {/* Results Count */}
@@ -334,7 +385,19 @@ const Projects = () => {
                 ) : (
                   <div className="text-center py-12">
                     <FolderOpen className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                    <p className="text-gray-600">No projects found. Create your first project to get started.</p>
+                    <p className="text-gray-600">
+                      {searchTerm || filterStatus !== "all" || filterCategory !== "all" 
+                        ? "No projects found matching your criteria." 
+                        : "No projects found. Create your first project to get started."
+                      }
+                    </p>
+                    <Button 
+                      className="mt-4 gap-2" 
+                      onClick={handleCreateProject}
+                    >
+                      <FolderOpen className="h-4 w-4" />
+                      Create New Project
+                    </Button>
                   </div>
                 )}
 
@@ -428,6 +491,11 @@ const Projects = () => {
           </div>
         </main>
       </div>
+      
+      <CreateProjectDialog 
+        open={createProjectOpen} 
+        onOpenChange={setCreateProjectOpen}
+      />
     </div>
   );
 };
