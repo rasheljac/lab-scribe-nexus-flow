@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -30,6 +29,7 @@ const EditInventoryItemDialog = ({ item, open, onOpenChange, onUpdateItem }: Edi
     url: "",
   });
   const [quantityToAdd, setQuantityToAdd] = useState(0);
+  const [originalStock, setOriginalStock] = useState(0);
 
   useEffect(() => {
     if (item) {
@@ -44,6 +44,7 @@ const EditInventoryItemDialog = ({ item, open, onOpenChange, onUpdateItem }: Edi
         cost: item.cost || "",
         url: item.url || "",
       });
+      setOriginalStock(item.current_stock);
       setQuantityToAdd(0);
     }
   }, [item]);
@@ -55,6 +56,19 @@ const EditInventoryItemDialog = ({ item, open, onOpenChange, onUpdateItem }: Edi
       setQuantityToAdd(prev => Math.max(0, prev - 1));
     }
   };
+
+  // Calculate the new stock level based on doubling for each quantity added
+  const calculateNewStockLevel = () => {
+    if (quantityToAdd === 0) return originalStock;
+    
+    let newStock = originalStock;
+    for (let i = 0; i < quantityToAdd; i++) {
+      newStock = newStock * 2;
+    }
+    return newStock;
+  };
+
+  const newStockLevel = calculateNewStockLevel();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -70,7 +84,6 @@ const EditInventoryItemDialog = ({ item, open, onOpenChange, onUpdateItem }: Edi
       return;
     }
 
-    const newStockLevel = formData.current_stock + quantityToAdd;
     const status = newStockLevel === 0 ? "out_of_stock" : "in_stock";
 
     try {
@@ -83,7 +96,7 @@ const EditInventoryItemDialog = ({ item, open, onOpenChange, onUpdateItem }: Edi
       onOpenChange(false);
       toast({
         title: "Success",
-        description: `Item updated successfully${quantityToAdd > 0 ? ` - Added ${quantityToAdd} ${formData.unit || 'units'}` : ''}`,
+        description: `Item updated successfully${quantityToAdd > 0 ? ` - Stock doubled ${quantityToAdd} time(s) from ${originalStock} to ${newStockLevel} ${formData.unit || 'units'}` : ''}`,
       });
     } catch (error) {
       toast({
@@ -160,17 +173,17 @@ const EditInventoryItemDialog = ({ item, open, onOpenChange, onUpdateItem }: Edi
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="current_stock">Current Stock</Label>
+              <Label htmlFor="current_stock">Original Stock</Label>
               <Input
                 id="current_stock"
                 type="number"
-                value={formData.current_stock}
-                onChange={(e) => setFormData(prev => ({ ...prev, current_stock: parseInt(e.target.value) || 0 }))}
-                min="0"
+                value={originalStock}
+                readOnly
+                className="bg-gray-50"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="quantity_to_add">Add Quantity</Label>
+              <Label htmlFor="quantity_to_add">Double Stock (Times)</Label>
               <div className="flex items-center gap-2">
                 <Button
                   type="button"
@@ -200,7 +213,7 @@ const EditInventoryItemDialog = ({ item, open, onOpenChange, onUpdateItem }: Edi
               </div>
               {quantityToAdd > 0 && (
                 <p className="text-sm text-green-600">
-                  New total: {formData.current_stock + quantityToAdd} {formData.unit}
+                  New total: {newStockLevel} {formData.unit} (doubled {quantityToAdd} time{quantityToAdd > 1 ? 's' : ''})
                 </p>
               )}
             </div>
