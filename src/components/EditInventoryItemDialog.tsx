@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { InventoryItem } from "@/hooks/useInventoryItems";
+import { Plus, Minus } from "lucide-react";
 
 interface EditInventoryItemDialogProps {
   item: InventoryItem | null;
@@ -28,6 +29,7 @@ const EditInventoryItemDialog = ({ item, open, onOpenChange, onUpdateItem }: Edi
     cost: "",
     url: "",
   });
+  const [quantityToAdd, setQuantityToAdd] = useState(0);
 
   useEffect(() => {
     if (item) {
@@ -42,8 +44,17 @@ const EditInventoryItemDialog = ({ item, open, onOpenChange, onUpdateItem }: Edi
         cost: item.cost || "",
         url: item.url || "",
       });
+      setQuantityToAdd(0);
     }
   }, [item]);
+
+  const handleQuantityChange = (increment: boolean) => {
+    if (increment) {
+      setQuantityToAdd(prev => prev + 1);
+    } else {
+      setQuantityToAdd(prev => Math.max(0, prev - 1));
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -59,18 +70,20 @@ const EditInventoryItemDialog = ({ item, open, onOpenChange, onUpdateItem }: Edi
       return;
     }
 
-    const status = formData.current_stock === 0 ? "out_of_stock" : "in_stock";
+    const newStockLevel = formData.current_stock + quantityToAdd;
+    const status = newStockLevel === 0 ? "out_of_stock" : "in_stock";
 
     try {
       await onUpdateItem(item.id, {
         ...formData,
+        current_stock: newStockLevel,
         status,
       });
 
       onOpenChange(false);
       toast({
         title: "Success",
-        description: "Item updated successfully",
+        description: `Item updated successfully${quantityToAdd > 0 ? ` - Added ${quantityToAdd} ${formData.unit || 'units'}` : ''}`,
       });
     } catch (error) {
       toast({
@@ -145,15 +158,52 @@ const EditInventoryItemDialog = ({ item, open, onOpenChange, onUpdateItem }: Edi
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="current_stock">Current Stock</Label>
-            <Input
-              id="current_stock"
-              type="number"
-              value={formData.current_stock}
-              onChange={(e) => setFormData(prev => ({ ...prev, current_stock: parseInt(e.target.value) || 0 }))}
-              min="0"
-            />
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="current_stock">Current Stock</Label>
+              <Input
+                id="current_stock"
+                type="number"
+                value={formData.current_stock}
+                onChange={(e) => setFormData(prev => ({ ...prev, current_stock: parseInt(e.target.value) || 0 }))}
+                min="0"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="quantity_to_add">Add Quantity</Label>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleQuantityChange(false)}
+                  disabled={quantityToAdd <= 0}
+                >
+                  <Minus className="h-4 w-4" />
+                </Button>
+                <Input
+                  id="quantity_to_add"
+                  type="number"
+                  value={quantityToAdd}
+                  onChange={(e) => setQuantityToAdd(Math.max(0, parseInt(e.target.value) || 0))}
+                  min="0"
+                  className="text-center"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleQuantityChange(true)}
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+              {quantityToAdd > 0 && (
+                <p className="text-sm text-green-600">
+                  New total: {formData.current_stock + quantityToAdd} {formData.unit}
+                </p>
+              )}
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
