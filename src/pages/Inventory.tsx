@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -271,8 +272,9 @@ const Inventory = () => {
                             </Badge>
                             <Badge variant="outline">{item.category}</Badge>
                           </div>
-                          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 text-sm text-gray-600">
+                          <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 text-sm text-gray-600">
                             <span>Stock: {item.current_stock} {item.unit}</span>
+                            <span>Quantity: 1</span>
                             <span>Location: {item.location}</span>
                             <span>Supplier: {item.supplier}</span>
                           </div>

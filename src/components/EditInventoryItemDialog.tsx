@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -28,7 +29,7 @@ const EditInventoryItemDialog = ({ item, open, onOpenChange, onUpdateItem }: Edi
     cost: "",
     url: "",
   });
-  const [quantityToAdd, setQuantityToAdd] = useState(0);
+  const [quantityToAdd, setQuantityToAdd] = useState(1);
   const [originalStock, setOriginalStock] = useState(0);
 
   useEffect(() => {
@@ -45,7 +46,7 @@ const EditInventoryItemDialog = ({ item, open, onOpenChange, onUpdateItem }: Edi
         url: item.url || "",
       });
       setOriginalStock(item.current_stock);
-      setQuantityToAdd(0);
+      setQuantityToAdd(1);
     }
   }, [item]);
 
@@ -53,16 +54,16 @@ const EditInventoryItemDialog = ({ item, open, onOpenChange, onUpdateItem }: Edi
     if (increment) {
       setQuantityToAdd(prev => prev + 1);
     } else {
-      setQuantityToAdd(prev => Math.max(0, prev - 1));
+      setQuantityToAdd(prev => Math.max(1, prev - 1));
     }
   };
 
-  // Calculate the new stock level based on doubling for each quantity added
+  // Calculate the new stock level based on doubling for each quantity added (starting from quantity 2)
   const calculateNewStockLevel = () => {
-    if (quantityToAdd === 0) return originalStock;
+    if (quantityToAdd === 1) return originalStock;
     
     let newStock = originalStock;
-    for (let i = 0; i < quantityToAdd; i++) {
+    for (let i = 1; i < quantityToAdd; i++) {
       newStock = newStock * 2;
     }
     return newStock;
@@ -96,7 +97,7 @@ const EditInventoryItemDialog = ({ item, open, onOpenChange, onUpdateItem }: Edi
       onOpenChange(false);
       toast({
         title: "Success",
-        description: `Item updated successfully${quantityToAdd > 0 ? ` - Stock doubled ${quantityToAdd} time(s) from ${originalStock} to ${newStockLevel} ${formData.unit || 'units'}` : ''}`,
+        description: `Item updated successfully${quantityToAdd > 1 ? ` - Stock doubled ${quantityToAdd - 1} time(s) from ${originalStock} to ${newStockLevel} ${formData.unit || 'units'}` : ''}`,
       });
     } catch (error) {
       toast({
@@ -183,14 +184,14 @@ const EditInventoryItemDialog = ({ item, open, onOpenChange, onUpdateItem }: Edi
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="quantity_to_add">Double Stock (Times)</Label>
+              <Label htmlFor="quantity_to_add">Quantity</Label>
               <div className="flex items-center gap-2">
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
                   onClick={() => handleQuantityChange(false)}
-                  disabled={quantityToAdd <= 0}
+                  disabled={quantityToAdd <= 1}
                 >
                   <Minus className="h-4 w-4" />
                 </Button>
@@ -198,8 +199,8 @@ const EditInventoryItemDialog = ({ item, open, onOpenChange, onUpdateItem }: Edi
                   id="quantity_to_add"
                   type="number"
                   value={quantityToAdd}
-                  onChange={(e) => setQuantityToAdd(Math.max(0, parseInt(e.target.value) || 0))}
-                  min="0"
+                  onChange={(e) => setQuantityToAdd(Math.max(1, parseInt(e.target.value) || 1))}
+                  min="1"
                   className="text-center"
                 />
                 <Button
@@ -211,9 +212,9 @@ const EditInventoryItemDialog = ({ item, open, onOpenChange, onUpdateItem }: Edi
                   <Plus className="h-4 w-4" />
                 </Button>
               </div>
-              {quantityToAdd > 0 && (
+              {quantityToAdd > 1 && (
                 <p className="text-sm text-green-600">
-                  New total: {newStockLevel} {formData.unit} (doubled {quantityToAdd} time{quantityToAdd > 1 ? 's' : ''})
+                  New total: {newStockLevel} {formData.unit} (doubled {quantityToAdd - 1} time{quantityToAdd > 2 ? 's' : ''})
                 </p>
               )}
             </div>
