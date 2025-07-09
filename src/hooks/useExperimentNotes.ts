@@ -55,7 +55,8 @@ export const useExperimentNotes = (experimentId: string, page: number = 1, pageS
         .order('display_order', { ascending: false })
         .limit(1);
 
-      const maxOrder = existingNotes?.[0]?.display_order || 0;
+      // Handle case where display_order might not exist yet or be null
+      const maxOrder = (existingNotes as any)?.[0]?.display_order || 0;
 
       const { data, error } = await supabase
         .from('experiment_notes')
