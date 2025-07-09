@@ -32,7 +32,12 @@ export const useExperimentNotes = (experimentId: string, page: number = 1, pageS
         .order('created_at', { ascending: true });
 
       if (error) throw error;
-      return data as ExperimentNote[];
+      
+      // Map the data to ensure display_order is present
+      return (data || []).map((note: any) => ({
+        ...note,
+        display_order: note.display_order || 0
+      })) as ExperimentNote[];
     },
     enabled: !!user && !!experimentId,
   });
@@ -56,20 +61,25 @@ export const useExperimentNotes = (experimentId: string, page: number = 1, pageS
         .order('display_order', { ascending: false })
         .limit(1);
 
-      const maxOrder = existingNotes?.[0]?.display_order || 0;
+      const maxOrder = (existingNotes?.[0] as any)?.display_order || 0;
+
+      const insertData: any = { 
+        ...note, 
+        user_id: user.id,
+        display_order: maxOrder + 1
+      };
 
       const { data, error } = await supabase
         .from('experiment_notes')
-        .insert([{ 
-          ...note, 
-          user_id: user.id,
-          display_order: maxOrder + 1
-        }])
+        .insert([insertData])
         .select()
         .single();
 
       if (error) throw error;
-      return data;
+      return {
+        ...data,
+        display_order: data.display_order || maxOrder + 1
+      } as ExperimentNote;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['experimentNotes', experimentId] });
@@ -78,15 +88,20 @@ export const useExperimentNotes = (experimentId: string, page: number = 1, pageS
 
   const updateNote = useMutation({
     mutationFn: async ({ id, ...updates }: Partial<ExperimentNote> & { id: string }) => {
+      const updateData: any = { ...updates };
+      
       const { data, error } = await supabase
         .from('experiment_notes')
-        .update(updates)
+        .update(updateData)
         .eq('id', id)
         .select()
         .single();
 
       if (error) throw error;
-      return data;
+      return {
+        ...data,
+        display_order: data.display_order || 0
+      } as ExperimentNote;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['experimentNotes', experimentId] });
@@ -117,7 +132,7 @@ export const useExperimentNotes = (experimentId: string, page: number = 1, pageS
       for (const update of updates) {
         const { error } = await supabase
           .from('experiment_notes')
-          .update({ display_order: update.display_order })
+          .update({ display_order: update.display_order } as any)
           .eq('id', update.id);
 
         if (error) throw error;
