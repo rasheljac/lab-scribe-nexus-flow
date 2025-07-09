@@ -59,7 +59,11 @@ export const useExperimentNotes = (experimentId: string, page: number = 1, pageS
 
       const { data, error } = await supabase
         .from('experiment_notes')
-        .insert([{ ...note, user_id: user.id, display_order: maxOrder + 1 }])
+        .insert([{ 
+          ...note, 
+          user_id: user.id, 
+          display_order: maxOrder + 1 
+        } as any])
         .select()
         .single();
 
@@ -75,7 +79,7 @@ export const useExperimentNotes = (experimentId: string, page: number = 1, pageS
     mutationFn: async ({ id, ...updates }: Partial<ExperimentNote> & { id: string }) => {
       const { data, error } = await supabase
         .from('experiment_notes')
-        .update(updates)
+        .update(updates as any)
         .eq('id', id)
         .select()
         .single();
@@ -99,7 +103,7 @@ export const useExperimentNotes = (experimentId: string, page: number = 1, pageS
       for (const update of updates) {
         const { error } = await supabase
           .from('experiment_notes')
-          .update({ display_order: update.display_order })
+          .update({ display_order: update.display_order } as any)
           .eq('id', update.id);
         
         if (error) throw error;
