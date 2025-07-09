@@ -78,7 +78,7 @@ export const useExperimentNotes = (experimentId: string, page: number = 1, pageS
       if (error) throw error;
       return {
         ...data,
-        display_order: data.display_order || maxOrder + 1
+        display_order: (data as any).display_order || maxOrder + 1
       } as ExperimentNote;
     },
     onSuccess: () => {
@@ -100,7 +100,7 @@ export const useExperimentNotes = (experimentId: string, page: number = 1, pageS
       if (error) throw error;
       return {
         ...data,
-        display_order: data.display_order || 0
+        display_order: (data as any).display_order || 0
       } as ExperimentNote;
     },
     onSuccess: () => {
