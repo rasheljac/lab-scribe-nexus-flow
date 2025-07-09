@@ -16,6 +16,14 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { 
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
+import { 
   Search, 
   ArrowLeft, 
   FileText, 
@@ -31,6 +39,7 @@ import EditNoteDialog from "@/components/EditNoteDialog";
 import RichTextEditor from "@/components/RichTextEditor";
 import RichTextDisplay from "@/components/RichTextDisplay";
 import NoteAttachments from "@/components/NoteAttachments";
+import DraggableGrid from "@/components/DraggableGrid";
 import { useExperimentNotes } from "@/hooks/useExperimentNotes";
 import { useExperiments } from "@/hooks/useExperiments";
 import { useToast } from "@/hooks/use-toast";
@@ -41,6 +50,7 @@ const ExperimentNotes = () => {
   const { experimentId } = useParams<{ experimentId: string }>();
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [newNoteData, setNewNoteData] = useState({
     title: "",
@@ -48,18 +58,32 @@ const ExperimentNotes = () => {
   });
   
   const { toast } = useToast();
-  const { notes, isLoading, error, createNote, deleteNote } = useExperimentNotes(experimentId || "");
+  const { 
+    notes, 
+    allNotes, 
+    totalNotes, 
+    totalPages, 
+    isLoading, 
+    createNote, 
+    deleteNote, 
+    reorderNotes 
+  } = useExperimentNotes(experimentId || "", currentPage, 4);
   const { experiments } = useExperiments();
   const { experimentProtocols } = useExperimentProtocols(experimentId || "");
   const { detachFromExperiment } = useProtocols();
   
   const experiment = experiments.find(exp => exp.id === experimentId);
 
-  const filteredNotes = notes.filter(note => {
+  // Filter notes based on search
+  const filteredAllNotes = allNotes.filter(note => {
     const matchesSearch = note.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          (note.content && note.content.toLowerCase().includes(searchTerm.toLowerCase()));
     return matchesSearch;
   });
+
+  // Use filtered notes for pagination when searching, otherwise use regular pagination
+  const displayNotes = searchTerm ? filteredAllNotes : notes;
+  const shouldShowPagination = !searchTerm && totalNotes > 4;
 
   const handleCreateNote = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -127,7 +151,88 @@ const ExperimentNotes = () => {
     }
   };
 
-  if (error) {
+  const handleReorderNotes = async (reorderedItems: any[]) => {
+    try {
+      // Calculate the correct display_order based on current page
+      const startIndex = (currentPage - 1) * 4;
+      const reorderedWithCorrectOrder = reorderedItems.map((item, index) => ({
+        ...item,
+        display_order: startIndex + index + 1
+      }));
+
+      // Create the full list with updated positions
+      const updatedAllNotes = [...allNotes];
+      reorderedWithCorrectOrder.forEach((reorderedNote, index) => {
+        const originalIndex = allNotes.findIndex(note => note.id === reorderedNote.id);
+        if (originalIndex !== -1) {
+          updatedAllNotes[originalIndex] = reorderedNote;
+        }
+      });
+
+      await reorderNotes.mutateAsync(updatedAllNotes);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to reorder notes",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const renderNoteCard = (note: any) => (
+    <Card key={note.id}>
+      <CardHeader>
+        <div className="flex items-start justify-between">
+          <div className="flex items-center gap-2">
+            <FileText className="h-5 w-5 text-blue-600" />
+            <CardTitle className="text-lg">{note.title}</CardTitle>
+          </div>
+          <div className="flex gap-2">
+            <NoteAttachments noteId={note.id} compact={true} />
+            <EditNoteDialog note={note} experimentId={experimentId!} />
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button size="sm" variant="outline" className="text-red-600 hover:text-red-700">
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete Note</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Are you sure you want to delete "{note.title}"? This action cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() => handleDeleteNote(note.id, note.title)}
+                    className="bg-red-600 hover:bg-red-700"
+                  >
+                    Delete
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 text-sm text-gray-500">
+          <Calendar className="h-4 w-4" />
+          <span>Created {new Date(note.created_at).toLocaleDateString()}</span>
+          {note.updated_at !== note.created_at && (
+            <span>• Updated {new Date(note.updated_at).toLocaleDateString()}</span>
+          )}
+        </div>
+      </CardHeader>
+      {note.content && (
+        <CardContent>
+          <RichTextDisplay content={note.content} />
+        </CardContent>
+      )}
+    </Card>
+  );
+
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex">
         <Sidebar />
@@ -135,8 +240,8 @@ const ExperimentNotes = () => {
           <Header />
           <main className="flex-1 p-6 overflow-auto">
             <div className="max-w-7xl mx-auto">
-              <div className="text-center py-12">
-                <p className="text-red-600">Error loading notes: {error.message}</p>
+              <div className="flex justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin" />
               </div>
             </div>
           </main>
@@ -169,7 +274,7 @@ const ExperimentNotes = () => {
                     {experiment?.title || "Experiment"} - Notes
                   </h1>
                   <p className="text-gray-600 mt-1">
-                    {notes.length} notes for this experiment
+                    {totalNotes} notes for this experiment
                   </p>
                 </div>
               </div>
@@ -240,80 +345,81 @@ const ExperimentNotes = () => {
               </div>
             </div>
 
-            {/* Notes Grid */}
-            {isLoading ? (
-              <div className="flex justify-center py-12">
-                <Loader2 className="h-8 w-8 animate-spin" />
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {filteredNotes.map((note) => (
-                  <Card key={note.id}>
-                    <CardHeader>
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-center gap-2">
-                          <FileText className="h-5 w-5 text-blue-600" />
-                          <CardTitle className="text-lg">{note.title}</CardTitle>
-                        </div>
-                        <div className="flex gap-2">
-                          <NoteAttachments noteId={note.id} compact={true} />
-                          <EditNoteDialog note={note} experimentId={experimentId!} />
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button size="sm" variant="outline" className="text-red-600 hover:text-red-700">
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Delete Note</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  Are you sure you want to delete "{note.title}"? This action cannot be undone.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction
-                                  onClick={() => handleDeleteNote(note.id, note.title)}
-                                  className="bg-red-600 hover:bg-red-700"
-                                >
-                                  Delete
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2 text-sm text-gray-500">
-                        <Calendar className="h-4 w-4" />
-                        <span>Created {new Date(note.created_at).toLocaleDateString()}</span>
-                        {note.updated_at !== note.created_at && (
-                          <span>• Updated {new Date(note.updated_at).toLocaleDateString()}</span>
-                        )}
-                      </div>
-                    </CardHeader>
-                    {note.content && (
-                      <CardContent>
-                        <RichTextDisplay content={note.content} />
-                      </CardContent>
-                    )}
-                  </Card>
-                ))}
-                {filteredNotes.length === 0 && !isLoading && (
-                  <div className="text-center py-12">
-                    <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                    <p className="text-gray-600">
-                      {searchTerm ? "No notes found matching your criteria." : "No notes found for this experiment."}
-                    </p>
-                    <Button 
-                      className="mt-4 gap-2" 
-                      onClick={() => setIsCreateOpen(true)}
-                    >
-                      <Plus className="h-4 w-4" />
-                      Create First Note
-                    </Button>
+            {/* Notes Grid with Drag and Drop */}
+            {displayNotes.length > 0 ? (
+              <>
+                {searchTerm ? (
+                  // Show filtered results without drag-and-drop when searching
+                  <div className="space-y-4">
+                    {displayNotes.map(renderNoteCard)}
+                  </div>
+                ) : (
+                  // Show draggable grid when not searching
+                  <DraggableGrid
+                    items={displayNotes}
+                    onReorder={handleReorderNotes}
+                    renderItem={(note) => renderNoteCard(note)}
+                    droppableId={`experiment-notes-${experimentId}-page-${currentPage}`}
+                  />
+                )}
+                
+                {/* Pagination */}
+                {shouldShowPagination && (
+                  <div className="flex justify-center mt-8">
+                    <Pagination>
+                      <PaginationContent>
+                        <PaginationItem>
+                          <PaginationPrevious 
+                            href="#"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              if (currentPage > 1) setCurrentPage(currentPage - 1);
+                            }}
+                            className={currentPage <= 1 ? "pointer-events-none opacity-50" : ""}
+                          />
+                        </PaginationItem>
+                        {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                          <PaginationItem key={page}>
+                            <PaginationLink
+                              href="#"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                setCurrentPage(page);
+                              }}
+                              isActive={currentPage === page}
+                            >
+                              {page}
+                            </PaginationLink>
+                          </PaginationItem>
+                        ))}
+                        <PaginationItem>
+                          <PaginationNext 
+                            href="#"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              if (currentPage < totalPages) setCurrentPage(currentPage + 1);
+                            }}
+                            className={currentPage >= totalPages ? "pointer-events-none opacity-50" : ""}
+                          />
+                        </PaginationItem>
+                      </PaginationContent>
+                    </Pagination>
                   </div>
                 )}
+              </>
+            ) : (
+              <div className="text-center py-12">
+                <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-600">
+                  {searchTerm ? "No notes found matching your criteria." : "No notes found for this experiment."}
+                </p>
+                <Button 
+                  className="mt-4 gap-2" 
+                  onClick={() => setIsCreateOpen(true)}
+                >
+                  <Plus className="h-4 w-4" />
+                  Create First Note
+                </Button>
               </div>
             )}
           </div>
