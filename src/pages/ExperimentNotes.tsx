@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -39,7 +38,6 @@ import EditNoteDialog from "@/components/EditNoteDialog";
 import RichTextEditor from "@/components/RichTextEditor";
 import RichTextDisplay from "@/components/RichTextDisplay";
 import NoteAttachments from "@/components/NoteAttachments";
-import DraggableGrid from "@/components/DraggableGrid";
 import { useExperimentNotes } from "@/hooks/useExperimentNotes";
 import { useExperiments } from "@/hooks/useExperiments";
 import { useToast } from "@/hooks/use-toast";
@@ -65,8 +63,7 @@ const ExperimentNotes = () => {
     totalPages, 
     isLoading, 
     createNote, 
-    deleteNote, 
-    reorderNotes 
+    deleteNote
   } = useExperimentNotes(experimentId || "", currentPage, 4);
   const { experiments } = useExperiments();
   const { experimentProtocols } = useExperimentProtocols(experimentId || "");
@@ -146,34 +143,6 @@ const ExperimentNotes = () => {
       toast({
         title: "Error",
         description: "Failed to detach protocol",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleReorderNotes = async (reorderedItems: any[]) => {
-    try {
-      // Calculate the correct display_order based on current page
-      const startIndex = (currentPage - 1) * 4;
-      const reorderedWithCorrectOrder = reorderedItems.map((item, index) => ({
-        ...item,
-        display_order: startIndex + index + 1
-      }));
-
-      // Create the full list with updated positions
-      const updatedAllNotes = [...allNotes];
-      reorderedWithCorrectOrder.forEach((reorderedNote, index) => {
-        const originalIndex = allNotes.findIndex(note => note.id === reorderedNote.id);
-        if (originalIndex !== -1) {
-          updatedAllNotes[originalIndex] = reorderedNote;
-        }
-      });
-
-      await reorderNotes.mutateAsync(updatedAllNotes);
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to reorder notes",
         variant: "destructive",
       });
     }
@@ -345,23 +314,12 @@ const ExperimentNotes = () => {
               </div>
             </div>
 
-            {/* Notes Grid with Drag and Drop */}
+            {/* Notes Grid */}
             {displayNotes.length > 0 ? (
               <>
-                {searchTerm ? (
-                  // Show filtered results without drag-and-drop when searching
-                  <div className="space-y-4">
-                    {displayNotes.map(renderNoteCard)}
-                  </div>
-                ) : (
-                  // Show draggable grid when not searching
-                  <DraggableGrid
-                    items={displayNotes}
-                    onReorder={handleReorderNotes}
-                    renderItem={(note) => renderNoteCard(note)}
-                    droppableId={`experiment-notes-${experimentId}-page-${currentPage}`}
-                  />
-                )}
+                <div className="space-y-4">
+                  {displayNotes.map(renderNoteCard)}
+                </div>
                 
                 {/* Pagination */}
                 {shouldShowPagination && (

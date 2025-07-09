@@ -10,7 +10,6 @@ export interface ExperimentNote {
   title: string;
   content: string | null;
   folder_id: string | null;
-  display_order: number;
   created_at: string;
   updated_at: string;
 }
@@ -28,7 +27,7 @@ export const useExperimentNotes = (experimentId: string, page: number = 1, pageS
         .from('experiment_notes')
         .select('*')
         .eq('experiment_id', experimentId)
-        .order('display_order', { ascending: true });
+        .order('created_at', { ascending: true });
 
       if (error) throw error;
       return data as ExperimentNote[];
@@ -44,27 +43,15 @@ export const useExperimentNotes = (experimentId: string, page: number = 1, pageS
   const paginatedNotes = allNotes?.slice(startIndex, endIndex) || [];
 
   const createNote = useMutation({
-    mutationFn: async (note: Omit<ExperimentNote, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'display_order'>) => {
+    mutationFn: async (note: Omit<ExperimentNote, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => {
       if (!user) throw new Error('User not authenticated');
-
-      // Get the highest display_order for this experiment
-      const { data: existingNotes } = await supabase
-        .from('experiment_notes')
-        .select('display_order')
-        .eq('experiment_id', experimentId)
-        .order('display_order', { ascending: false })
-        .limit(1);
-
-      // Handle case where display_order might not exist yet or be null
-      const maxOrder = (existingNotes as any)?.[0]?.display_order || 0;
 
       const { data, error } = await supabase
         .from('experiment_notes')
         .insert([{ 
           ...note, 
-          user_id: user.id, 
-          display_order: maxOrder + 1 
-        } as any])
+          user_id: user.id
+        }])
         .select()
         .single();
 
@@ -80,35 +67,13 @@ export const useExperimentNotes = (experimentId: string, page: number = 1, pageS
     mutationFn: async ({ id, ...updates }: Partial<ExperimentNote> & { id: string }) => {
       const { data, error } = await supabase
         .from('experiment_notes')
-        .update(updates as any)
+        .update(updates)
         .eq('id', id)
         .select()
         .single();
 
       if (error) throw error;
       return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['experimentNotes', experimentId] });
-    },
-  });
-
-  const reorderNotes = useMutation({
-    mutationFn: async (reorderedNotes: ExperimentNote[]) => {
-      // Update display_order for all notes
-      const updates = reorderedNotes.map((note, index) => ({
-        id: note.id,
-        display_order: index + 1,
-      }));
-
-      for (const update of updates) {
-        const { error } = await supabase
-          .from('experiment_notes')
-          .update({ display_order: update.display_order } as any)
-          .eq('id', update.id);
-        
-        if (error) throw error;
-      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['experimentNotes', experimentId] });
@@ -140,6 +105,5 @@ export const useExperimentNotes = (experimentId: string, page: number = 1, pageS
     createNote,
     updateNote,
     deleteNote,
-    reorderNotes,
   };
 };
