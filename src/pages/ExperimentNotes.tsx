@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -31,8 +30,7 @@ import {
   Plus,
   Trash2,
   Loader2,
-  X,
-  GripVertical
+  X
 } from "lucide-react";
 import Sidebar from "@/components/Sidebar";
 import Header from "@/components/Header";
@@ -40,12 +38,11 @@ import EditNoteDialog from "@/components/EditNoteDialog";
 import RichTextEditor from "@/components/RichTextEditor";
 import RichTextDisplay from "@/components/RichTextDisplay";
 import NoteAttachments from "@/components/NoteAttachments";
-import { useExperimentNotes, ExperimentNote } from "@/hooks/useExperimentNotes";
+import { useExperimentNotes } from "@/hooks/useExperimentNotes";
 import { useExperiments } from "@/hooks/useExperiments";
 import { useToast } from "@/hooks/use-toast";
 import ProtocolAttachmentDialog from "@/components/ProtocolAttachmentDialog";
 import { useExperimentProtocols, useProtocols } from "@/hooks/useProtocols";
-import { DragDropContext, Droppable, Draggable, DropResult } from "react-beautiful-dnd";
 
 const ExperimentNotes = () => {
   const { experimentId } = useParams<{ experimentId: string }>();
@@ -66,8 +63,7 @@ const ExperimentNotes = () => {
     totalPages, 
     isLoading, 
     createNote, 
-    deleteNote,
-    reorderNotes
+    deleteNote
   } = useExperimentNotes(experimentId || "", currentPage, 4);
   const { experiments } = useExperiments();
   const { experimentProtocols } = useExperimentProtocols(experimentId || "");
@@ -152,34 +148,11 @@ const ExperimentNotes = () => {
     }
   };
 
-  const handleDragEnd = async (result: DropResult) => {
-    if (!result.destination) return;
-
-    const items = Array.from(displayNotes);
-    const [reorderedItem] = items.splice(result.source.index, 1);
-    items.splice(result.destination.index, 0, reorderedItem);
-
-    try {
-      await reorderNotes.mutateAsync(items);
-      toast({
-        title: "Success",
-        description: "Notes reordered successfully",
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to reorder notes",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const renderNoteCard = (note: ExperimentNote, index: number, isDragging: boolean = false) => (
-    <Card key={note.id} className={isDragging ? "shadow-lg" : ""}>
+  const renderNoteCard = (note: any) => (
+    <Card key={note.id}>
       <CardHeader>
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-2">
-            <GripVertical className="h-5 w-5 text-gray-400 cursor-grab" />
             <FileText className="h-5 w-5 text-blue-600" />
             <CardTitle className="text-lg">{note.title}</CardTitle>
           </div>
@@ -344,32 +317,9 @@ const ExperimentNotes = () => {
             {/* Notes Grid */}
             {displayNotes.length > 0 ? (
               <>
-                <DragDropContext onDragEnd={handleDragEnd}>
-                  <Droppable droppableId="notes">
-                    {(provided) => (
-                      <div 
-                        {...provided.droppableProps}
-                        ref={provided.innerRef}
-                        className="space-y-4"
-                      >
-                        {displayNotes.map((note, index) => (
-                          <Draggable key={note.id} draggableId={note.id} index={index}>
-                            {(provided, snapshot) => (
-                              <div
-                                ref={provided.innerRef}
-                                {...provided.draggableProps}
-                                {...provided.dragHandleProps}
-                              >
-                                {renderNoteCard(note, index, snapshot.isDragging)}
-                              </div>
-                            )}
-                          </Draggable>
-                        ))}
-                        {provided.placeholder}
-                      </div>
-                    )}
-                  </Droppable>
-                </DragDropContext>
+                <div className="space-y-4">
+                  {displayNotes.map(renderNoteCard)}
+                </div>
                 
                 {/* Pagination */}
                 {shouldShowPagination && (
