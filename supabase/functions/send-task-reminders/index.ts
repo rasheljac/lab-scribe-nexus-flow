@@ -29,7 +29,7 @@ interface UserProfile {
 
 interface SMTPConfig {
   host: string;
-  port: number;
+  port: number | string;
   username: string;
   password: string;
   from_email: string;
@@ -58,6 +58,8 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
+    console.log('Processing task reminders for user:', user_id, 'test_mode:', test_mode);
+
     // Get user profile for email
     const { data: userProfile, error: profileError } = await supabaseClient
       .from('user_profiles')
@@ -73,6 +75,8 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
+    console.log('Found user profile:', userProfile.email);
+
     // Get SMTP configuration from user preferences
     const { data: preferences, error: prefsError } = await supabaseClient
       .from('user_preferences')
@@ -81,6 +85,7 @@ const handler = async (req: Request): Promise<Response> => {
       .single();
 
     if (prefsError || !preferences?.preferences?.smtpConfig?.enabled) {
+      console.error('SMTP configuration error:', prefsError);
       return new Response(
         JSON.stringify({ error: 'SMTP not configured or disabled' }),
         { status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
@@ -88,6 +93,7 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     const smtpConfig: SMTPConfig = preferences.preferences.smtpConfig;
+    console.log('SMTP config loaded:', { host: smtpConfig.host, port: smtpConfig.port, username: smtpConfig.username });
 
     // Get tasks due in the next 3 days that haven't had reminders sent recently
     const threeDaysFromNow = new Date();
@@ -112,7 +118,49 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
+    console.log('Found tasks:', tasks?.length || 0);
+
     if (!tasks || tasks.length === 0) {
+      // In test mode, create a sample task for testing
+      if (test_mode) {
+        const sampleTask: Task = {
+          id: 'test-task-1',
+          title: 'Test Task - SMTP Configuration Test',
+          description: 'This is a test task to verify SMTP configuration is working correctly.',
+          priority: 'medium',
+          status: 'pending',
+          assignee: userProfile.email,
+          due_date: new Date().toISOString().split('T')[0],
+          category: 'System Test',
+          user_id: user_id,
+          last_reminder_sent: null
+        };
+        
+        console.log('Using sample task for testing');
+        // Use the sample task array
+        const testTasks = [sampleTask];
+        
+        // Generate email content
+        const userName = userProfile.first_name 
+          ? `${userProfile.first_name} ${userProfile.last_name || ''}`.trim()
+          : userProfile.email?.split('@')[0] || 'User';
+
+        const emailHtml = generateTaskReminderEmail(userName, testTasks);
+        const recipientEmail = test_email || userProfile.email;
+
+        // Send test email
+        await sendEmail(smtpConfig, recipientEmail, testTasks, emailHtml);
+        
+        return new Response(
+          JSON.stringify({ 
+            message: 'Test email sent successfully',
+            tasks_count: 1,
+            recipient: recipientEmail
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
+        );
+      }
+      
       return new Response(
         JSON.stringify({ message: 'No upcoming tasks found that need reminders' }),
         { status: 200, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
@@ -128,60 +176,31 @@ const handler = async (req: Request): Promise<Response> => {
     const recipientEmail = test_mode && test_email ? test_email : userProfile.email;
 
     // Send email using SMTP
-    try {
-      const client = new SMTPClient({
-        connection: {
-          hostname: smtpConfig.host,
-          port: smtpConfig.port,
-          tls: smtpConfig.use_tls,
-          auth: {
-            username: smtpConfig.username,
-            password: smtpConfig.password,
-          },
-        },
-      });
+    await sendEmail(smtpConfig, recipientEmail, tasks, emailHtml);
 
-      await client.send({
-        from: smtpConfig.from_email,
-        to: recipientEmail,
-        subject: `Task Reminders - ${tasks.length} upcoming task${tasks.length > 1 ? 's' : ''}`,
-        content: emailHtml,
-        html: emailHtml,
-      });
+    // Update last_reminder_sent for all tasks (unless in test mode)
+    if (!test_mode) {
+      const taskIds = tasks.map(task => task.id);
+      const { error: updateError } = await supabaseClient
+        .from('tasks')
+        .update({ last_reminder_sent: new Date().toISOString() })
+        .in('id', taskIds);
 
-      await client.close();
-
-      // Update last_reminder_sent for all tasks (unless in test mode)
-      if (!test_mode) {
-        const taskIds = tasks.map(task => task.id);
-        const { error: updateError } = await supabaseClient
-          .from('tasks')
-          .update({ last_reminder_sent: new Date().toISOString() })
-          .in('id', taskIds);
-
-        if (updateError) {
-          console.error('Error updating reminder timestamps:', updateError);
-        }
+      if (updateError) {
+        console.error('Error updating reminder timestamps:', updateError);
       }
-
-      console.log(`Task reminder email sent successfully to ${recipientEmail}`);
-      
-      return new Response(
-        JSON.stringify({ 
-          message: 'Task reminders sent successfully',
-          tasks_count: tasks.length,
-          recipient: recipientEmail
-        }),
-        { status: 200, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
-      );
-
-    } catch (emailError) {
-      console.error('Error sending email:', emailError);
-      return new Response(
-        JSON.stringify({ error: 'Failed to send email', details: emailError.message }),
-        { status: 500, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
-      );
     }
+
+    console.log(`Task reminder email sent successfully to ${recipientEmail}`);
+    
+    return new Response(
+      JSON.stringify({ 
+        message: 'Task reminders sent successfully',
+        tasks_count: tasks.length,
+        recipient: recipientEmail
+      }),
+      { status: 200, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
+    );
 
   } catch (error) {
     console.error('Error in send-task-reminders function:', error);
@@ -191,6 +210,46 @@ const handler = async (req: Request): Promise<Response> => {
     );
   }
 };
+
+async function sendEmail(smtpConfig: SMTPConfig, recipientEmail: string, tasks: Task[], emailHtml: string) {
+  try {
+    // Ensure port is a number
+    const port = typeof smtpConfig.port === 'string' ? parseInt(smtpConfig.port, 10) : smtpConfig.port;
+    
+    console.log('Creating SMTP client with config:', {
+      host: smtpConfig.host,
+      port: port,
+      username: smtpConfig.username,
+      tls: smtpConfig.use_tls
+    });
+
+    const client = new SMTPClient({
+      connection: {
+        hostname: smtpConfig.host,
+        port: port,
+        tls: smtpConfig.use_tls,
+        auth: {
+          username: smtpConfig.username,
+          password: smtpConfig.password,
+        },
+      },
+    });
+
+    await client.send({
+      from: smtpConfig.from_email,
+      to: recipientEmail,
+      subject: `Task Reminders - ${tasks.length} upcoming task${tasks.length > 1 ? 's' : ''}`,
+      content: emailHtml,
+      html: emailHtml,
+    });
+
+    await client.close();
+    console.log('Email sent successfully');
+  } catch (emailError) {
+    console.error('Error sending email:', emailError);
+    throw new Error(`Failed to send email: ${emailError.message}`);
+  }
+}
 
 function generateTaskReminderEmail(userName: string, tasks: Task[]): string {
   const currentYear = new Date().getFullYear();

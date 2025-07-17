@@ -29,7 +29,7 @@ interface UserProfile {
 
 interface SMTPConfig {
   host: string;
-  port: number;
+  port: number | string;
   username: string;
   password: string;
   from_email: string;
@@ -121,27 +121,7 @@ const handler = async (req: Request): Promise<Response> => {
         const emailHtml = generateCalendarReminderEmail(userName, event);
 
         // Send email using SMTP
-        const client = new SMTPClient({
-          connection: {
-            hostname: smtpConfig.host,
-            port: smtpConfig.port,
-            tls: smtpConfig.use_tls,
-            auth: {
-              username: smtpConfig.username,
-              password: smtpConfig.password,
-            },
-          },
-        });
-
-        await client.send({
-          from: smtpConfig.from_email,
-          to: userProfile.email,
-          subject: `Upcoming Event: ${event.title}`,
-          content: emailHtml,
-          html: emailHtml,
-        });
-
-        await client.close();
+        await sendCalendarEmail(smtpConfig, userProfile.email, event, emailHtml);
 
         console.log(`Calendar reminder sent for event "${event.title}" to ${userProfile.email}`);
         
@@ -187,6 +167,46 @@ const handler = async (req: Request): Promise<Response> => {
     );
   }
 };
+
+async function sendCalendarEmail(smtpConfig: SMTPConfig, recipientEmail: string, event: CalendarEvent, emailHtml: string) {
+  try {
+    // Ensure port is a number
+    const port = typeof smtpConfig.port === 'string' ? parseInt(smtpConfig.port, 10) : smtpConfig.port;
+    
+    console.log('Creating SMTP client for calendar reminder with config:', {
+      host: smtpConfig.host,
+      port: port,
+      username: smtpConfig.username,
+      tls: smtpConfig.use_tls
+    });
+
+    const client = new SMTPClient({
+      connection: {
+        hostname: smtpConfig.host,
+        port: port,
+        tls: smtpConfig.use_tls,
+        auth: {
+          username: smtpConfig.username,
+          password: smtpConfig.password,
+        },
+      },
+    });
+
+    await client.send({
+      from: smtpConfig.from_email,
+      to: recipientEmail,
+      subject: `Upcoming Event: ${event.title}`,
+      content: emailHtml,
+      html: emailHtml,
+    });
+
+    await client.close();
+    console.log('Calendar reminder email sent successfully');
+  } catch (emailError) {
+    console.error('Error sending calendar reminder email:', emailError);
+    throw new Error(`Failed to send calendar reminder email: ${emailError.message}`);
+  }
+}
 
 function generateCalendarReminderEmail(userName: string, event: CalendarEvent): string {
   const currentYear = new Date().getFullYear();
