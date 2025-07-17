@@ -119,9 +119,10 @@ const handler = async (req: Request): Promise<Response> => {
           : userProfile.email?.split('@')[0] || 'User';
 
         const emailHtml = generateCalendarReminderEmail(userName, event);
+        const plainTextContent = generatePlainTextCalendarContent(event);
 
         // Send email using SMTP
-        await sendCalendarEmail(smtpConfig, userProfile.email, event, emailHtml);
+        await sendCalendarEmail(smtpConfig, userProfile.email, event, emailHtml, plainTextContent);
 
         console.log(`Calendar reminder sent for event "${event.title}" to ${userProfile.email}`);
         
@@ -168,7 +169,9 @@ const handler = async (req: Request): Promise<Response> => {
   }
 };
 
-async function sendCalendarEmail(smtpConfig: SMTPConfig, recipientEmail: string, event: CalendarEvent, emailHtml: string) {
+async function sendCalendarEmail(smtpConfig: SMTPConfig, recipientEmail: string, event: CalendarEvent, emailHtml: string, plainTextContent: string) {
+  let client: SMTPClient | null = null;
+  
   try {
     // Ensure port is a number
     const port = typeof smtpConfig.port === 'string' ? parseInt(smtpConfig.port, 10) : smtpConfig.port;
@@ -180,7 +183,7 @@ async function sendCalendarEmail(smtpConfig: SMTPConfig, recipientEmail: string,
       tls: smtpConfig.use_tls
     });
 
-    const client = new SMTPClient({
+    client = new SMTPClient({
       connection: {
         hostname: smtpConfig.host,
         port: port,
@@ -192,20 +195,65 @@ async function sendCalendarEmail(smtpConfig: SMTPConfig, recipientEmail: string,
       },
     });
 
-    await client.send({
+    const emailOptions = {
       from: smtpConfig.from_email,
       to: recipientEmail,
       subject: `Upcoming Event: ${event.title}`,
-      content: emailHtml,
+      content: plainTextContent,
       html: emailHtml,
+    };
+
+    console.log('Sending calendar email with options:', {
+      from: emailOptions.from,
+      to: emailOptions.to,
+      subject: emailOptions.subject,
+      hasHtml: !!emailOptions.html,
+      hasContent: !!emailOptions.content
     });
 
-    await client.close();
+    await client.send(emailOptions);
     console.log('Calendar reminder email sent successfully');
+    
   } catch (emailError) {
     console.error('Error sending calendar reminder email:', emailError);
     throw new Error(`Failed to send calendar reminder email: ${emailError.message}`);
+  } finally {
+    if (client) {
+      try {
+        await client.close();
+      } catch (closeError) {
+        console.error('Error closing SMTP client:', closeError);
+      }
+    }
   }
+}
+
+function generatePlainTextCalendarContent(event: CalendarEvent): string {
+  const startTime = new Date(event.start_time);
+  const endTime = new Date(event.end_time);
+  const eventDate = startTime.toLocaleDateString();
+  const startTimeStr = startTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const endTimeStr = endTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+  let content = `Hello,\n\n`;
+  content += `You have an upcoming event:\n\n`;
+  content += `${event.title}\n`;
+  content += `Date: ${eventDate}\n`;
+  content += `Time: ${startTimeStr} - ${endTimeStr}\n`;
+  content += `Type: ${event.event_type}\n`;
+  
+  if (event.location) {
+    content += `Location: ${event.location}\n`;
+  }
+  
+  if (event.description) {
+    content += `\nDescription:\n${event.description}\n`;
+  }
+  
+  content += `\nDon't forget to prepare for your upcoming event!\n\n`;
+  content += `Best regards,\nKapelczak Laboratory`;
+  
+  return content;
 }
 
 function generateCalendarReminderEmail(userName: string, event: CalendarEvent): string {

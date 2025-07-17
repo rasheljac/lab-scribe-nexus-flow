@@ -212,6 +212,8 @@ const handler = async (req: Request): Promise<Response> => {
 };
 
 async function sendEmail(smtpConfig: SMTPConfig, recipientEmail: string, tasks: Task[], emailHtml: string) {
+  let client: SMTPClient | null = null;
+  
   try {
     // Ensure port is a number
     const port = typeof smtpConfig.port === 'string' ? parseInt(smtpConfig.port, 10) : smtpConfig.port;
@@ -223,7 +225,7 @@ async function sendEmail(smtpConfig: SMTPConfig, recipientEmail: string, tasks: 
       tls: smtpConfig.use_tls
     });
 
-    const client = new SMTPClient({
+    client = new SMTPClient({
       connection: {
         hostname: smtpConfig.host,
         port: port,
@@ -235,20 +237,64 @@ async function sendEmail(smtpConfig: SMTPConfig, recipientEmail: string, tasks: 
       },
     });
 
-    await client.send({
+    // Create plain text version from HTML
+    const plainTextContent = generatePlainTextContent(tasks);
+
+    const emailOptions = {
       from: smtpConfig.from_email,
       to: recipientEmail,
       subject: `Task Reminders - ${tasks.length} upcoming task${tasks.length > 1 ? 's' : ''}`,
-      content: emailHtml,
+      content: plainTextContent,
       html: emailHtml,
+    };
+
+    console.log('Sending email with options:', {
+      from: emailOptions.from,
+      to: emailOptions.to,
+      subject: emailOptions.subject,
+      hasHtml: !!emailOptions.html,
+      hasContent: !!emailOptions.content
     });
 
-    await client.close();
+    await client.send(emailOptions);
     console.log('Email sent successfully');
+    
   } catch (emailError) {
     console.error('Error sending email:', emailError);
     throw new Error(`Failed to send email: ${emailError.message}`);
+  } finally {
+    if (client) {
+      try {
+        await client.close();
+      } catch (closeError) {
+        console.error('Error closing SMTP client:', closeError);
+      }
+    }
   }
+}
+
+function generatePlainTextContent(tasks: Task[]): string {
+  const userName = 'User';
+  let content = `Hello ${userName},\n\n`;
+  content += `You have ${tasks.length} upcoming task${tasks.length > 1 ? 's' : ''} that require your attention:\n\n`;
+  
+  tasks.forEach((task, index) => {
+    const dueDate = new Date(task.due_date).toLocaleDateString();
+    content += `${index + 1}. ${task.title}\n`;
+    content += `   Due Date: ${dueDate}\n`;
+    content += `   Priority: ${task.priority}\n`;
+    content += `   Status: ${task.status.replace('_', ' ')}\n`;
+    content += `   Category: ${task.category}\n`;
+    if (task.description) {
+      content += `   Description: ${task.description}\n`;
+    }
+    content += `\n`;
+  });
+  
+  content += `Please review and complete these tasks before their due dates.\n\n`;
+  content += `Best regards,\nKapelczak Laboratory`;
+  
+  return content;
 }
 
 function generateTaskReminderEmail(userName: string, tasks: Task[]): string {
