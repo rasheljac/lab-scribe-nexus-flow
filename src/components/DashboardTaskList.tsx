@@ -34,22 +34,39 @@ const DashboardTaskList = () => {
   const { toast } = useToast();
   const [orderedTasks, setOrderedTasks] = useState<Task[]>([]);
 
-  // Load and apply saved task order
+  // Load and apply saved task order with prioritization
   useEffect(() => {
     const loadTaskOrder = async () => {
       if (tasks.length > 0) {
         const savedOrder = await getSavedTaskOrder();
-        // Get the latest 5 tasks, ordered by created_at descending (newest first)
-        const latestTasks = [...tasks]
-          .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-          .slice(0, 5);
+        
+        // Separate tasks by status priority
+        const priorityTasks = tasks.filter(task => 
+          task.status === 'pending' || task.status === 'in_progress'
+        );
+        const otherTasks = tasks.filter(task => 
+          task.status !== 'pending' && task.status !== 'in_progress'
+        );
+        
+        // Sort priority tasks by created_at (newest first)
+        const sortedPriorityTasks = priorityTasks.sort((a, b) => 
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        );
+        
+        // Sort other tasks by created_at (newest first)
+        const sortedOtherTasks = otherTasks.sort((a, b) => 
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        );
+        
+        // Combine priority tasks first, then others, take only 5
+        const combinedTasks = [...sortedPriorityTasks, ...sortedOtherTasks].slice(0, 5);
 
         if (savedOrder.length > 0) {
-          // Apply saved order, but prioritize newer tasks
+          // Apply saved order to the filtered tasks
           const orderedByPreference: Task[] = [];
-          const remainingTasks = [...latestTasks];
+          const remainingTasks = [...combinedTasks];
 
-          // First, add tasks in the saved order if they exist in latest tasks
+          // First, add tasks in the saved order if they exist in combined tasks
           savedOrder.forEach(taskId => {
             const taskIndex = remainingTasks.findIndex(t => t.id === taskId);
             if (taskIndex !== -1) {
@@ -59,11 +76,11 @@ const DashboardTaskList = () => {
           });
 
           // Then add any remaining tasks (new ones not in saved order) at the top
-          const finalOrder = [...remainingTasks, ...orderedByPreference];
+          const finalOrder = [...remainingTasks, ...orderedByPreference].slice(0, 5);
           setOrderedTasks(finalOrder);
         } else {
-          // No saved order, use default (newest first)
-          setOrderedTasks(latestTasks);
+          // No saved order, use default (priority tasks first, then newest)
+          setOrderedTasks(combinedTasks);
         }
       }
     };
