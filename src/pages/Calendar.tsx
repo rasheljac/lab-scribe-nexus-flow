@@ -19,6 +19,7 @@ import Sidebar from "@/components/Sidebar";
 import Header from "@/components/Header";
 import CreateEventDialog from "@/components/CreateEventDialog";
 import EventDetailsDialog from "@/components/EventDetailsDialog";
+import DayEventsPopup from "@/components/DayEventsPopup";
 import { useCalendarEvents } from "@/hooks/useCalendarEvents";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, parseISO, startOfWeek, endOfWeek, addDays } from "date-fns";
 
@@ -27,6 +28,11 @@ const Calendar = () => {
   const [viewMode, setViewMode] = useState<"month" | "week" | "day">("month");
   const [selectedEvent, setSelectedEvent] = useState<any>(null);
   const [createEventOpen, setCreateEventOpen] = useState(false);
+  const [dayEventsPopup, setDayEventsPopup] = useState<{ open: boolean; date: Date | null; events: any[] }>({
+    open: false,
+    date: null,
+    events: []
+  });
 
   const { events, isLoading, error } = useCalendarEvents();
 
@@ -49,6 +55,14 @@ const Calendar = () => {
       default:
         return "bg-gray-100 text-gray-800";
     }
+  };
+
+  const handleMoreEventsClick = (date: Date, dayEvents: any[]) => {
+    setDayEventsPopup({
+      open: true,
+      date,
+      events: dayEvents
+    });
   };
 
   // Use consistent date calculations for the main calendar grid
@@ -253,7 +267,13 @@ const Calendar = () => {
                                   </div>
                                 ))}
                                 {dayEvents.length > 2 && (
-                                  <div className="text-xs text-gray-500">
+                                  <div 
+                                    className="text-xs text-gray-500 cursor-pointer hover:text-gray-700"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleMoreEventsClick(day, dayEvents);
+                                    }}
+                                  >
                                     +{dayEvents.length - 2} more
                                   </div>
                                 )}
@@ -280,6 +300,13 @@ const Calendar = () => {
           onOpenChange={(open) => !open && setSelectedEvent(null)}
         />
       )}
+      <DayEventsPopup
+        open={dayEventsPopup.open}
+        onOpenChange={(open) => setDayEventsPopup(prev => ({ ...prev, open }))}
+        date={dayEventsPopup.date || new Date()}
+        events={dayEventsPopup.events}
+        onEventClick={setSelectedEvent}
+      />
     </div>
   );
 };
