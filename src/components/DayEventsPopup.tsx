@@ -9,6 +9,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Clock, MapPin, Users } from "lucide-react";
+import RichTextDisplay from "@/components/RichTextDisplay";
 
 interface DayEventsPopupProps {
   open: boolean;
@@ -79,7 +80,13 @@ const DayEventsPopup = ({ open, onOpenChange, date, events, onEventClick }: DayE
                 )}
               </div>
               {event.description && (
-                <p className="text-xs text-gray-600 mt-2 line-clamp-2">{event.description}</p>
+                <div className="mt-2">
+                  <RichTextDisplay 
+                    content={event.description} 
+                    className="text-xs text-gray-600"
+                    maxLength={100}
+                  />
+                </div>
               )}
             </div>
           ))}
