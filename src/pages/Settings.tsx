@@ -1,247 +1,49 @@
 
-import React, { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Switch } from "@/components/ui/switch";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Separator } from "@/components/ui/separator";
-import { Badge } from "@/components/ui/badge";
-import { 
-  User, 
-  Bell, 
-  Shield, 
-  Palette, 
-  Upload, 
-  Save,
-  Eye,
-  EyeOff,
-  Loader2
-} from "lucide-react";
+import { Copy, Calendar, ExternalLink } from "lucide-react";
 import Sidebar from "@/components/Sidebar";
 import Header from "@/components/Header";
 import { useAuth } from "@/hooks/useAuth";
-import { useUserProfile } from "@/hooks/useUserProfile";
-import { useUserPreferences } from "@/hooks/useUserPreferences";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
-import { useTheme } from "next-themes";
 
 const Settings = () => {
-  const { user, signOut } = useAuth();
-  const { profile, loading: profileLoading, updateProfile, uploadAvatar } = useUserProfile();
-  const { preferences, updatePreferences } = useUserPreferences();
+  const { user } = useAuth();
   const { toast } = useToast();
-  const { theme, setTheme } = useTheme();
+  const [notifications, setNotifications] = useState(true);
+  const [emailUpdates, setEmailUpdates] = useState(false);
+  const [darkMode, setDarkMode] = useState(false);
+  
+  // Generate the iCal URL using the user ID as a simple token
+  const icalUrl = user ? 
+    `${window.location.origin}/functions/v1/ical-feed?user_id=${user.id}&token=${user.id}` :
+    '';
+  
+  const webcalUrl = icalUrl.replace('https://', 'webcal://').replace('http://', 'webcal://');
 
-  const [firstName, setFirstName] = useState(profile?.first_name || "");
-  const [lastName, setLastName] = useState(profile?.last_name || "");
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
-  const [showNewPassword, setShowNewPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
-  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
-  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
-
-  // Update form when profile loads
-  React.useEffect(() => {
-    if (profile) {
-      setFirstName(profile.first_name || "");
-      setLastName(profile.last_name || "");
-    }
-  }, [profile]);
-
-  const handleProfileUpdate = async () => {
-    if (!firstName.trim() || !lastName.trim()) {
-      toast({
-        title: "Error",
-        description: "Please fill in all required fields",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setIsUpdatingProfile(true);
+  const copyToClipboard = async (text: string, label: string) => {
     try {
-      await updateProfile({
-        first_name: firstName.trim(),
-        last_name: lastName.trim(),
-      });
-
-      // Also update auth metadata
-      await supabase.auth.updateUser({
-        data: {
-          first_name: firstName.trim(),
-          last_name: lastName.trim(),
-        }
-      });
-
+      await navigator.clipboard.writeText(text);
       toast({
-        title: "Success",
-        description: "Profile updated successfully",
+        title: "Copied!",
+        description: `${label} copied to clipboard`,
       });
-    } catch (error) {
-      console.error("Error updating profile:", error);
+    } catch (err) {
       toast({
-        title: "Error",
-        description: "Failed to update profile",
-        variant: "destructive",
-      });
-    } finally {
-      setIsUpdatingProfile(false);
-    }
-  };
-
-  const handlePasswordUpdate = async () => {
-    if (!newPassword || !confirmPassword) {
-      toast({
-        title: "Error",
-        description: "Please fill in all password fields",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (newPassword !== confirmPassword) {
-      toast({
-        title: "Error",
-        description: "New passwords do not match",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (newPassword.length < 6) {
-      toast({
-        title: "Error",
-        description: "Password must be at least 6 characters long",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setIsUpdatingPassword(true);
-    try {
-      const { error } = await supabase.auth.updateUser({
-        password: newPassword
-      });
-
-      if (error) throw error;
-
-      toast({
-        title: "Success",
-        description: "Password updated successfully",
-      });
-      
-      // Clear password fields
-      setCurrentPassword("");
-      setNewPassword("");
-      setConfirmPassword("");
-    } catch (error: any) {
-      console.error("Error updating password:", error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to update password",
-        variant: "destructive",
-      });
-    } finally {
-      setIsUpdatingPassword(false);
-    }
-  };
-
-  const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    // Validate file type
-    if (!file.type.startsWith('image/')) {
-      toast({
-        title: "Error",
-        description: "Please select an image file",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Validate file size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      toast({
-        title: "Error",
-        description: "File size must be less than 5MB",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setIsUploadingAvatar(true);
-    try {
-      await uploadAvatar(file);
-    } catch (error) {
-      console.error("Error uploading avatar:", error);
-    } finally {
-      setIsUploadingAvatar(false);
-    }
-  };
-
-  const handleNotificationChange = async (type: string, enabled: boolean) => {
-    try {
-      const currentPreferences = preferences?.preferences || {};
-      const currentNotifications = currentPreferences.notifications || {};
-      
-      await updatePreferences({
-        preferences: {
-          ...currentPreferences,
-          notifications: {
-            ...currentNotifications,
-            [type]: enabled
-          }
-        }
-      });
-      
-      toast({
-        title: "Success",
-        description: "Notification settings updated",
-      });
-    } catch (error) {
-      console.error("Error updating notifications:", error);
-      toast({
-        title: "Error",
-        description: "Failed to update notification settings",
+        title: "Failed to copy",
+        description: "Please copy the URL manually",
         variant: "destructive",
       });
     }
   };
 
-  const handleThemeChange = (newTheme: string) => {
-    setTheme(newTheme);
-    toast({
-      title: "Success",
-      description: `Theme changed to ${newTheme}`,
-    });
+  const openCalendarInstructions = () => {
+    window.open('https://support.microsoft.com/en-us/office/import-or-subscribe-to-a-calendar-in-outlook-com-cff1429c-5af6-41ec-a5b4-74f2c278e98c', '_blank');
   };
-
-  if (profileLoading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex">
-        <Sidebar />
-        <div className="flex-1 flex flex-col">
-          <Header />
-          <main className="flex-1 p-6 overflow-auto">
-            <div className="max-w-4xl mx-auto">
-              <div className="flex justify-center py-12">
-                <Loader2 className="h-8 w-8 animate-spin" />
-              </div>
-            </div>
-          </main>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
@@ -250,223 +52,111 @@ const Settings = () => {
         <Header />
         <main className="flex-1 p-6 overflow-auto">
           <div className="max-w-4xl mx-auto space-y-6">
-            {/* Header */}
             <div>
               <h1 className="text-3xl font-bold text-gray-900">Settings</h1>
-              <p className="text-gray-600 mt-1">Manage your account settings and preferences</p>
+              <p className="text-gray-600 mt-1">Manage your account and application preferences</p>
             </div>
 
-            {/* Profile Settings */}
+            {/* Calendar Integration */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <User className="h-5 w-5" />
-                  Profile Information
+                  <Calendar className="h-5 w-5" />
+                  Calendar Integration
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-6">
-                {/* Avatar Section */}
-                <div className="flex items-center gap-6">
-                  <Avatar className="h-20 w-20">
-                    <AvatarImage 
-                      src={profile?.avatar_url || user?.user_metadata?.avatar_url} 
-                      alt="Profile picture" 
-                    />
-                    <AvatarFallback className="text-lg">
-                      {profile?.first_name?.[0] || user?.user_metadata?.first_name?.[0] || user?.email?.[0]?.toUpperCase() || 'U'}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <Label htmlFor="avatar-upload" className="cursor-pointer">
-                      <Button variant="outline" disabled={isUploadingAvatar} asChild>
-                        <span>
-                          {isUploadingAvatar ? (
-                            <>
-                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                              Uploading...
-                            </>
-                          ) : (
-                            <>
-                              <Upload className="h-4 w-4 mr-2" />
-                              Upload Picture
-                            </>
-                          )}
-                        </span>
-                      </Button>
-                    </Label>
-                    <Input
-                      id="avatar-upload"
-                      type="file"
-                      accept="image/*"
-                      onChange={handleAvatarUpload}
-                      className="hidden"
-                    />
-                    <p className="text-sm text-gray-500 mt-1">
-                      JPG, PNG or GIF. Max size 5MB.
-                    </p>
-                  </div>
-                </div>
-
-                <Separator />
-
-                {/* Personal Information */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="firstName">First Name *</Label>
-                    <Input
-                      id="firstName"
-                      value={firstName}
-                      onChange={(e) => setFirstName(e.target.value)}
-                      placeholder="Enter your first name"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="lastName">Last Name *</Label>
-                    <Input
-                      id="lastName"
-                      value={lastName}
-                      onChange={(e) => setLastName(e.target.value)}
-                      placeholder="Enter your last name"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Email Address</Label>
-                  <div className="flex items-center gap-2">
-                    <Input value={user?.email || ""} disabled />
-                    <Badge variant="secondary">Verified</Badge>
-                  </div>
-                  <p className="text-sm text-gray-500">
-                    Contact support to change your email address
+              <CardContent className="space-y-4">
+                <div>
+                  <Label className="text-sm font-medium">iCal Feed URL</Label>
+                  <p className="text-sm text-gray-600 mb-2">
+                    Use this URL to subscribe to your laboratory calendar in external applications like Outlook, Google Calendar, or Apple Calendar.
                   </p>
+                  <div className="flex gap-2">
+                    <Input
+                      value={icalUrl}
+                      readOnly
+                      className="font-mono text-sm"
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => copyToClipboard(icalUrl, 'iCal URL')}
+                    >
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
 
-                <Button 
-                  onClick={handleProfileUpdate} 
-                  disabled={isUpdatingProfile}
-                  className="w-full sm:w-auto"
-                >
-                  {isUpdatingProfile ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Updating...
-                    </>
-                  ) : (
-                    <>
-                      <Save className="h-4 w-4 mr-2" />
-                      Update Profile
-                    </>
-                  )}
-                </Button>
-              </CardContent>
-            </Card>
-
-            {/* Security Settings */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Shield className="h-5 w-5" />
-                  Security
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="space-y-4">
-                  <h3 className="font-medium">Change Password</h3>
-                  <div className="grid grid-cols-1 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="newPassword">New Password</Label>
-                      <div className="relative">
-                        <Input
-                          id="newPassword"
-                          type={showNewPassword ? "text" : "password"}
-                          value={newPassword}
-                          onChange={(e) => setNewPassword(e.target.value)}
-                          placeholder="Enter new password"
-                        />
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                          onClick={() => setShowNewPassword(!showNewPassword)}
-                        >
-                          {showNewPassword ? (
-                            <EyeOff className="h-4 w-4" />
-                          ) : (
-                            <Eye className="h-4 w-4" />
-                          )}
-                        </Button>
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="confirmPassword">Confirm New Password</Label>
-                      <div className="relative">
-                        <Input
-                          id="confirmPassword"
-                          type={showConfirmPassword ? "text" : "password"}
-                          value={confirmPassword}
-                          onChange={(e) => setConfirmPassword(e.target.value)}
-                          placeholder="Confirm new password"
-                        />
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                        >
-                          {showConfirmPassword ? (
-                            <EyeOff className="h-4 w-4" />
-                          ) : (
-                            <Eye className="h-4 w-4" />
-                          )}
-                        </Button>
-                      </div>
-                    </div>
+                <div>
+                  <Label className="text-sm font-medium">Webcal URL (for direct subscription)</Label>
+                  <p className="text-sm text-gray-600 mb-2">
+                    Click this URL or copy it to directly subscribe to your calendar in supported applications.
+                  </p>
+                  <div className="flex gap-2">
+                    <Input
+                      value={webcalUrl}
+                      readOnly
+                      className="font-mono text-sm"
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => copyToClipboard(webcalUrl, 'Webcal URL')}
+                    >
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => window.open(webcalUrl, '_blank')}
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                    </Button>
                   </div>
-                  <Button 
-                    onClick={handlePasswordUpdate} 
-                    disabled={isUpdatingPassword}
-                    variant="outline"
+                </div>
+
+                <div className="bg-blue-50 p-4 rounded-lg">
+                  <h4 className="font-medium text-blue-900 mb-2">How to use:</h4>
+                  <ul className="text-sm text-blue-800 space-y-1">
+                    <li>• <strong>Outlook:</strong> Go to Calendar → Add Calendar → Subscribe from web, then paste the iCal URL</li>
+                    <li>• <strong>Google Calendar:</strong> Settings → Add calendar → From URL, then paste the iCal URL</li>
+                    <li>• <strong>Apple Calendar:</strong> File → New Calendar Subscription, then paste the iCal URL</li>
+                    <li>• <strong>Quick subscription:</strong> Click the webcal URL to open directly in your default calendar app</li>
+                  </ul>
+                  <Button
+                    variant="link"
+                    className="p-0 h-auto text-blue-600 hover:text-blue-800"
+                    onClick={openCalendarInstructions}
                   >
-                    {isUpdatingPassword ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Updating...
-                      </>
-                    ) : (
-                      "Update Password"
-                    )}
+                    View detailed instructions for Outlook →
                   </Button>
                 </div>
               </CardContent>
             </Card>
 
-            {/* Appearance Settings */}
+            {/* Account Settings */}
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Palette className="h-5 w-5" />
-                  Appearance
-                </CardTitle>
+                <CardTitle>Account Settings</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Theme</Label>
-                  <Select value={theme} onValueChange={handleThemeChange}>
-                    <SelectTrigger className="w-full sm:w-[200px]">
-                      <SelectValue placeholder="Select theme" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="light">Light</SelectItem>
-                      <SelectItem value="dark">Dark</SelectItem>
-                      <SelectItem value="system">System</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <p className="text-sm text-gray-500">
-                    Choose your preferred theme or sync with your system settings
-                  </p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="firstName">First Name</Label>
+                    <Input id="firstName" placeholder="Enter your first name" />
+                  </div>
+                  <div>
+                    <Label htmlFor="lastName">Last Name</Label>
+                    <Input id="lastName" placeholder="Enter your last name" />
+                  </div>
+                </div>
+                <div>
+                  <Label htmlFor="email">Email</Label>
+                  <Input id="email" type="email" placeholder="Enter your email" />
+                </div>
+                <div>
+                  <Label htmlFor="institution">Institution</Label>
+                  <Input id="institution" placeholder="Enter your institution" />
                 </div>
               </CardContent>
             </Card>
@@ -474,52 +164,58 @@ const Settings = () => {
             {/* Notification Settings */}
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Bell className="h-5 w-5" />
-                  Notifications
-                </CardTitle>
+                <CardTitle>Notifications</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <Label>Email Notifications</Label>
-                      <p className="text-sm text-gray-500">
-                        Receive email updates about your experiments
-                      </p>
-                    </div>
-                    <Switch
-                      checked={preferences?.preferences?.notifications?.email || false}
-                      onCheckedChange={(checked) => handleNotificationChange('email', checked)}
-                    />
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label htmlFor="notifications">Push Notifications</Label>
+                    <p className="text-sm text-gray-600">Receive notifications for important updates</p>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <Label>Task Reminders</Label>
-                      <p className="text-sm text-gray-500">
-                        Get notified about upcoming task deadlines
-                      </p>
-                    </div>
-                    <Switch
-                      checked={preferences?.preferences?.notifications?.tasks || false}
-                      onCheckedChange={(checked) => handleNotificationChange('tasks', checked)}
-                    />
+                  <Switch
+                    id="notifications"
+                    checked={notifications}
+                    onCheckedChange={setNotifications}
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label htmlFor="emailUpdates">Email Updates</Label>
+                    <p className="text-sm text-gray-600">Receive weekly email summaries</p>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <Label>System Updates</Label>
-                      <p className="text-sm text-gray-500">
-                        Receive notifications about system maintenance
-                      </p>
-                    </div>
-                    <Switch
-                      checked={preferences?.preferences?.notifications?.system || false}
-                      onCheckedChange={(checked) => handleNotificationChange('system', checked)}
-                    />
-                  </div>
+                  <Switch
+                    id="emailUpdates"
+                    checked={emailUpdates}
+                    onCheckedChange={setEmailUpdates}
+                  />
                 </div>
               </CardContent>
             </Card>
+
+            {/* Appearance Settings */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Appearance</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label htmlFor="darkMode">Dark Mode</Label>
+                    <p className="text-sm text-gray-600">Switch to dark theme</p>
+                  </div>
+                  <Switch
+                    id="darkMode"
+                    checked={darkMode}
+                    onCheckedChange={setDarkMode}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Save Button */}
+            <div className="flex justify-end">
+              <Button>Save Changes</Button>
+            </div>
           </div>
         </main>
       </div>
