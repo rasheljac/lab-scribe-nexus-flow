@@ -68,7 +68,35 @@ const CreateEventDialog = ({ open: controlledOpen, onOpenChange, defaultEventTyp
     e.preventDefault();
     
     try {
-      await createEvent.mutateAsync(formData);
+      // Convert datetime-local strings to proper ISO strings
+      // The datetime-local input gives us a string in format "YYYY-MM-DDTHH:mm"
+      // We need to treat this as local time and convert it properly
+      const startDate = new Date(formData.start_time);
+      const endDate = new Date(formData.end_time);
+      
+      // Validate that end time is after start time
+      if (endDate <= startDate) {
+        toast({
+          title: "Invalid Time Range",
+          description: "End time must be after start time",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const eventData = {
+        ...formData,
+        start_time: startDate.toISOString(),
+        end_time: endDate.toISOString(),
+      };
+
+      console.log('Creating event with data:', eventData);
+      console.log('Original form start_time:', formData.start_time);
+      console.log('Converted start_time:', startDate.toISOString());
+      console.log('Original form end_time:', formData.end_time);
+      console.log('Converted end_time:', endDate.toISOString());
+
+      await createEvent.mutateAsync(eventData);
       toast({
         title: "Success",
         description: "Event created successfully!",

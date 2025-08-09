@@ -29,12 +29,26 @@ interface EventDetailsDialogProps {
 
 const EventDetailsDialog = ({ event, open, onOpenChange }: EventDetailsDialogProps) => {
   const [isEditing, setIsEditing] = useState(false);
+  
+  // Convert ISO strings to datetime-local format for input fields
+  // This ensures the input shows the correct local time
+  const formatDateTimeLocal = (isoString: string) => {
+    const date = new Date(isoString);
+    // Format as YYYY-MM-DDTHH:mm (local time)
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  };
+
   const [formData, setFormData] = useState({
     title: event.title,
     description: event.description || "",
     event_type: event.event_type,
-    start_time: new Date(event.start_time).toISOString().slice(0, 16),
-    end_time: new Date(event.end_time).toISOString().slice(0, 16),
+    start_time: formatDateTimeLocal(event.start_time),
+    end_time: formatDateTimeLocal(event.end_time),
     location: event.location || "",
     status: event.status,
   });
@@ -46,11 +60,33 @@ const EventDetailsDialog = ({ event, open, onOpenChange }: EventDetailsDialogPro
     e.preventDefault();
     
     try {
+      // Convert datetime-local strings to proper ISO strings
+      const startDate = new Date(formData.start_time);
+      const endDate = new Date(formData.end_time);
+      
+      // Validate that end time is after start time
+      if (endDate <= startDate) {
+        toast({
+          title: "Invalid Time Range",
+          description: "End time must be after start time",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const updateData = {
+        ...formData,
+        start_time: startDate.toISOString(),
+        end_time: endDate.toISOString(),
+      };
+
+      console.log('Updating event with data:', updateData);
+      console.log('Original form start_time:', formData.start_time);
+      console.log('Converted start_time:', startDate.toISOString());
+
       await updateEvent.mutateAsync({
         id: event.id,
-        ...formData,
-        start_time: new Date(formData.start_time).toISOString(),
-        end_time: new Date(formData.end_time).toISOString(),
+        ...updateData,
       });
       toast({
         title: "Success",
