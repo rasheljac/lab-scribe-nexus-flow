@@ -64,7 +64,7 @@ const Projects = () => {
   const categories = ["all", ...Array.from(new Set(projects.map(p => p.category)))];
 
   const filteredProjects = projects.filter(project => {
-    const matchesSearch = project.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    const matchesSearch = project.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          (project.description && project.description.toLowerCase().includes(searchTerm.toLowerCase()));
     const matchesCategory = selectedCategory === "all" || project.category === selectedCategory;
     return matchesSearch && matchesCategory;
@@ -165,7 +165,7 @@ const Projects = () => {
       
       toast({
         title: "Success",
-        description: `Moved "${project.name}" to page ${currentPage - 1}`,
+        description: `Moved "${project.title}" to page ${currentPage - 1}`,
       });
     } catch (error) {
       console.error("Error moving project:", error);
@@ -192,7 +192,7 @@ const Projects = () => {
       
       toast({
         title: "Success",
-        description: `Moved "${project.name}" to page ${currentPage + 1}`,
+        description: `Moved "${project.title}" to page ${currentPage + 1}`,
       });
     } catch (error) {
       console.error("Error moving project:", error);
@@ -233,7 +233,7 @@ const Projects = () => {
               className="text-lg cursor-pointer hover:text-blue-600 transition-colors"
               onClick={() => handleProjectClick(project.id)}
             >
-              {project.name}
+              {project.title}
             </CardTitle>
           </div>
           <div className="flex gap-1 items-center">
@@ -251,13 +251,13 @@ const Projects = () => {
                 <AlertDialogHeader>
                   <AlertDialogTitle>Delete Project</AlertDialogTitle>
                   <AlertDialogDescription>
-                    Are you sure you want to delete "{project.name}"? This action cannot be undone and will remove this project from all experiments and notes.
+                    Are you sure you want to delete "{project.title}"? This action cannot be undone and will remove this project from all experiments and notes.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                   <AlertDialogCancel>Cancel</AlertDialogCancel>
                   <AlertDialogAction
-                    onClick={() => handleDeleteProject(project.id, project.name)}
+                    onClick={() => handleDeleteProject(project.id, project.title)}
                     className="bg-red-600 hover:bg-red-700"
                   >
                     Delete
@@ -282,7 +282,7 @@ const Projects = () => {
           </div>
           <div className="flex items-center gap-2">
             <Tag className="h-4 w-4 text-gray-400" />
-            <span>{project.experiments} experiments, {project.protocols} protocols</span>
+            <span>{project.experiments_count} experiments, {project.protocols || 0} protocols</span>
           </div>
         </div>
       </CardContent>
