@@ -28,7 +28,25 @@ function escapeICalText(text: string | null): string {
     .replace(/;/g, '\\;')
     .replace(/,/g, '\\,')
     .replace(/\n/g, '\\n')
-    .replace(/\r/g, '');
+    .replace(/\r/g, '')
+    .replace(/<[^>]*>/g, '') // Remove HTML tags
+    .substring(0, 1000); // Limit length to prevent issues
+}
+
+function wrapICalLine(line: string): string {
+  // iCal lines should be max 75 characters, wrap at 74 to account for space
+  if (line.length <= 74) return line + '\r\n';
+  
+  let result = '';
+  let remaining = line;
+  
+  while (remaining.length > 74) {
+    result += remaining.substring(0, 74) + '\r\n ';
+    remaining = remaining.substring(74);
+  }
+  result += remaining + '\r\n';
+  
+  return result;
 }
 
 function generateICalEvent(event: CalendarEvent): string {
@@ -38,27 +56,33 @@ function generateICalEvent(event: CalendarEvent): string {
   const modified = formatDateForICal(event.updated_at);
   const dtstamp = formatDateForICal(new Date().toISOString());
   
-  let icalEvent = 'BEGIN:VEVENT\r\n';
-  icalEvent += `UID:${event.id}@laboratory-calendar.app\r\n`;
-  icalEvent += `DTSTAMP:${dtstamp}\r\n`;
-  icalEvent += `DTSTART:${startDate}\r\n`;
-  icalEvent += `DTEND:${endDate}\r\n`;
-  icalEvent += `SUMMARY:${escapeICalText(event.title)}\r\n`;
+  // Validate dates - if end is before start, make them equal
+  const startTime = new Date(event.start_time);
+  const endTime = new Date(event.end_time);
+  const finalEndDate = endTime < startTime ? startDate : endDate;
   
-  if (event.description) {
-    icalEvent += `DESCRIPTION:${escapeICalText(event.description)}\r\n`;
+  let icalEvent = '';
+  icalEvent += wrapICalLine('BEGIN:VEVENT');
+  icalEvent += wrapICalLine(`UID:${event.id}@laboratory-calendar.app`);
+  icalEvent += wrapICalLine(`DTSTAMP:${dtstamp}`);
+  icalEvent += wrapICalLine(`DTSTART:${startDate}`);
+  icalEvent += wrapICalLine(`DTEND:${finalEndDate}`);
+  icalEvent += wrapICalLine(`SUMMARY:${escapeICalText(event.title)}`);
+  
+  if (event.description && event.description.trim()) {
+    icalEvent += wrapICalLine(`DESCRIPTION:${escapeICalText(event.description)}`);
   }
   
-  if (event.location) {
-    icalEvent += `LOCATION:${escapeICalText(event.location)}\r\n`;
+  if (event.location && event.location.trim()) {
+    icalEvent += wrapICalLine(`LOCATION:${escapeICalText(event.location)}`);
   }
   
-  icalEvent += `CREATED:${created}\r\n`;
-  icalEvent += `LAST-MODIFIED:${modified}\r\n`;
-  icalEvent += `SEQUENCE:0\r\n`;
-  icalEvent += `STATUS:CONFIRMED\r\n`;
-  icalEvent += `TRANSP:OPAQUE\r\n`;
-  icalEvent += 'END:VEVENT\r\n';
+  icalEvent += wrapICalLine(`CREATED:${created}`);
+  icalEvent += wrapICalLine(`LAST-MODIFIED:${modified}`);
+  icalEvent += wrapICalLine('SEQUENCE:0');
+  icalEvent += wrapICalLine('STATUS:CONFIRMED');
+  icalEvent += wrapICalLine('TRANSP:OPAQUE');
+  icalEvent += wrapICalLine('END:VEVENT');
   
   return icalEvent;
 }
@@ -126,25 +150,42 @@ Deno.serve(async (req) => {
 
     console.log(`Found ${events?.length || 0} events`);
 
-    // Generate iCal content with proper headers
-    let icalContent = 'BEGIN:VCALENDAR\r\n';
-    icalContent += 'VERSION:2.0\r\n';
-    icalContent += 'PRODID:-//Laboratory Calendar//Laboratory Management System v1.0//EN\r\n';
-    icalContent += 'CALSCALE:GREGORIAN\r\n';
-    icalContent += 'METHOD:PUBLISH\r\n';
-    icalContent += 'X-WR-CALNAME:Laboratory Calendar\r\n';
-    icalContent += 'X-WR-CALDESC:Laboratory Management System Calendar\r\n';
-    icalContent += 'X-WR-TIMEZONE:UTC\r\n';
-    icalContent += 'X-PUBLISHED-TTL:PT1H\r\n';
+    // Generate iCal content with proper headers and line endings
+    let icalContent = '';
+    icalContent += wrapICalLine('BEGIN:VCALENDAR');
+    icalContent += wrapICalLine('VERSION:2.0');
+    icalContent += wrapICalLine('PRODID:-//Laboratory Calendar//Laboratory Management System v1.0//EN');
+    icalContent += wrapICalLine('CALSCALE:GREGORIAN');
+    icalContent += wrapICalLine('METHOD:PUBLISH');
+    icalContent += wrapICalLine('X-WR-CALNAME:Laboratory Calendar');
+    icalContent += wrapICalLine('X-WR-CALDESC:Laboratory Management System Calendar');
+    icalContent += wrapICalLine('X-WR-TIMEZONE:UTC');
+    icalContent += wrapICalLine('X-PUBLISHED-TTL:PT1H');
 
-    // Add events
+    // Add events - filter out any with invalid data
     if (events && events.length > 0) {
-      events.forEach((event: CalendarEvent) => {
-        icalContent += generateICalEvent(event);
+      const validEvents = events.filter(event => 
+        event.title && 
+        event.start_time && 
+        event.end_time &&
+        !isNaN(new Date(event.start_time).getTime()) &&
+        !isNaN(new Date(event.end_time).getTime())
+      );
+      
+      console.log(`Processing ${validEvents.length} valid events out of ${events.length} total`);
+      
+      validEvents.forEach((event: CalendarEvent, index: number) => {
+        try {
+          console.log(`Processing event ${index + 1}: ${event.title}`);
+          icalContent += generateICalEvent(event);
+        } catch (eventError) {
+          console.error(`Error processing event ${event.id}:`, eventError);
+          // Skip this event but continue with others
+        }
       });
     }
 
-    icalContent += 'END:VCALENDAR\r\n';
+    icalContent += wrapICalLine('END:VCALENDAR');
 
     console.log('Returning iCal content, length:', icalContent.length);
 
@@ -153,7 +194,9 @@ Deno.serve(async (req) => {
         ...corsHeaders,
         'Content-Type': 'text/calendar; charset=utf-8',
         'Content-Disposition': 'inline; filename="laboratory-calendar.ics"',
-        'Cache-Control': 'public, max-age=3600',
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
       },
     });
 
