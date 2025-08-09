@@ -20,16 +20,41 @@ const ContactsDialog = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.name.trim() || !formData.mobile_number.trim()) {
+    console.log('Form submission attempted:', formData);
+    
+    // Basic validation
+    if (!formData.name.trim()) {
+      console.error('Name is required');
+      return;
+    }
+    
+    if (!formData.mobile_number.trim()) {
+      console.error('Mobile number is required');
+      return;
+    }
+
+    // Basic phone number validation
+    const phoneRegex = /^\+?[\d\s\-\(\)]{8,}$/;
+    if (!phoneRegex.test(formData.mobile_number.trim())) {
+      console.error('Invalid phone number format');
       return;
     }
 
     try {
       if (editingContact) {
-        await updateContact.mutateAsync({ id: editingContact.id, ...formData });
+        console.log('Updating contact:', editingContact.id, formData);
+        await updateContact.mutateAsync({ 
+          id: editingContact.id, 
+          name: formData.name.trim(),
+          mobile_number: formData.mobile_number.trim()
+        });
         setEditingContact(null);
       } else {
-        await createContact.mutateAsync(formData);
+        console.log('Creating new contact:', formData);
+        await createContact.mutateAsync({
+          name: formData.name.trim(),
+          mobile_number: formData.mobile_number.trim()
+        });
         setIsAddingContact(false);
       }
       setFormData({ name: '', mobile_number: '' });
@@ -86,17 +111,18 @@ const ContactsDialog = () => {
               </h3>
               <form onSubmit={handleSubmit} className="space-y-3">
                 <div>
-                  <Label htmlFor="contact-name">Name</Label>
+                  <Label htmlFor="contact-name">Name *</Label>
                   <Input
                     id="contact-name"
                     value={formData.name}
                     onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
                     placeholder="Contact name"
                     required
+                    minLength={1}
                   />
                 </div>
                 <div>
-                  <Label htmlFor="contact-mobile">Mobile Number</Label>
+                  <Label htmlFor="contact-mobile">Mobile Number *</Label>
                   <Input
                     id="contact-mobile"
                     type="tel"
@@ -104,10 +130,17 @@ const ContactsDialog = () => {
                     onChange={(e) => setFormData(prev => ({ ...prev, mobile_number: e.target.value }))}
                     placeholder="+1234567890"
                     required
+                    minLength={8}
                   />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Include country code (e.g., +1 for US numbers)
+                  </p>
                 </div>
                 <div className="flex gap-2">
-                  <Button type="submit" disabled={createContact.isPending || updateContact.isPending}>
+                  <Button 
+                    type="submit" 
+                    disabled={createContact.isPending || updateContact.isPending || !formData.name.trim() || !formData.mobile_number.trim()}
+                  >
                     {editingContact ? 'Update' : 'Add'} Contact
                   </Button>
                   <Button type="button" variant="outline" onClick={resetForm}>

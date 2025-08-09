@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -132,11 +131,10 @@ const SMSManager = () => {
                 onChange={(e) => setMessage(e.target.value)}
                 placeholder="Enter your SMS message here..."
                 rows={4}
-                maxLength={160}
                 required
               />
               <p className="text-sm text-muted-foreground mt-1">
-                {message.length}/160 characters
+                {message.length} characters
               </p>
             </div>
             
