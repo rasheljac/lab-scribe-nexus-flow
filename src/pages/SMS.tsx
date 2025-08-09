@@ -3,8 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import SMSManager from "@/components/SMSManager";
 import { MessageSquare } from "lucide-react";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
-import { Sidebar } from "@/components/Sidebar";
-import { Header } from "@/components/Header";
+import Sidebar from "@/components/Sidebar";
+import Header from "@/components/Header";
 
 const SMS = () => {
   return (

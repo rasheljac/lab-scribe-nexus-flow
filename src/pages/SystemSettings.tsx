@@ -7,8 +7,8 @@ import { Switch } from "@/components/ui/switch";
 import { Settings, Database, Server, Shield, Mail, Bell } from "lucide-react";
 import { useState } from "react";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
-import { Sidebar } from "@/components/Sidebar";
-import { Header } from "@/components/Header";
+import Sidebar from "@/components/Sidebar";
+import Header from "@/components/Header";
 
 const SystemSettings = () => {
   const [maintenanceMode, setMaintenanceMode] = useState(false);
