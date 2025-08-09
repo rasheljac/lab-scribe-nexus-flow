@@ -23,6 +23,9 @@ verify_jwt = false
 [functions.send-task-reminders]
 verify_jwt = false
 
+[functions.send-sms]
+verify_jwt = false
+
 [functions.s3-file-operations]
 verify_jwt = true
 
