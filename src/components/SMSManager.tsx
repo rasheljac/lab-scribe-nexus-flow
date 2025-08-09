@@ -6,7 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { MessageSquare, Send, Clock, CheckCircle, XCircle } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { MessageSquare, Send, Clock, CheckCircle, XCircle, Trash2 } from "lucide-react";
 import { useSMS } from "@/hooks/useSMS";
 import { format } from "date-fns";
 import { SMSLog } from "@/types/sms";
@@ -14,7 +15,7 @@ import { SMSLog } from "@/types/sms";
 const SMSManager = () => {
   const [message, setMessage] = useState('');
   const [mobileNumber, setMobileNumber] = useState('');
-  const { sendSMS, smsLogs, logsLoading } = useSMS();
+  const { sendSMS, smsLogs, logsLoading, deleteSMS } = useSMS();
 
   const handleSendSMS = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,6 +36,14 @@ const SMSManager = () => {
       setMobileNumber('');
     } catch (error) {
       console.error('Failed to send SMS:', error);
+    }
+  };
+
+  const handleDeleteSMS = async (logId: string) => {
+    try {
+      await deleteSMS.mutateAsync(logId);
+    } catch (error) {
+      console.error('Failed to delete SMS log:', error);
     }
   };
 
@@ -125,7 +134,34 @@ const SMSManager = () => {
                 <div key={log.id} className="border rounded-lg p-4">
                   <div className="flex items-center justify-between mb-2">
                     <span className="font-medium">{log.mobile_number}</span>
-                    {getStatusBadge(log.status)}
+                    <div className="flex items-center gap-2">
+                      {getStatusBadge(log.status)}
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="outline" size="sm" className="text-destructive hover:text-destructive">
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete SMS Log</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Are you sure you want to delete this SMS log? This action cannot be undone.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => handleDeleteSMS(log.id)}
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              disabled={deleteSMS.isPending}
+                            >
+                              {deleteSMS.isPending ? 'Deleting...' : 'Delete'}
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
                   </div>
                   <p className="text-sm text-gray-600 mb-2">{log.message}</p>
                   <div className="flex items-center justify-between text-xs text-muted-foreground">

@@ -1,19 +1,84 @@
+
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Settings, Database, Server, Shield, Mail, Bell } from "lucide-react";
+import { Settings, Database, Server, Shield } from "lucide-react";
 import { useState } from "react";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import Sidebar from "@/components/Sidebar";
 import Header from "@/components/Header";
+import { useToast } from "@/hooks/use-toast";
 
 const SystemSettings = () => {
+  const { toast } = useToast();
+  
+  // General Settings State
+  const [systemName, setSystemName] = useState("Lab Management System");
+  const [adminEmail, setAdminEmail] = useState("admin@lab.com");
   const [maintenanceMode, setMaintenanceMode] = useState(false);
-  const [autoBackups, setAutoBackups] = useState(true);
   const [emailNotifications, setEmailNotifications] = useState(true);
+
+  // Database Settings State
+  const [autoBackups, setAutoBackups] = useState(true);
+  const [backupRetention, setBackupRetention] = useState("30");
+
+  // Server Settings State
+  const [maxUsers, setMaxUsers] = useState("100");
+  const [sessionTimeout, setSessionTimeout] = useState("60");
+
+  // Security Settings State
+  const [minPasswordLength, setMinPasswordLength] = useState("8");
+  const [maxLoginAttempts, setMaxLoginAttempts] = useState("5");
+  const [twoFactorAuth, setTwoFactorAuth] = useState(false);
+  const [forcePasswordReset, setForcePasswordReset] = useState(false);
+  const [logUserActivities, setLogUserActivities] = useState(true);
+
+  const handleSaveGeneral = () => {
+    // In a real app, this would save to backend
+    console.log("Saving general settings:", {
+      systemName,
+      adminEmail,
+      maintenanceMode,
+      emailNotifications
+    });
+    toast({
+      title: "Settings Saved",
+      description: "General settings have been saved successfully.",
+    });
+  };
+
+  const handleDatabaseAction = (action: string) => {
+    console.log(`Performing database action: ${action}`);
+    toast({
+      title: "Database Operation",
+      description: `${action} operation has been initiated.`,
+    });
+  };
+
+  const handleSaveSecurity = () => {
+    console.log("Saving security settings:", {
+      minPasswordLength,
+      maxLoginAttempts,
+      twoFactorAuth,
+      forcePasswordReset,
+      logUserActivities
+    });
+    toast({
+      title: "Security Settings Saved",
+      description: "Security settings have been updated successfully.",
+    });
+  };
+
+  const handleSecurityAction = (action: string) => {
+    console.log(`Performing security action: ${action}`);
+    toast({
+      title: "Security Operation",
+      description: `${action} operation has been completed.`,
+    });
+  };
 
   return (
     <SidebarProvider>
@@ -57,11 +122,22 @@ const SystemSettings = () => {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div>
                         <Label htmlFor="systemName">System Name</Label>
-                        <Input id="systemName" placeholder="Lab Management System" />
+                        <Input 
+                          id="systemName" 
+                          value={systemName}
+                          onChange={(e) => setSystemName(e.target.value)}
+                          placeholder="Lab Management System" 
+                        />
                       </div>
                       <div>
                         <Label htmlFor="adminEmail">Administrator Email</Label>
-                        <Input id="adminEmail" type="email" placeholder="admin@lab.com" />
+                        <Input 
+                          id="adminEmail" 
+                          type="email" 
+                          value={adminEmail}
+                          onChange={(e) => setAdminEmail(e.target.value)}
+                          placeholder="admin@lab.com" 
+                        />
                       </div>
                     </div>
                     
@@ -90,7 +166,7 @@ const SystemSettings = () => {
                     </div>
 
                     <div className="flex justify-end">
-                      <Button>Save General Settings</Button>
+                      <Button onClick={handleSaveGeneral}>Save General Settings</Button>
                     </div>
                   </CardContent>
                 </Card>
@@ -117,24 +193,43 @@ const SystemSettings = () => {
 
                     <div>
                       <Label htmlFor="backupRetention">Backup Retention (days)</Label>
-                      <Input id="backupRetention" type="number" placeholder="30" className="w-32" />
+                      <Input 
+                        id="backupRetention" 
+                        type="number" 
+                        value={backupRetention}
+                        onChange={(e) => setBackupRetention(e.target.value)}
+                        placeholder="30" 
+                        className="w-32" 
+                      />
                     </div>
 
                     <div className="border rounded-lg p-4 space-y-4">
                       <h4 className="font-medium">Database Maintenance</h4>
                       <div className="flex gap-2">
-                        <Button variant="outline">Optimize Database</Button>
-                        <Button variant="outline">Run Cleanup</Button>
-                        <Button variant="outline">Export Data</Button>
+                        <Button variant="outline" onClick={() => handleDatabaseAction("Optimize Database")}>
+                          Optimize Database
+                        </Button>
+                        <Button variant="outline" onClick={() => handleDatabaseAction("Run Cleanup")}>
+                          Run Cleanup
+                        </Button>
+                        <Button variant="outline" onClick={() => handleDatabaseAction("Export Data")}>
+                          Export Data
+                        </Button>
                       </div>
                     </div>
 
                     <div className="border rounded-lg p-4 space-y-4">
                       <h4 className="font-medium">Backup Management</h4>
                       <div className="flex gap-2">
-                        <Button>Create Backup</Button>
-                        <Button variant="outline">View Backups</Button>
-                        <Button variant="outline">Restore</Button>
+                        <Button onClick={() => handleDatabaseAction("Create Backup")}>
+                          Create Backup
+                        </Button>
+                        <Button variant="outline" onClick={() => handleDatabaseAction("View Backups")}>
+                          View Backups
+                        </Button>
+                        <Button variant="outline" onClick={() => handleDatabaseAction("Restore")}>
+                          Restore
+                        </Button>
                       </div>
                     </div>
                   </CardContent>
@@ -151,11 +246,23 @@ const SystemSettings = () => {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div>
                         <Label htmlFor="maxUsers">Maximum Concurrent Users</Label>
-                        <Input id="maxUsers" type="number" placeholder="100" />
+                        <Input 
+                          id="maxUsers" 
+                          type="number" 
+                          value={maxUsers}
+                          onChange={(e) => setMaxUsers(e.target.value)}
+                          placeholder="100" 
+                        />
                       </div>
                       <div>
                         <Label htmlFor="sessionTimeout">Session Timeout (minutes)</Label>
-                        <Input id="sessionTimeout" type="number" placeholder="60" />
+                        <Input 
+                          id="sessionTimeout" 
+                          type="number" 
+                          value={sessionTimeout}
+                          onChange={(e) => setSessionTimeout(e.target.value)}
+                          placeholder="60" 
+                        />
                       </div>
                     </div>
 
@@ -190,11 +297,23 @@ const SystemSettings = () => {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div>
                         <Label htmlFor="minPasswordLength">Minimum Password Length</Label>
-                        <Input id="minPasswordLength" type="number" placeholder="8" />
+                        <Input 
+                          id="minPasswordLength" 
+                          type="number" 
+                          value={minPasswordLength}
+                          onChange={(e) => setMinPasswordLength(e.target.value)}
+                          placeholder="8" 
+                        />
                       </div>
                       <div>
                         <Label htmlFor="maxLoginAttempts">Max Login Attempts</Label>
-                        <Input id="maxLoginAttempts" type="number" placeholder="5" />
+                        <Input 
+                          id="maxLoginAttempts" 
+                          type="number" 
+                          value={maxLoginAttempts}
+                          onChange={(e) => setMaxLoginAttempts(e.target.value)}
+                          placeholder="5" 
+                        />
                       </div>
                     </div>
 
@@ -203,15 +322,24 @@ const SystemSettings = () => {
                       <div className="space-y-3">
                         <div className="flex items-center justify-between">
                           <span className="text-sm">Require two-factor authentication</span>
-                          <Switch />
+                          <Switch 
+                            checked={twoFactorAuth}
+                            onCheckedChange={setTwoFactorAuth}
+                          />
                         </div>
                         <div className="flex items-center justify-between">
                           <span className="text-sm">Force password reset every 90 days</span>
-                          <Switch />
+                          <Switch 
+                            checked={forcePasswordReset}
+                            onCheckedChange={setForcePasswordReset}
+                          />
                         </div>
                         <div className="flex items-center justify-between">
                           <span className="text-sm">Log all user activities</span>
-                          <Switch defaultChecked />
+                          <Switch 
+                            checked={logUserActivities}
+                            onCheckedChange={setLogUserActivities}
+                          />
                         </div>
                       </div>
                     </div>
@@ -219,10 +347,20 @@ const SystemSettings = () => {
                     <div className="border rounded-lg p-4 space-y-4">
                       <h4 className="font-medium">Security Monitoring</h4>
                       <div className="flex gap-2">
-                        <Button variant="outline">View Security Logs</Button>
-                        <Button variant="outline">Export Audit Trail</Button>
-                        <Button variant="outline">Security Report</Button>
+                        <Button variant="outline" onClick={() => handleSecurityAction("View Security Logs")}>
+                          View Security Logs
+                        </Button>
+                        <Button variant="outline" onClick={() => handleSecurityAction("Export Audit Trail")}>
+                          Export Audit Trail
+                        </Button>
+                        <Button variant="outline" onClick={() => handleSecurityAction("Security Report")}>
+                          Security Report
+                        </Button>
                       </div>
+                    </div>
+
+                    <div className="flex justify-end">
+                      <Button onClick={handleSaveSecurity}>Save Security Settings</Button>
                     </div>
                   </CardContent>
                 </Card>
