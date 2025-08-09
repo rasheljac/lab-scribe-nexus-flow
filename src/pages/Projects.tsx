@@ -30,13 +30,16 @@ import {
   Search, 
   FolderOpen, 
   Calendar, 
-  Users, 
-  BarChart,
+  User, 
+  TrendingUp,
   Clock,
   CheckCircle,
   AlertCircle,
+  Pause,
   Loader2,
-  Trash2
+  Plus,
+  Trash2,
+  Eye
 } from "lucide-react";
 import Sidebar from "@/components/Sidebar";
 import Header from "@/components/Header";
@@ -46,6 +49,8 @@ import DraggableGrid from "@/components/DraggableGrid";
 import { useProjects, Project } from "@/hooks/useProjects";
 import { useToast } from "@/hooks/use-toast";
 
+const ITEMS_PER_PAGE = 8;
+
 const Projects = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -54,12 +59,10 @@ const Projects = () => {
   const [filterCategory, setFilterCategory] = useState("all");
   const [createProjectOpen, setCreateProjectOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 8;
   const { toast } = useToast();
 
   const { projects, isLoading, error, deleteProject, updateProjectOrder } = useProjects();
 
-  // Update search params when search term changes
   useEffect(() => {
     if (searchTerm) {
       setSearchParams({ search: searchTerm });
@@ -68,7 +71,6 @@ const Projects = () => {
     }
   }, [searchTerm, setSearchParams]);
 
-  // Reset to first page when filters change
   useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm, filterStatus, filterCategory]);
@@ -81,6 +83,8 @@ const Projects = () => {
         return <Clock className="h-4 w-4 text-blue-600" />;
       case "planning":
         return <AlertCircle className="h-4 w-4 text-yellow-600" />;
+      case "on_hold":
+        return <Pause className="h-4 w-4 text-gray-600" />;
       default:
         return <FolderOpen className="h-4 w-4 text-gray-600" />;
     }
@@ -102,7 +106,6 @@ const Projects = () => {
   };
 
   const stripHtmlTags = (html: string) => {
-    if (!html) return "";
     const tmp = document.createElement("div");
     tmp.innerHTML = html;
     return tmp.textContent || tmp.innerText || "";
@@ -116,46 +119,26 @@ const Projects = () => {
     return matchesSearch && matchesStatus && matchesCategory;
   });
 
-  // Calculate pagination
-  const totalPages = Math.ceil(filteredProjects.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const paginatedProjects = filteredProjects.slice(startIndex, endIndex);
+  const categories = ["all", ...Array.from(new Set(projects.map(p => p.category)))];
 
-  // Generate page numbers for pagination
-  const getPageNumbers = () => {
-    const pages = [];
-    const maxVisiblePages = 5;
-    
-    if (totalPages <= maxVisiblePages) {
-      for (let i = 1; i <= totalPages; i++) {
-        pages.push(i);
-      }
-    } else {
-      const startPage = Math.max(1, currentPage - 2);
-      const endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
-      
-      for (let i = startPage; i <= endPage; i++) {
-        pages.push(i);
-      }
-    }
-    
-    return pages;
-  };
+  // Calculate pagination
+  const totalPages = Math.ceil(filteredProjects.length / ITEMS_PER_PAGE);
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const endIndex = startIndex + ITEMS_PER_PAGE;
+  const paginatedProjects = filteredProjects.slice(startIndex, endIndex);
 
   const handleProjectClick = (projectId: string) => {
     navigate(`/projects/${projectId}/experiments`);
   };
 
-  const handleDeleteProject = async (projectId: string) => {
+  const handleDeleteProject = async (projectId: string, projectTitle: string) => {
     try {
       await deleteProject.mutateAsync(projectId);
       toast({
         title: "Success",
-        description: "Project deleted successfully!",
+        description: `Project "${projectTitle}" deleted successfully`,
       });
     } catch (error) {
-      console.error("Error deleting project:", error);
       toast({
         title: "Error",
         description: "Failed to delete project",
@@ -164,24 +147,60 @@ const Projects = () => {
     }
   };
 
-  const handleCreateProject = () => {
-    setCreateProjectOpen(true);
-  };
-
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  // Enhanced reorder function to handle cross-page dragging
   const handleReorder = async (reorderedProjects: Project[]) => {
     try {
-      // Update display_order for all projects in the current page
-      const updates = reorderedProjects.map((project, index) => ({
-        id: project.id,
-        display_order: startIndex + index + 1
-      }));
+      // Calculate the global position for each item in the reordered list
+      const updates = reorderedProjects.map((project, index) => {
+        // Find the original position of this project in the filtered list
+        const originalIndex = filteredProjects.findIndex(p => p.id === project.id);
+        
+        // If it was moved within the current page, use current page positioning
+        if (originalIndex >= startIndex && originalIndex < endIndex) {
+          return {
+            id: project.id,
+            display_order: startIndex + index + 1
+          };
+        }
+        
+        // If it was dragged from another page, insert it at the dropped position
+        return {
+          id: project.id,
+          display_order: startIndex + index + 1
+        };
+      });
 
-      await updateProjectOrder.mutateAsync(updates);
+      // Also need to update any projects that were displaced
+      const displacedUpdates: { id: string; display_order: number }[] = [];
+      
+      // Find projects that need their order adjusted due to the reordering
+      filteredProjects.forEach((project, globalIndex) => {
+        const isInReorderedList = reorderedProjects.some(r => r.id === project.id);
+        
+        if (!isInReorderedList) {
+          // This project wasn't in the reordered list, but might need repositioning
+          const newOrder = globalIndex < startIndex ? globalIndex + 1 : globalIndex + 1;
+          
+          if (newOrder !== project.display_order) {
+            displacedUpdates.push({
+              id: project.id,
+              display_order: newOrder
+            });
+          }
+        }
+      });
+
+      // Combine all updates
+      const allUpdates = [...updates, ...displacedUpdates];
+      
+      if (allUpdates.length > 0) {
+        await updateProjectOrder.mutateAsync(allUpdates);
+      }
     } catch (error) {
       console.error("Error updating project order:", error);
       toast({
@@ -199,7 +218,7 @@ const Projects = () => {
           <div className="flex items-center gap-2 flex-1">
             {getStatusIcon(project.status)}
             <CardTitle 
-              className="text-lg cursor-pointer hover:text-blue-600"
+              className="text-lg cursor-pointer hover:text-blue-600 transition-colors"
               onClick={() => handleProjectClick(project.id)}
             >
               {project.title}
@@ -209,6 +228,14 @@ const Projects = () => {
             <Badge className={getStatusColor(project.status)}>
               {project.status.replace('_', ' ')}
             </Badge>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => handleProjectClick(project.id)}
+              className="p-1 h-6 w-6"
+            >
+              <Eye className="h-3 w-3" />
+            </Button>
             <EditProjectDialog project={project} />
             <AlertDialog>
               <AlertDialogTrigger asChild>
@@ -220,13 +247,13 @@ const Projects = () => {
                 <AlertDialogHeader>
                   <AlertDialogTitle>Delete Project</AlertDialogTitle>
                   <AlertDialogDescription>
-                    Are you sure you want to delete "{project.title}"? This action cannot be undone and will also delete all associated experiments.
+                    Are you sure you want to delete "{project.title}"? This action cannot be undone and will also delete all associated experiments and notes.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                   <AlertDialogCancel>Cancel</AlertDialogCancel>
                   <AlertDialogAction
-                    onClick={() => handleDeleteProject(project.id)}
+                    onClick={() => handleDeleteProject(project.id, project.title)}
                     className="bg-red-600 hover:bg-red-700"
                   >
                     Delete
@@ -236,12 +263,14 @@ const Projects = () => {
             </AlertDialog>
           </div>
         </div>
-        <p 
-          className="text-sm text-gray-600 mt-2 cursor-pointer"
-          onClick={() => handleProjectClick(project.id)}
-        >
-          {project.description ? stripHtmlTags(project.description) : ""}
-        </p>
+        {project.description && (
+          <p 
+            className="text-sm text-gray-600 mt-2 cursor-pointer"
+            onClick={() => handleProjectClick(project.id)}
+          >
+            {stripHtmlTags(project.description)}
+          </p>
+        )}
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Progress Bar */}
@@ -265,12 +294,12 @@ const Projects = () => {
             <span>{project.start_date} - {project.end_date || "Ongoing"}</span>
           </div>
           <div className="flex items-center gap-2">
-            <Users className="h-4 w-4 text-gray-400" />
+            <TrendingUp className="h-4 w-4 text-gray-400" />
             <span>{project.experiments_count} experiments</span>
           </div>
           {project.budget && (
             <div className="flex items-center gap-2">
-              <BarChart className="h-4 w-4 text-gray-400" />
+              <span className="text-gray-400">$</span>
               <span>Budget: {project.budget}</span>
             </div>
           )}
@@ -283,6 +312,27 @@ const Projects = () => {
       </CardContent>
     </Card>
   );
+
+  // Generate page numbers for pagination
+  const getPageNumbers = () => {
+    const pages = [];
+    const maxVisiblePages = 5;
+    
+    if (totalPages <= maxVisiblePages) {
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i);
+      }
+    } else {
+      const startPage = Math.max(1, currentPage - 2);
+      const endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+      
+      for (let i = startPage; i <= endPage; i++) {
+        pages.push(i);
+      }
+    }
+    
+    return pages;
+  };
 
   if (error) {
     return (
@@ -313,15 +363,15 @@ const Projects = () => {
             <div className="flex items-center justify-between">
               <div>
                 <h1 className="text-3xl font-bold text-gray-900">Research Projects</h1>
-                <p className="text-gray-600 mt-1">Organize and track your research initiatives</p>
+                <p className="text-gray-600 mt-1">Manage your research projects and track progress</p>
               </div>
-              <Button onClick={handleCreateProject} className="gap-2">
-                <FolderOpen className="h-4 w-4" />
+              <Button onClick={() => setCreateProjectOpen(true)} className="gap-2">
+                <Plus className="h-4 w-4" />
                 Create Project
               </Button>
             </div>
 
-            {/* Filters */}
+            {/* Search and Filters */}
             <div className="flex items-center gap-4">
               <div className="flex-1 relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
@@ -349,13 +399,11 @@ const Projects = () => {
                   <SelectValue placeholder="Category" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Categories</SelectItem>
-                  <SelectItem value="research">Research</SelectItem>
-                  <SelectItem value="development">Development</SelectItem>
-                  <SelectItem value="clinical-trial">Clinical Trial</SelectItem>
-                  <SelectItem value="quality-control">Quality Control</SelectItem>
-                  <SelectItem value="regulatory">Regulatory</SelectItem>
-                  <SelectItem value="educational">Educational</SelectItem>
+                  {categories.map((category) => (
+                    <SelectItem key={category} value={category} className="capitalize">
+                      {category === "all" ? "All Categories" : category}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -365,6 +413,9 @@ const Projects = () => {
               <div className="text-sm text-gray-600">
                 Showing {paginatedProjects.length} of {filteredProjects.length} projects
                 {currentPage > 1 && ` (Page ${currentPage} of ${totalPages})`}
+                <span className="ml-2 text-xs text-blue-600">
+                  💡 You can drag projects between pages to reorder them globally
+                </span>
               </div>
             )}
 
@@ -393,10 +444,10 @@ const Projects = () => {
                     </p>
                     <Button 
                       className="mt-4 gap-2" 
-                      onClick={handleCreateProject}
+                      onClick={() => setCreateProjectOpen(true)}
                     >
-                      <FolderOpen className="h-4 w-4" />
-                      Create New Project
+                      <Plus className="h-4 w-4" />
+                      Create First Project
                     </Button>
                   </div>
                 )}

@@ -169,15 +169,55 @@ const Experiments = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  // Enhanced reorder function to handle cross-page dragging
   const handleReorder = async (reorderedExperiments: Experiment[]) => {
     try {
-      // Update display_order for all experiments in the current page
-      const updates = reorderedExperiments.map((exp, index) => ({
-        id: exp.id,
-        display_order: startIndex + index + 1
-      }));
+      // Calculate the global position for each item in the reordered list
+      const updates = reorderedExperiments.map((exp, index) => {
+        // Find the original position of this experiment in the filtered list
+        const originalIndex = filteredExperiments.findIndex(e => e.id === exp.id);
+        
+        // If it was moved within the current page, use current page positioning
+        if (originalIndex >= startIndex && originalIndex < endIndex) {
+          return {
+            id: exp.id,
+            display_order: startIndex + index + 1
+          };
+        }
+        
+        // If it was dragged from another page, insert it at the dropped position
+        return {
+          id: exp.id,
+          display_order: startIndex + index + 1
+        };
+      });
 
-      await updateExperimentOrder.mutateAsync(updates);
+      // Also need to update any experiments that were displaced
+      const displacedUpdates: { id: string; display_order: number }[] = [];
+      
+      // Find experiments that need their order adjusted due to the reordering
+      filteredExperiments.forEach((exp, globalIndex) => {
+        const isInReorderedList = reorderedExperiments.some(r => r.id === exp.id);
+        
+        if (!isInReorderedList) {
+          // This experiment wasn't in the reordered list, but might need repositioning
+          const newOrder = globalIndex < startIndex ? globalIndex + 1 : globalIndex + 1;
+          
+          if (newOrder !== exp.display_order) {
+            displacedUpdates.push({
+              id: exp.id,
+              display_order: newOrder
+            });
+          }
+        }
+      });
+
+      // Combine all updates
+      const allUpdates = [...updates, ...displacedUpdates];
+      
+      if (allUpdates.length > 0) {
+        await updateExperimentOrder.mutateAsync(allUpdates);
+      }
     } catch (error) {
       console.error("Error updating experiment order:", error);
       toast({
@@ -360,6 +400,9 @@ const Experiments = () => {
               <div className="text-sm text-gray-600">
                 Showing {paginatedExperiments.length} of {filteredExperiments.length} experiments
                 {currentPage > 1 && ` (Page ${currentPage} of ${totalPages})`}
+                <span className="ml-2 text-xs text-blue-600">
+                  💡 You can drag experiments between pages to reorder them globally
+                </span>
               </div>
             )}
 

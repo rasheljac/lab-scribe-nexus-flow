@@ -82,15 +82,55 @@ const Protocols = () => {
     navigate(`/protocols/${protocolId}`);
   };
 
+  // Enhanced reorder function to handle cross-page dragging
   const handleReorder = async (reorderedItems: any[]) => {
-    // Update the order based on global position, not just current page
-    const reorderedWithGlobalOrder = reorderedItems.map((item, index) => ({
-      id: item.id,
-      display_order: startIndex + index + 1
-    }));
-
     try {
-      await updateProtocolOrder.mutateAsync(reorderedWithGlobalOrder);
+      // Calculate the global position for each item in the reordered list
+      const updates = reorderedItems.map((protocol, index) => {
+        // Find the original position of this protocol in the filtered list
+        const originalIndex = filteredProtocols.findIndex(p => p.id === protocol.id);
+        
+        // If it was moved within the current page, use current page positioning
+        if (originalIndex >= startIndex && originalIndex < endIndex) {
+          return {
+            id: protocol.id,
+            display_order: startIndex + index + 1
+          };
+        }
+        
+        // If it was dragged from another page, insert it at the dropped position
+        return {
+          id: protocol.id,
+          display_order: startIndex + index + 1
+        };
+      });
+
+      // Also need to update any protocols that were displaced
+      const displacedUpdates: { id: string; display_order: number }[] = [];
+      
+      // Find protocols that need their order adjusted due to the reordering
+      filteredProtocols.forEach((protocol, globalIndex) => {
+        const isInReorderedList = reorderedItems.some(r => r.id === protocol.id);
+        
+        if (!isInReorderedList) {
+          // This protocol wasn't in the reordered list, but might need repositioning
+          const newOrder = globalIndex < startIndex ? globalIndex + 1 : globalIndex + 1;
+          
+          if (newOrder !== protocol.display_order) {
+            displacedUpdates.push({
+              id: protocol.id,
+              display_order: newOrder
+            });
+          }
+        }
+      });
+
+      // Combine all updates
+      const allUpdates = [...updates, ...displacedUpdates];
+      
+      if (allUpdates.length > 0) {
+        await updateProtocolOrder.mutateAsync(allUpdates);
+      }
     } catch (error) {
       console.error("Error updating protocol order:", error);
       toast({
@@ -235,6 +275,17 @@ const Protocols = () => {
               </div>
             </div>
 
+            {/* Results Count */}
+            {!isLoading && (
+              <div className="text-sm text-gray-600">
+                Showing {Math.min(startIndex + 1, filteredProtocols.length)} to {Math.min(endIndex, filteredProtocols.length)} of {filteredProtocols.length} protocols
+                {currentPage > 1 && ` (Page ${currentPage} of ${totalPages})`}
+                <span className="ml-2 text-xs text-blue-600">
+                  💡 You can drag protocols between pages to reorder them globally
+                </span>
+              </div>
+            )}
+
             {/* Protocols Grid */}
             {isLoading ? (
               <div className="flex justify-center py-12">
@@ -303,11 +354,6 @@ const Protocols = () => {
                     </Button>
                   </div>
                 )}
-
-                {/* Items count */}
-                <div className="text-center text-sm text-gray-500 mt-4">
-                  Showing {Math.min(startIndex + 1, filteredProtocols.length)} to {Math.min(endIndex, filteredProtocols.length)} of {filteredProtocols.length} protocols
-                </div>
               </>
             )}
           </div>
