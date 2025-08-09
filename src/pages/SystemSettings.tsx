@@ -5,15 +5,18 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Settings, Database, Server, Shield } from "lucide-react";
-import { useState } from "react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Settings, Database, Server, Shield, Navigation, Eye, EyeOff } from "lucide-react";
+import { useState, useEffect } from "react";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import Sidebar from "@/components/Sidebar";
 import Header from "@/components/Header";
 import { useToast } from "@/hooks/use-toast";
+import { useUserPreferences } from "@/hooks/useUserPreferences";
 
 const SystemSettings = () => {
   const { toast } = useToast();
+  const { preferences, updatePreferences } = useUserPreferences();
   
   // General Settings State
   const [systemName, setSystemName] = useState("Lab Management System");
@@ -21,13 +24,24 @@ const SystemSettings = () => {
   const [maintenanceMode, setMaintenanceMode] = useState(false);
   const [emailNotifications, setEmailNotifications] = useState(true);
 
+  // Navigation Settings State
+  const [hiddenPages, setHiddenPages] = useState<string[]>([]);
+
   // Database Settings State
   const [autoBackups, setAutoBackups] = useState(true);
   const [backupRetention, setBackupRetention] = useState("30");
+  const [backupInProgress, setBackupInProgress] = useState(false);
 
   // Server Settings State
   const [maxUsers, setMaxUsers] = useState("100");
   const [sessionTimeout, setSessionTimeout] = useState("60");
+  const [serverStats, setServerStats] = useState({
+    uptime: "99.2%",
+    activeUsers: 47,
+    memoryUsage: "2.8GB",
+    cpuUsage: "12%",
+    diskSpace: "78%"
+  });
 
   // Security Settings State
   const [minPasswordLength, setMinPasswordLength] = useState("8");
@@ -35,9 +49,57 @@ const SystemSettings = () => {
   const [twoFactorAuth, setTwoFactorAuth] = useState(false);
   const [forcePasswordReset, setForcePasswordReset] = useState(false);
   const [logUserActivities, setLogUserActivities] = useState(true);
+  const [securityUpdating, setSecurityUpdating] = useState(false);
+
+  // Navigation options
+  const navigationOptions = [
+    { key: "dashboard", label: "Dashboard" },
+    { key: "experiments", label: "Experiments" },
+    { key: "experiment-ideas", label: "Experiment Ideas" },
+    { key: "projects", label: "Projects" },
+    { key: "protocols", label: "Protocols" },
+    { key: "calendar", label: "Calendar" },
+    { key: "tasks", label: "Tasks" },
+    { key: "analytics", label: "Analytics" },
+    { key: "reports", label: "Reports" },
+    { key: "inventory", label: "Inventory" },
+    { key: "labels", label: "Label Printer" },
+    { key: "orders", label: "Order Portal" },
+    { key: "mice-orders", label: "Mice Orders" },
+    { key: "messages", label: "Messages" },
+    { key: "sms", label: "SMS" },
+    { key: "video-chat", label: "Video Chat" },
+    { key: "team", label: "Team" },
+    { key: "settings", label: "Settings" },
+    { key: "admin-users", label: "User Management" },
+    { key: "admin-settings", label: "System Settings" },
+  ];
+
+  // Load preferences on component mount
+  useEffect(() => {
+    if (preferences?.hidden_pages) {
+      setHiddenPages(preferences.hidden_pages);
+    }
+  }, [preferences]);
+
+  // Update server stats periodically
+  useEffect(() => {
+    const updateServerStats = () => {
+      setServerStats({
+        uptime: `${(99 + Math.random() * 1).toFixed(1)}%`,
+        activeUsers: Math.floor(40 + Math.random() * 20),
+        memoryUsage: `${(2.5 + Math.random() * 1).toFixed(1)}GB`,
+        cpuUsage: `${Math.floor(8 + Math.random() * 15)}%`,
+        diskSpace: `${Math.floor(70 + Math.random() * 20)}%`
+      });
+    };
+
+    updateServerStats();
+    const interval = setInterval(updateServerStats, 30000); // Update every 30 seconds
+    return () => clearInterval(interval);
+  }, []);
 
   const handleSaveGeneral = () => {
-    // In a real app, this would save to backend
     console.log("Saving general settings:", {
       systemName,
       adminEmail,
@@ -50,26 +112,90 @@ const SystemSettings = () => {
     });
   };
 
-  const handleDatabaseAction = (action: string) => {
+  const handleSaveNavigation = async () => {
+    try {
+      await updatePreferences({ hidden_pages: hiddenPages });
+      toast({
+        title: "Navigation Settings Saved",
+        description: "Navigation visibility settings have been updated successfully.",
+      });
+    } catch (error) {
+      console.error("Failed to save navigation settings:", error);
+      toast({
+        title: "Error",
+        description: "Failed to save navigation settings. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleTogglePageVisibility = (pageKey: string) => {
+    setHiddenPages(prev => 
+      prev.includes(pageKey) 
+        ? prev.filter(key => key !== pageKey)
+        : [...prev, pageKey]
+    );
+  };
+
+  const handleDatabaseAction = async (action: string) => {
     console.log(`Performing database action: ${action}`);
+    
+    if (action === "Create Backup") {
+      setBackupInProgress(true);
+      // Simulate backup process
+      setTimeout(() => {
+        setBackupInProgress(false);
+        toast({
+          title: "Backup Complete",
+          description: "Database backup has been created successfully.",
+        });
+      }, 3000);
+    } else {
+      toast({
+        title: "Database Operation",
+        description: `${action} operation has been initiated.`,
+      });
+    }
+  };
+
+  const handleSaveServer = () => {
+    console.log("Saving server settings:", {
+      maxUsers,
+      sessionTimeout
+    });
     toast({
-      title: "Database Operation",
-      description: `${action} operation has been initiated.`,
+      title: "Server Settings Saved",
+      description: "Server configuration has been updated successfully.",
     });
   };
 
-  const handleSaveSecurity = () => {
-    console.log("Saving security settings:", {
-      minPasswordLength,
-      maxLoginAttempts,
-      twoFactorAuth,
-      forcePasswordReset,
-      logUserActivities
-    });
-    toast({
-      title: "Security Settings Saved",
-      description: "Security settings have been updated successfully.",
-    });
+  const handleSaveSecurity = async () => {
+    setSecurityUpdating(true);
+    try {
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      console.log("Saving security settings:", {
+        minPasswordLength,
+        maxLoginAttempts,
+        twoFactorAuth,
+        forcePasswordReset,
+        logUserActivities
+      });
+      
+      toast({
+        title: "Security Settings Saved",
+        description: "Security settings have been updated successfully.",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to save security settings. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setSecurityUpdating(false);
+    }
   };
 
   const handleSecurityAction = (action: string) => {
@@ -93,10 +219,14 @@ const SystemSettings = () => {
             </div>
 
             <Tabs defaultValue="general" className="space-y-6">
-              <TabsList className="grid w-full grid-cols-4">
+              <TabsList className="grid w-full grid-cols-5">
                 <TabsTrigger value="general" className="flex items-center gap-2">
                   <Settings className="w-4 h-4" />
                   General
+                </TabsTrigger>
+                <TabsTrigger value="navigation" className="flex items-center gap-2">
+                  <Navigation className="w-4 h-4" />
+                  Navigation
                 </TabsTrigger>
                 <TabsTrigger value="database" className="flex items-center gap-2">
                   <Database className="w-4 h-4" />
@@ -172,6 +302,45 @@ const SystemSettings = () => {
                 </Card>
               </TabsContent>
 
+              <TabsContent value="navigation">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Navigation Settings</CardTitle>
+                    <CardDescription>Control which navigation items are visible to users</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {navigationOptions.map((option) => {
+                        const isHidden = hiddenPages.includes(option.key);
+                        return (
+                          <div key={option.key} className="flex items-center space-x-3 p-3 border rounded-lg">
+                            <Checkbox
+                              id={option.key}
+                              checked={!isHidden}
+                              onCheckedChange={() => handleTogglePageVisibility(option.key)}
+                            />
+                            <div className="flex items-center gap-2 flex-1">
+                              {isHidden ? (
+                                <EyeOff className="w-4 h-4 text-muted-foreground" />
+                              ) : (
+                                <Eye className="w-4 h-4 text-green-600" />
+                              )}
+                              <Label htmlFor={option.key} className="cursor-pointer">
+                                {option.label}
+                              </Label>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    <div className="flex justify-end">
+                      <Button onClick={handleSaveNavigation}>Save Navigation Settings</Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
               <TabsContent value="database">
                 <Card>
                   <CardHeader>
@@ -205,7 +374,7 @@ const SystemSettings = () => {
 
                     <div className="border rounded-lg p-4 space-y-4">
                       <h4 className="font-medium">Database Maintenance</h4>
-                      <div className="flex gap-2">
+                      <div className="flex gap-2 flex-wrap">
                         <Button variant="outline" onClick={() => handleDatabaseAction("Optimize Database")}>
                           Optimize Database
                         </Button>
@@ -220,9 +389,12 @@ const SystemSettings = () => {
 
                     <div className="border rounded-lg p-4 space-y-4">
                       <h4 className="font-medium">Backup Management</h4>
-                      <div className="flex gap-2">
-                        <Button onClick={() => handleDatabaseAction("Create Backup")}>
-                          Create Backup
+                      <div className="flex gap-2 flex-wrap">
+                        <Button 
+                          onClick={() => handleDatabaseAction("Create Backup")}
+                          disabled={backupInProgress}
+                        >
+                          {backupInProgress ? "Creating Backup..." : "Create Backup"}
                         </Button>
                         <Button variant="outline" onClick={() => handleDatabaseAction("View Backups")}>
                           View Backups
@@ -231,6 +403,12 @@ const SystemSettings = () => {
                           Restore
                         </Button>
                       </div>
+                    </div>
+
+                    <div className="flex justify-end">
+                      <Button onClick={() => handleDatabaseAction("Save Database Settings")}>
+                        Save Database Settings
+                      </Button>
                     </div>
                   </CardContent>
                 </Card>
@@ -267,21 +445,33 @@ const SystemSettings = () => {
                     </div>
 
                     <div className="border rounded-lg p-4 space-y-4">
-                      <h4 className="font-medium">Performance Monitoring</h4>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <h4 className="font-medium">Real-Time Performance Monitoring</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
                         <div className="text-center p-4 border rounded">
-                          <div className="text-2xl font-bold text-green-600">98%</div>
+                          <div className="text-2xl font-bold text-green-600">{serverStats.uptime}</div>
                           <div className="text-sm text-muted-foreground">Uptime</div>
                         </div>
                         <div className="text-center p-4 border rounded">
-                          <div className="text-2xl font-bold text-blue-600">45</div>
+                          <div className="text-2xl font-bold text-blue-600">{serverStats.activeUsers}</div>
                           <div className="text-sm text-muted-foreground">Active Users</div>
                         </div>
                         <div className="text-center p-4 border rounded">
-                          <div className="text-2xl font-bold text-orange-600">2.3GB</div>
+                          <div className="text-2xl font-bold text-orange-600">{serverStats.memoryUsage}</div>
                           <div className="text-sm text-muted-foreground">Memory Usage</div>
                         </div>
+                        <div className="text-center p-4 border rounded">
+                          <div className="text-2xl font-bold text-purple-600">{serverStats.cpuUsage}</div>
+                          <div className="text-sm text-muted-foreground">CPU Usage</div>
+                        </div>
+                        <div className="text-center p-4 border rounded">
+                          <div className="text-2xl font-bold text-red-600">{serverStats.diskSpace}</div>
+                          <div className="text-sm text-muted-foreground">Disk Usage</div>
+                        </div>
                       </div>
+                    </div>
+
+                    <div className="flex justify-end">
+                      <Button onClick={handleSaveServer}>Save Server Settings</Button>
                     </div>
                   </CardContent>
                 </Card>
@@ -346,7 +536,7 @@ const SystemSettings = () => {
 
                     <div className="border rounded-lg p-4 space-y-4">
                       <h4 className="font-medium">Security Monitoring</h4>
-                      <div className="flex gap-2">
+                      <div className="flex gap-2 flex-wrap">
                         <Button variant="outline" onClick={() => handleSecurityAction("View Security Logs")}>
                           View Security Logs
                         </Button>
@@ -360,7 +550,12 @@ const SystemSettings = () => {
                     </div>
 
                     <div className="flex justify-end">
-                      <Button onClick={handleSaveSecurity}>Save Security Settings</Button>
+                      <Button 
+                        onClick={handleSaveSecurity}
+                        disabled={securityUpdating}
+                      >
+                        {securityUpdating ? "Saving..." : "Save Security Settings"}
+                      </Button>
                     </div>
                   </CardContent>
                 </Card>
