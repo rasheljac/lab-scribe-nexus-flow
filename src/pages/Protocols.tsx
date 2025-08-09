@@ -131,10 +131,80 @@ const Protocols = () => {
     }
   };
 
+  // New function to move item to previous page
+  const handleMoveToPreviousPage = async (protocol: any) => {
+    if (currentPage === 1) return; // Can't move from first page
+    
+    try {
+      const targetPageStartIndex = (currentPage - 2) * ITEMS_PER_PAGE;
+      const targetPosition = targetPageStartIndex + ITEMS_PER_PAGE; // Place at end of previous page
+      
+      await updateProtocolOrder.mutateAsync([{
+        id: protocol.id,
+        display_order: targetPosition
+      }]);
+      
+      toast({
+        title: "Success",
+        description: `Moved "${protocol.title}" to page ${currentPage - 1}`,
+      });
+    } catch (error) {
+      console.error("Error moving protocol:", error);
+      toast({
+        title: "Error",
+        description: "Failed to move protocol",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // New function to move item to next page
+  const handleMoveToNextPage = async (protocol: any) => {
+    if (currentPage === totalPages) return; // Can't move from last page
+    
+    try {
+      const targetPageStartIndex = currentPage * ITEMS_PER_PAGE;
+      const targetPosition = targetPageStartIndex + 1; // Place at beginning of next page
+      
+      await updateProtocolOrder.mutateAsync([{
+        id: protocol.id,
+        display_order: targetPosition
+      }]);
+      
+      toast({
+        title: "Success",
+        description: `Moved "${protocol.title}" to page ${currentPage + 1}`,
+      });
+    } catch (error) {
+      console.error("Error moving protocol:", error);
+      toast({
+        title: "Error",
+        description: "Failed to move protocol",
+        variant: "destructive",
+      });
+    }
+  };
+
   const renderProtocolCard = (protocol: any, index: number) => (
     <Card key={protocol.id} className="hover:shadow-md transition-shadow relative">
-      <div className="absolute top-2 right-2 opacity-30 hover:opacity-70 transition-opacity">
+      <div className="absolute top-2 right-2 flex gap-1 opacity-30 hover:opacity-100 transition-opacity">
+        <button
+          onClick={() => handleMoveToPreviousPage(protocol)}
+          disabled={currentPage === 1}
+          className={`p-1 rounded hover:bg-gray-100 ${currentPage === 1 ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'}`}
+          title={`Move to page ${currentPage - 1}`}
+        >
+          <ChevronLeft className="h-3 w-3 text-gray-600" />
+        </button>
         <ArrowUpDown className="h-4 w-4 text-gray-400" />
+        <button
+          onClick={() => handleMoveToNextPage(protocol)}
+          disabled={currentPage === totalPages}
+          className={`p-1 rounded hover:bg-gray-100 ${currentPage === totalPages ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'}`}
+          title={`Move to page ${currentPage + 1}`}
+        >
+          <ChevronRight className="h-3 w-3 text-gray-600" />
+        </button>
       </div>
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">

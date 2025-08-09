@@ -6,15 +6,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
-  Pagination,
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
-import { 
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -27,18 +18,12 @@ import {
 } from "@/components/ui/alert-dialog";
 import { 
   Search, 
-  FolderOpen, 
-  Calendar, 
-  User, 
-  TrendingUp,
-  Clock,
-  CheckCircle,
-  AlertCircle,
-  Pause,
-  Loader2,
   Plus,
   Trash2,
-  Eye,
+  Calendar,
+  Loader2,
+  Folder,
+  Tag,
   ChevronLeft,
   ChevronRight,
   ArrowUpDown
@@ -57,12 +42,11 @@ const Projects = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [searchTerm, setSearchTerm] = useState(searchParams.get('search') || "");
-  const [filterStatus, setFilterStatus] = useState("all");
-  const [filterCategory, setFilterCategory] = useState("all");
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [createProjectOpen, setCreateProjectOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  
   const { toast } = useToast();
-
   const { projects, isLoading, error, deleteProject, updateProjectOrder } = useProjects();
 
   useEffect(() => {
@@ -75,70 +59,29 @@ const Projects = () => {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, filterStatus, filterCategory]);
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case "completed":
-        return <CheckCircle className="h-4 w-4 text-green-600" />;
-      case "active":
-        return <Clock className="h-4 w-4 text-blue-600" />;
-      case "planning":
-        return <AlertCircle className="h-4 w-4 text-yellow-600" />;
-      case "on_hold":
-        return <Pause className="h-4 w-4 text-gray-600" />;
-      default:
-        return <FolderOpen className="h-4 w-4 text-gray-600" />;
-    }
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "completed":
-        return "bg-green-100 text-green-800";
-      case "active":
-        return "bg-blue-100 text-blue-800";
-      case "planning":
-        return "bg-yellow-100 text-yellow-800";
-      case "on_hold":
-        return "bg-gray-100 text-gray-800";
-      default:
-        return "bg-gray-100 text-gray-800";
-    }
-  };
-
-  const stripHtmlTags = (html: string) => {
-    const tmp = document.createElement("div");
-    tmp.innerHTML = html;
-    return tmp.textContent || tmp.innerText || "";
-  };
-
-  const filteredProjects = projects.filter(project => {
-    const matchesSearch = project.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (project.description && stripHtmlTags(project.description).toLowerCase().includes(searchTerm.toLowerCase()));
-    const matchesStatus = filterStatus === "all" || project.status === filterStatus;
-    const matchesCategory = filterCategory === "all" || project.category === filterCategory;
-    return matchesSearch && matchesStatus && matchesCategory;
-  });
+  }, [searchTerm, selectedCategory]);
 
   const categories = ["all", ...Array.from(new Set(projects.map(p => p.category)))];
 
-  // Calculate pagination
+  const filteredProjects = projects.filter(project => {
+    const matchesSearch = project.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         (project.description && project.description.toLowerCase().includes(searchTerm.toLowerCase()));
+    const matchesCategory = selectedCategory === "all" || project.category === selectedCategory;
+    return matchesSearch && matchesCategory;
+  });
+
+  // Pagination logic
   const totalPages = Math.ceil(filteredProjects.length / ITEMS_PER_PAGE);
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
   const endIndex = startIndex + ITEMS_PER_PAGE;
-  const paginatedProjects = filteredProjects.slice(startIndex, endIndex);
+  const currentProjects = filteredProjects.slice(startIndex, endIndex);
 
-  const handleProjectClick = (projectId: string) => {
-    navigate(`/projects/${projectId}/experiments`);
-  };
-
-  const handleDeleteProject = async (projectId: string, projectTitle: string) => {
+  const handleDeleteProject = async (projectId: string, projectName: string) => {
     try {
       await deleteProject.mutateAsync(projectId);
       toast({
         title: "Success",
-        description: `Project "${projectTitle}" deleted successfully`,
+        description: `Project "${projectName}" deleted successfully`,
       });
     } catch (error) {
       toast({
@@ -149,16 +92,20 @@ const Projects = () => {
     }
   };
 
+  const handleProjectClick = (projectId: string) => {
+    navigate(`/projects/${projectId}`);
+  };
+
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   // Enhanced reorder function with better cross-page support
-  const handleReorder = async (reorderedProjects: Project[]) => {
+  const handleReorder = async (reorderedItems: any[]) => {
     try {
       // Calculate global positions for all reordered items
-      const updates = reorderedProjects.map((project, localIndex) => {
+      const updates = reorderedItems.map((project, localIndex) => {
         const globalPosition = startIndex + localIndex + 1;
         return {
           id: project.id,
@@ -167,7 +114,7 @@ const Projects = () => {
       });
 
       // Find items that were displaced and need their positions updated
-      const reorderedIds = new Set(reorderedProjects.map(item => item.id));
+      const reorderedIds = new Set(reorderedItems.map(item => item.id));
       const displacedUpdates: { id: string; display_order: number }[] = [];
       
       // Update positions for items that weren't in the reordered list
@@ -203,34 +150,96 @@ const Projects = () => {
     }
   };
 
-  const renderProjectCard = (project: Project) => (
+  // New function to move item to previous page
+  const handleMoveToPreviousPage = async (project: any) => {
+    if (currentPage === 1) return; // Can't move from first page
+    
+    try {
+      const targetPageStartIndex = (currentPage - 2) * ITEMS_PER_PAGE;
+      const targetPosition = targetPageStartIndex + ITEMS_PER_PAGE; // Place at end of previous page
+      
+      await updateProjectOrder.mutateAsync([{
+        id: project.id,
+        display_order: targetPosition
+      }]);
+      
+      toast({
+        title: "Success",
+        description: `Moved "${project.name}" to page ${currentPage - 1}`,
+      });
+    } catch (error) {
+      console.error("Error moving project:", error);
+      toast({
+        title: "Error",
+        description: "Failed to move project",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // New function to move item to next page
+  const handleMoveToNextPage = async (project: any) => {
+    if (currentPage === totalPages) return; // Can't move from last page
+    
+    try {
+      const targetPageStartIndex = currentPage * ITEMS_PER_PAGE;
+      const targetPosition = targetPageStartIndex + 1; // Place at beginning of next page
+      
+      await updateProjectOrder.mutateAsync([{
+        id: project.id,
+        display_order: targetPosition
+      }]);
+      
+      toast({
+        title: "Success",
+        description: `Moved "${project.name}" to page ${currentPage + 1}`,
+      });
+    } catch (error) {
+      console.error("Error moving project:", error);
+      toast({
+        title: "Error",
+        description: "Failed to move project",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const renderProjectCard = (project: any, index: number) => (
     <Card key={project.id} className="hover:shadow-md transition-shadow relative">
-      <div className="absolute top-2 right-2 opacity-30 hover:opacity-70 transition-opacity">
+      <div className="absolute top-2 right-2 flex gap-1 opacity-30 hover:opacity-100 transition-opacity">
+        <button
+          onClick={() => handleMoveToPreviousPage(project)}
+          disabled={currentPage === 1}
+          className={`p-1 rounded hover:bg-gray-100 ${currentPage === 1 ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'}`}
+          title={`Move to page ${currentPage - 1}`}
+        >
+          <ChevronLeft className="h-3 w-3 text-gray-600" />
+        </button>
         <ArrowUpDown className="h-4 w-4 text-gray-400" />
+        <button
+          onClick={() => handleMoveToNextPage(project)}
+          disabled={currentPage === totalPages}
+          className={`p-1 rounded hover:bg-gray-100 ${currentPage === totalPages ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'}`}
+          title={`Move to page ${currentPage + 1}`}
+        >
+          <ChevronRight className="h-3 w-3 text-gray-600" />
+        </button>
       </div>
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-2 flex-1">
-            {getStatusIcon(project.status)}
+            <Folder className="h-5 w-5 text-blue-600" />
             <CardTitle 
               className="text-lg cursor-pointer hover:text-blue-600 transition-colors"
               onClick={() => handleProjectClick(project.id)}
             >
-              {project.title}
+              {project.name}
             </CardTitle>
           </div>
           <div className="flex gap-1 items-center">
-            <Badge className={getStatusColor(project.status)}>
-              {project.status.replace('_', ' ')}
+            <Badge variant="outline" className="capitalize">
+              {project.category}
             </Badge>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => handleProjectClick(project.id)}
-              className="p-1 h-6 w-6"
-            >
-              <Eye className="h-3 w-3" />
-            </Button>
             <EditProjectDialog project={project} />
             <AlertDialog>
               <AlertDialogTrigger asChild>
@@ -242,13 +251,13 @@ const Projects = () => {
                 <AlertDialogHeader>
                   <AlertDialogTitle>Delete Project</AlertDialogTitle>
                   <AlertDialogDescription>
-                    Are you sure you want to delete "{project.title}"? This action cannot be undone and will also delete all associated experiments and notes.
+                    Are you sure you want to delete "{project.name}"? This action cannot be undone and will remove this project from all experiments and notes.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                   <AlertDialogCancel>Cancel</AlertDialogCancel>
                   <AlertDialogAction
-                    onClick={() => handleDeleteProject(project.id, project.title)}
+                    onClick={() => handleDeleteProject(project.id, project.name)}
                     className="bg-red-600 hover:bg-red-700"
                   >
                     Delete
@@ -259,75 +268,26 @@ const Projects = () => {
           </div>
         </div>
         {project.description && (
-          <p 
-            className="text-sm text-gray-600 mt-2 cursor-pointer"
-            onClick={() => handleProjectClick(project.id)}
-          >
-            {stripHtmlTags(project.description)}
+          <p className="text-sm text-gray-600 mt-2">
+            {project.description}
           </p>
         )}
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Progress Bar */}
-        <div>
-          <div className="flex justify-between text-sm mb-1">
-            <span>Progress</span>
-            <span>{project.progress}%</span>
-          </div>
-          <div className="w-full bg-gray-200 rounded-full h-2">
-            <div 
-              className="bg-blue-600 h-2 rounded-full transition-all"
-              style={{ width: `${project.progress}%` }}
-            />
-          </div>
-        </div>
-
         {/* Project Details */}
         <div className="space-y-2 text-sm">
           <div className="flex items-center gap-2">
             <Calendar className="h-4 w-4 text-gray-400" />
-            <span>{project.start_date} - {project.end_date || "Ongoing"}</span>
+            <span>Created {new Date(project.created_at).toLocaleDateString()}</span>
           </div>
           <div className="flex items-center gap-2">
-            <TrendingUp className="h-4 w-4 text-gray-400" />
-            <span>{project.experiments_count} experiments</span>
+            <Tag className="h-4 w-4 text-gray-400" />
+            <span>{project.experiments} experiments, {project.protocols} protocols</span>
           </div>
-          {project.budget && (
-            <div className="flex items-center gap-2">
-              <span className="text-gray-400">$</span>
-              <span>Budget: {project.budget}</span>
-            </div>
-          )}
-        </div>
-
-        {/* Category Badge */}
-        <div className="pt-2">
-          <Badge variant="outline">{project.category}</Badge>
         </div>
       </CardContent>
     </Card>
   );
-
-  // Generate page numbers for pagination
-  const getPageNumbers = () => {
-    const pages = [];
-    const maxVisiblePages = 5;
-    
-    if (totalPages <= maxVisiblePages) {
-      for (let i = 1; i <= totalPages; i++) {
-        pages.push(i);
-      }
-    } else {
-      const startPage = Math.max(1, currentPage - 2);
-      const endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
-      
-      for (let i = startPage; i <= endPage; i++) {
-        pages.push(i);
-      }
-    }
-    
-    return pages;
-  };
 
   if (error) {
     return (
@@ -357,8 +317,10 @@ const Projects = () => {
             {/* Header */}
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-3xl font-bold text-gray-900">Research Projects</h1>
-                <p className="text-gray-600 mt-1">Manage your research projects and track progress</p>
+                <h1 className="text-3xl font-bold text-gray-900">Projects</h1>
+                <p className="text-gray-600 mt-1">
+                  {projects.length} projects available
+                </p>
               </div>
               <Button onClick={() => setCreateProjectOpen(true)} className="gap-2">
                 <Plus className="h-4 w-4" />
@@ -377,37 +339,26 @@ const Projects = () => {
                   className="pl-10"
                 />
               </div>
-              <Select value={filterStatus} onValueChange={setFilterStatus}>
-                <SelectTrigger className="w-[150px]">
-                  <SelectValue placeholder="Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="planning">Planning</SelectItem>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="completed">Completed</SelectItem>
-                  <SelectItem value="on_hold">On Hold</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select value={filterCategory} onValueChange={setFilterCategory}>
-                <SelectTrigger className="w-[150px]">
-                  <SelectValue placeholder="Category" />
-                </SelectTrigger>
-                <SelectContent>
-                  {categories.map((category) => (
-                    <SelectItem key={category} value={category} className="capitalize">
-                      {category === "all" ? "All Categories" : category}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="flex gap-2">
+                {categories.map((category) => (
+                  <Button
+                    key={category}
+                    variant={selectedCategory === category ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setSelectedCategory(category)}
+                    className="capitalize"
+                  >
+                    {category}
+                  </Button>
+                ))}
+              </div>
             </div>
 
             {/* Enhanced Results Count with drag instructions */}
             {!isLoading && (
               <div className="flex items-center justify-between text-sm text-gray-600 bg-blue-50 p-3 rounded-lg">
                 <div>
-                  Showing {paginatedProjects.length} of {filteredProjects.length} projects
+                  Showing {Math.min(startIndex + 1, filteredProjects.length)} to {Math.min(endIndex, filteredProjects.length)} of {filteredProjects.length} projects
                   {currentPage > 1 && ` (Page ${currentPage} of ${totalPages})`}
                 </div>
                 <div className="flex items-center gap-2 text-xs text-blue-600">
@@ -424,21 +375,18 @@ const Projects = () => {
               </div>
             ) : (
               <>
-                {paginatedProjects.length > 0 ? (
+                {currentProjects.length > 0 ? (
                   <DraggableGrid
-                    items={paginatedProjects}
+                    items={currentProjects}
                     onReorder={handleReorder}
                     renderItem={renderProjectCard}
                     droppableId={`projects-page-${currentPage}`}
                   />
                 ) : (
                   <div className="text-center py-12">
-                    <FolderOpen className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                    <Folder className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                     <p className="text-gray-600">
-                      {searchTerm || filterStatus !== "all" || filterCategory !== "all" 
-                        ? "No projects found matching your criteria." 
-                        : "No projects found. Create your first project to get started."
-                      }
+                      {searchTerm || selectedCategory !== "all" ? "No projects found matching your criteria." : "No projects found."}
                     </p>
                     <Button 
                       className="mt-4 gap-2" 
@@ -452,87 +400,40 @@ const Projects = () => {
 
                 {/* Pagination */}
                 {totalPages > 1 && (
-                  <div className="flex justify-center mt-8">
-                    <Pagination>
-                      <PaginationContent>
-                        {currentPage > 1 && (
-                          <PaginationItem>
-                            <PaginationPrevious 
-                              href="#"
-                              onClick={(e) => {
-                                e.preventDefault();
-                                handlePageChange(currentPage - 1);
-                              }}
-                            />
-                          </PaginationItem>
-                        )}
-                        
-                        {currentPage > 3 && totalPages > 5 && (
-                          <>
-                            <PaginationItem>
-                              <PaginationLink 
-                                href="#"
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  handlePageChange(1);
-                                }}
-                              >
-                                1
-                              </PaginationLink>
-                            </PaginationItem>
-                            <PaginationItem>
-                              <PaginationEllipsis />
-                            </PaginationItem>
-                          </>
-                        )}
-                        
-                        {getPageNumbers().map((pageNum) => (
-                          <PaginationItem key={pageNum}>
-                            <PaginationLink
-                              href="#"
-                              isActive={pageNum === currentPage}
-                              onClick={(e) => {
-                                e.preventDefault();
-                                handlePageChange(pageNum);
-                              }}
-                            >
-                              {pageNum}
-                            </PaginationLink>
-                          </PaginationItem>
-                        ))}
-                        
-                        {currentPage < totalPages - 2 && totalPages > 5 && (
-                          <>
-                            <PaginationItem>
-                              <PaginationEllipsis />
-                            </PaginationItem>
-                            <PaginationItem>
-                              <PaginationLink 
-                                href="#"
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  handlePageChange(totalPages);
-                                }}
-                              >
-                                {totalPages}
-                              </PaginationLink>
-                            </PaginationItem>
-                          </>
-                        )}
-                        
-                        {currentPage < totalPages && (
-                          <PaginationItem>
-                            <PaginationNext 
-                              href="#"
-                              onClick={(e) => {
-                                e.preventDefault();
-                                handlePageChange(currentPage + 1);
-                              }}
-                            />
-                          </PaginationItem>
-                        )}
-                      </PaginationContent>
-                    </Pagination>
+                  <div className="flex items-center justify-center gap-2 mt-6">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handlePageChange(Math.max(currentPage - 1, 1))}
+                      disabled={currentPage === 1}
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                      Previous
+                    </Button>
+                    
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                        <Button
+                          key={page}
+                          variant={currentPage === page ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => handlePageChange(page)}
+                          className="w-8 h-8 p-0"
+                        >
+                          {page}
+                        </Button>
+                      ))}
+                    </div>
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handlePageChange(Math.min(currentPage + 1, totalPages))}
+                      disabled={currentPage === totalPages}
+                    >
+                      Next
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
                   </div>
                 )}
               </>

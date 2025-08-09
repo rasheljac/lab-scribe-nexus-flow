@@ -193,10 +193,80 @@ const Experiments = () => {
     }
   };
 
+  // New function to move item to previous page
+  const handleMoveToPreviousPage = async (experiment: Experiment) => {
+    if (currentPage === 1) return; // Can't move from first page
+    
+    try {
+      const targetPageStartIndex = (currentPage - 2) * ITEMS_PER_PAGE;
+      const targetPosition = targetPageStartIndex + ITEMS_PER_PAGE; // Place at end of previous page
+      
+      await updateExperimentOrder.mutateAsync([{
+        id: experiment.id,
+        display_order: targetPosition
+      }]);
+      
+      toast({
+        title: "Success",
+        description: `Moved "${experiment.title}" to page ${currentPage - 1}`,
+      });
+    } catch (error) {
+      console.error("Error moving experiment:", error);
+      toast({
+        title: "Error",
+        description: "Failed to move experiment",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // New function to move item to next page
+  const handleMoveToNextPage = async (experiment: Experiment) => {
+    if (currentPage === totalPages) return; // Can't move from last page
+    
+    try {
+      const targetPageStartIndex = currentPage * ITEMS_PER_PAGE;
+      const targetPosition = targetPageStartIndex + 1; // Place at beginning of next page
+      
+      await updateExperimentOrder.mutateAsync([{
+        id: experiment.id,
+        display_order: targetPosition
+      }]);
+      
+      toast({
+        title: "Success",
+        description: `Moved "${experiment.title}" to page ${currentPage + 1}`,
+      });
+    } catch (error) {
+      console.error("Error moving experiment:", error);
+      toast({
+        title: "Error",
+        description: "Failed to move experiment",
+        variant: "destructive",
+      });
+    }
+  };
+
   const renderExperimentCard = (experiment: Experiment) => (
     <Card key={experiment.id} className="hover:shadow-md transition-shadow relative">
-      <div className="absolute top-2 right-2 opacity-30 hover:opacity-70 transition-opacity">
+      <div className="absolute top-2 right-2 flex gap-1 opacity-30 hover:opacity-100 transition-opacity">
+        <button
+          onClick={() => handleMoveToPreviousPage(experiment)}
+          disabled={currentPage === 1}
+          className={`p-1 rounded hover:bg-gray-100 ${currentPage === 1 ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'}`}
+          title={`Move to page ${currentPage - 1}`}
+        >
+          <ChevronLeft className="h-3 w-3 text-gray-600" />
+        </button>
         <ArrowUpDown className="h-4 w-4 text-gray-400" />
+        <button
+          onClick={() => handleMoveToNextPage(experiment)}
+          disabled={currentPage === totalPages}
+          className={`p-1 rounded hover:bg-gray-100 ${currentPage === totalPages ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'}`}
+          title={`Move to page ${currentPage + 1}`}
+        >
+          <ChevronRight className="h-3 w-3 text-gray-600" />
+        </button>
       </div>
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
