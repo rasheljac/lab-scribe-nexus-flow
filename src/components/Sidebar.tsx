@@ -20,7 +20,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Lightbulb,
-  MousePointer2
+  MousePointer2,
+  Smartphone
 } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useExperiments } from "@/hooks/useExperiments";
@@ -31,6 +32,7 @@ import { useReports } from "@/hooks/useReports";
 import { useProtocols } from "@/hooks/useProtocols";
 import { useMiceOrders } from "@/hooks/useMiceOrders";
 import { useUserPreferences } from "@/hooks/useUserPreferences";
+import { useSMS } from "@/hooks/useSMS";
 
 const Sidebar = () => {
   const [collapsed, setCollapsed] = useState(false);
@@ -46,6 +48,7 @@ const Sidebar = () => {
   const { reports } = useReports();
   const { protocols } = useProtocols();
   const { orders } = useMiceOrders();
+  const { smsLogs } = useSMS();
 
   // Filter uncompleted tasks
   const uncompletedTasksCount = tasks.filter(task => task.status !== 'completed').length;
@@ -65,6 +68,7 @@ const Sidebar = () => {
     { icon: ShoppingCart, label: "Order Portal", path: "/orders", badge: "2", key: "orders" },
     { icon: MousePointer2, label: "Mice Orders", path: "/mice-orders", badge: orders.length.toString(), key: "mice-orders" },
     { icon: MessageSquare, label: "Messages", path: "/messages", badge: "5", key: "messages" },
+    { icon: Smartphone, label: "SMS", path: "/sms", badge: smsLogs?.length.toString() || "0", key: "sms" },
     { icon: Video, label: "Video Chat", path: "/video-chat", badge: null, key: "video-chat" },
     { icon: Users, label: "Team", path: "/team", badge: null, key: "team" },
     { icon: Settings, label: "Settings", path: "/settings", badge: null, key: "settings" },

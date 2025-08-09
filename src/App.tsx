@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -30,6 +31,7 @@ import NotFound from "./pages/NotFound";
 import Protocols from "./pages/Protocols";
 import ProtocolDetails from "./pages/ProtocolDetails";
 import MiceOrders from "./pages/MiceOrders";
+import SMS from "./pages/SMS";
 
 const queryClient = new QueryClient();
 
@@ -130,6 +132,11 @@ const App = () => (
             <Route path="/messages" element={
               <ProtectedRoute>
                 <Messages />
+              </ProtectedRoute>
+            } />
+            <Route path="/sms" element={
+              <ProtectedRoute>
+                <SMS />
               </ProtectedRoute>
             } />
             <Route path="/video-chat" element={
