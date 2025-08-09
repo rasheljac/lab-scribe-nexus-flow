@@ -43,22 +43,44 @@ export const useDatabaseBackups = () => {
   const createBackup = useCallback(async () => {
     setIsLoading(true);
     try {
-      // Simulate backup creation
-      await new Promise(resolve => setTimeout(resolve, 3000));
-      
-      const newBackup: DatabaseBackup = {
-        id: Date.now().toString(),
+      // Create a temporary backup entry with in_progress status
+      const tempBackup: DatabaseBackup = {
+        id: `temp-${Date.now()}`,
         name: `manual_backup_${new Date().toISOString().split('T')[0]}.sql`,
-        size: `${(40 + Math.random() * 10).toFixed(1)}MB`,
+        size: 'Calculating...',
         created_at: new Date().toISOString(),
         type: 'manual',
+        status: 'in_progress'
+      };
+      
+      // Add the temporary backup to the list immediately
+      setBackups(prev => [tempBackup, ...prev]);
+      
+      // Simulate backup creation with progress
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      
+      // Create the final backup with completed status
+      const finalBackup: DatabaseBackup = {
+        ...tempBackup,
+        id: Date.now().toString(),
+        size: `${(40 + Math.random() * 10).toFixed(1)}MB`,
         status: 'completed'
       };
       
-      setBackups(prev => [newBackup, ...prev]);
-      return newBackup;
+      // Replace the temporary backup with the final one
+      setBackups(prev => prev.map(backup => 
+        backup.id === tempBackup.id ? finalBackup : backup
+      ));
+      
+      return finalBackup;
     } catch (error) {
       console.error('Failed to create backup:', error);
+      
+      // Remove the temporary backup and add a failed one
+      setBackups(prev => prev.map(backup => 
+        backup.id.startsWith('temp-') ? { ...backup, status: 'failed' as const } : backup
+      ));
+      
       throw error;
     } finally {
       setIsLoading(false);

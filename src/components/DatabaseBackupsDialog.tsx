@@ -16,6 +16,15 @@ const DatabaseBackupsDialog = ({ open, onOpenChange }: DatabaseBackupsDialogProp
   const { toast } = useToast();
 
   const handleDownload = (backup: any) => {
+    if (backup.status !== 'completed') {
+      toast({
+        title: "Download Not Available",
+        description: "Backup must be completed before downloading.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     downloadBackup(backup);
     toast({
       title: "Download Started",
@@ -44,6 +53,13 @@ const DatabaseBackupsDialog = ({ open, onOpenChange }: DatabaseBackupsDialogProp
     }
   };
 
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'in_progress': return <Clock className="w-3 h-3 animate-spin" />;
+      default: return null;
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
@@ -67,7 +83,10 @@ const DatabaseBackupsDialog = ({ open, onOpenChange }: DatabaseBackupsDialogProp
                     <div className="flex items-center gap-3">
                       <h3 className="font-medium">{backup.name}</h3>
                       <Badge variant="secondary" className={getStatusColor(backup.status)}>
-                        {backup.status}
+                        <div className="flex items-center gap-1">
+                          {getStatusIcon(backup.status)}
+                          {backup.status}
+                        </div>
                       </Badge>
                       <Badge variant="outline">
                         {backup.type}
@@ -96,6 +115,7 @@ const DatabaseBackupsDialog = ({ open, onOpenChange }: DatabaseBackupsDialogProp
                       size="sm"
                       onClick={() => handleDelete(backup)}
                       className="text-red-600 hover:text-red-700"
+                      disabled={backup.status === 'in_progress'}
                     >
                       <Trash2 className="w-4 h-4" />
                     </Button>

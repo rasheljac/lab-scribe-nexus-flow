@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { 
   AlertDialog,
   AlertDialogAction,
@@ -30,11 +31,8 @@ interface EventDetailsDialogProps {
 const EventDetailsDialog = ({ event, open, onOpenChange }: EventDetailsDialogProps) => {
   const [isEditing, setIsEditing] = useState(false);
   
-  // Convert ISO strings to datetime-local format for input fields
-  // This ensures the input shows the correct local time
   const formatDateTimeLocal = (isoString: string) => {
     const date = new Date(isoString);
-    // Format as YYYY-MM-DDTHH:mm (local time)
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
@@ -51,6 +49,10 @@ const EventDetailsDialog = ({ event, open, onOpenChange }: EventDetailsDialogPro
     end_time: formatDateTimeLocal(event.end_time),
     location: event.location || "",
     status: event.status,
+    reminder_enabled: event.reminder_enabled || false,
+    reminder_minutes_before: event.reminder_minutes_before || 15,
+    sms_reminder_enabled: (event as any).sms_reminder_enabled || false,
+    sms_reminder_phone: (event as any).sms_reminder_phone || "",
   });
 
   const { updateEvent, deleteEvent } = useCalendarEvents();
@@ -60,15 +62,23 @@ const EventDetailsDialog = ({ event, open, onOpenChange }: EventDetailsDialogPro
     e.preventDefault();
     
     try {
-      // Convert datetime-local strings to proper ISO strings
       const startDate = new Date(formData.start_time);
       const endDate = new Date(formData.end_time);
       
-      // Validate that end time is after start time
       if (endDate <= startDate) {
         toast({
           title: "Invalid Time Range",
           description: "End time must be after start time",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Validate SMS phone number if SMS reminder is enabled
+      if (formData.sms_reminder_enabled && !formData.sms_reminder_phone.trim()) {
+        toast({
+          title: "Phone Number Required",
+          description: "Please enter a phone number for SMS reminders",
           variant: "destructive",
         });
         return;
@@ -81,8 +91,6 @@ const EventDetailsDialog = ({ event, open, onOpenChange }: EventDetailsDialogPro
       };
 
       console.log('Updating event with data:', updateData);
-      console.log('Original form start_time:', formData.start_time);
-      console.log('Converted start_time:', startDate.toISOString());
 
       await updateEvent.mutateAsync({
         id: event.id,
@@ -261,6 +269,67 @@ const EventDetailsDialog = ({ event, open, onOpenChange }: EventDetailsDialogPro
                   <SelectItem value="completed">Completed</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+
+            <div className="space-y-4">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="reminder_enabled"
+                  checked={formData.reminder_enabled}
+                  onCheckedChange={(checked) => 
+                    setFormData({ ...formData, reminder_enabled: checked as boolean })
+                  }
+                />
+                <Label htmlFor="reminder_enabled">Enable email reminder</Label>
+              </div>
+              
+              {formData.reminder_enabled && (
+                <div>
+                  <Label htmlFor="reminder_minutes">Email reminder (minutes before)</Label>
+                  <Select
+                    value={formData.reminder_minutes_before.toString()}
+                    onValueChange={(value) => 
+                      setFormData({ ...formData, reminder_minutes_before: parseInt(value) })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="5">5 minutes</SelectItem>
+                      <SelectItem value="15">15 minutes</SelectItem>
+                      <SelectItem value="30">30 minutes</SelectItem>
+                      <SelectItem value="60">1 hour</SelectItem>
+                      <SelectItem value="1440">1 day</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="sms_reminder_enabled"
+                  checked={formData.sms_reminder_enabled}
+                  onCheckedChange={(checked) => 
+                    setFormData({ ...formData, sms_reminder_enabled: checked as boolean })
+                  }
+                />
+                <Label htmlFor="sms_reminder_enabled">Enable SMS reminder</Label>
+              </div>
+
+              {formData.sms_reminder_enabled && (
+                <div>
+                  <Label htmlFor="sms_reminder_phone">Phone Number for SMS</Label>
+                  <Input
+                    id="sms_reminder_phone"
+                    type="tel"
+                    value={formData.sms_reminder_phone}
+                    onChange={(e) => setFormData({ ...formData, sms_reminder_phone: e.target.value })}
+                    placeholder="+1234567890"
+                  />
+                  <p className="text-sm text-muted-foreground">Include country code (e.g., +1 for US numbers)</p>
+                </div>
+              )}
             </div>
 
             <div className="flex justify-end gap-2">

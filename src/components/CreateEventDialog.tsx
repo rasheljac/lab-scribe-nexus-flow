@@ -26,6 +26,8 @@ interface FormData {
   reminder_enabled: boolean;
   reminder_minutes_before: number;
   reminder_sent: boolean;
+  sms_reminder_enabled: boolean;
+  sms_reminder_phone: string;
 }
 
 interface CreateEventDialogProps {
@@ -48,6 +50,8 @@ const CreateEventDialog = ({ open: controlledOpen, onOpenChange, defaultEventTyp
     reminder_enabled: false,
     reminder_minutes_before: 15,
     reminder_sent: false,
+    sms_reminder_enabled: false,
+    sms_reminder_phone: "",
   });
 
   const { createEvent } = useCalendarEvents();
@@ -69,8 +73,6 @@ const CreateEventDialog = ({ open: controlledOpen, onOpenChange, defaultEventTyp
     
     try {
       // Convert datetime-local strings to proper ISO strings
-      // The datetime-local input gives us a string in format "YYYY-MM-DDTHH:mm"
-      // We need to treat this as local time and convert it properly
       const startDate = new Date(formData.start_time);
       const endDate = new Date(formData.end_time);
       
@@ -84,6 +86,16 @@ const CreateEventDialog = ({ open: controlledOpen, onOpenChange, defaultEventTyp
         return;
       }
 
+      // Validate SMS phone number if SMS reminder is enabled
+      if (formData.sms_reminder_enabled && !formData.sms_reminder_phone.trim()) {
+        toast({
+          title: "Phone Number Required",
+          description: "Please enter a phone number for SMS reminders",
+          variant: "destructive",
+        });
+        return;
+      }
+
       const eventData = {
         ...formData,
         start_time: startDate.toISOString(),
@@ -91,10 +103,6 @@ const CreateEventDialog = ({ open: controlledOpen, onOpenChange, defaultEventTyp
       };
 
       console.log('Creating event with data:', eventData);
-      console.log('Original form start_time:', formData.start_time);
-      console.log('Converted start_time:', startDate.toISOString());
-      console.log('Original form end_time:', formData.end_time);
-      console.log('Converted end_time:', endDate.toISOString());
 
       await createEvent.mutateAsync(eventData);
       toast({
@@ -114,6 +122,8 @@ const CreateEventDialog = ({ open: controlledOpen, onOpenChange, defaultEventTyp
         reminder_enabled: false,
         reminder_minutes_before: 15,
         reminder_sent: false,
+        sms_reminder_enabled: false,
+        sms_reminder_phone: "",
       });
     } catch (error) {
       console.error("Error creating event:", error);
@@ -213,12 +223,12 @@ const CreateEventDialog = ({ open: controlledOpen, onOpenChange, defaultEventTyp
                 setFormData({ ...formData, reminder_enabled: checked as boolean })
               }
             />
-            <Label htmlFor="reminder_enabled">Enable reminder</Label>
+            <Label htmlFor="reminder_enabled">Enable email reminder</Label>
           </div>
           
           {formData.reminder_enabled && (
             <div>
-              <Label htmlFor="reminder_minutes">Remind me (minutes before)</Label>
+              <Label htmlFor="reminder_minutes">Email reminder (minutes before)</Label>
               <Select
                 value={formData.reminder_minutes_before.toString()}
                 onValueChange={(value) => 
@@ -236,6 +246,33 @@ const CreateEventDialog = ({ open: controlledOpen, onOpenChange, defaultEventTyp
                   <SelectItem value="1440">1 day</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+          )}
+
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="sms_reminder_enabled"
+              checked={formData.sms_reminder_enabled}
+              onCheckedChange={(checked) => 
+                setFormData({ ...formData, sms_reminder_enabled: checked as boolean })
+              }
+            />
+            <Label htmlFor="sms_reminder_enabled">Enable SMS reminder</Label>
+          </div>
+
+          {formData.sms_reminder_enabled && (
+            <div className="space-y-2">
+              <div>
+                <Label htmlFor="sms_reminder_phone">Phone Number for SMS</Label>
+                <Input
+                  id="sms_reminder_phone"
+                  type="tel"
+                  value={formData.sms_reminder_phone}
+                  onChange={(e) => setFormData({ ...formData, sms_reminder_phone: e.target.value })}
+                  placeholder="+1234567890"
+                />
+                <p className="text-sm text-muted-foreground">Include country code (e.g., +1 for US numbers)</p>
+              </div>
             </div>
           )}
         </div>
