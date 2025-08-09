@@ -35,6 +35,7 @@ import EditProjectDialog from "@/components/EditProjectDialog";
 import DraggableGrid from "@/components/DraggableGrid";
 import { useProjects, Project } from "@/hooks/useProjects";
 import { useToast } from "@/hooks/use-toast";
+import { convertHtmlToStructuredText, convertStructuredTextToPlain } from '@/utils/htmlToText';
 
 const ITEMS_PER_PAGE = 8;
 
@@ -269,7 +270,11 @@ const Projects = () => {
         </div>
         {project.description && (
           <p className="text-sm text-gray-600 mt-2">
-            {project.description}
+            {(() => {
+              // Convert HTML to plain text for display
+              const structuredText = convertHtmlToStructuredText(project.description);
+              return convertStructuredTextToPlain(structuredText);
+            })()}
           </p>
         )}
       </CardHeader>

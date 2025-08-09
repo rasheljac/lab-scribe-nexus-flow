@@ -1,5 +1,6 @@
 
 import React from 'react';
+import { convertHtmlToStructuredText, convertStructuredTextToPlain } from '@/utils/htmlToText';
 
 interface RichTextDisplayProps {
   content: string;
@@ -10,26 +11,29 @@ interface RichTextDisplayProps {
 const RichTextDisplay = ({ content, className = "", maxLength }: RichTextDisplayProps) => {
   if (!content) return null;
 
-  // If maxLength is specified, strip HTML for length calculation and truncation
+  // If maxLength is specified, convert to plain text for length calculation and truncation
   if (maxLength) {
-    const stripHtml = (html: string) => {
-      const tmp = document.createElement("div");
-      tmp.innerHTML = html;
-      return tmp.textContent || tmp.innerText || "";
-    };
-
-    const plainText = stripHtml(content);
+    const structuredText = convertHtmlToStructuredText(content);
+    const plainText = convertStructuredTextToPlain(structuredText);
+    
     if (plainText.length > maxLength) {
-      const truncatedPlainText = plainText.substring(0, maxLength) + '...';
+      const truncatedText = plainText.substring(0, maxLength) + '...';
       return (
         <div className={className}>
-          {truncatedPlainText}
+          {truncatedText}
         </div>
       );
     }
+
+    // If it's short enough, show the plain text version
+    return (
+      <div className={className}>
+        {plainText}
+      </div>
+    );
   }
 
-  // Render full HTML content with proper styling for headings and rich text
+  // For full display without maxLength, render HTML with proper styling
   return (
     <div 
       className={`prose prose-gray max-w-none 

@@ -6,16 +6,34 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { MessageSquare, Send, Clock, CheckCircle, XCircle, Trash2 } from "lucide-react";
+import { MessageSquare, Send, Clock, CheckCircle, XCircle, Trash2, Users } from "lucide-react";
 import { useSMS } from "@/hooks/useSMS";
+import { useContacts } from "@/hooks/useContacts";
 import { format } from "date-fns";
 import { SMSLog } from "@/types/sms";
+import ContactsDialog from "./ContactsDialog";
 
 const SMSManager = () => {
   const [message, setMessage] = useState('');
   const [mobileNumber, setMobileNumber] = useState('');
+  const [selectedContact, setSelectedContact] = useState<string>('');
   const { sendSMS, smsLogs, logsLoading, deleteSMS } = useSMS();
+  const { contacts } = useContacts();
+
+  const handleContactSelect = (contactId: string) => {
+    setSelectedContact(contactId);
+    if (contactId === 'manual') {
+      setMobileNumber('');
+      return;
+    }
+    
+    const contact = contacts.find(c => c.id === contactId);
+    if (contact) {
+      setMobileNumber(contact.mobile_number);
+    }
+  };
 
   const handleSendSMS = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,6 +52,7 @@ const SMSManager = () => {
       await sendSMS.mutateAsync({ message, mobile_number: mobileNumber });
       setMessage('');
       setMobileNumber('');
+      setSelectedContact('');
     } catch (error) {
       console.error('Failed to send SMS:', error);
     }
@@ -62,13 +81,33 @@ const SMSManager = () => {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <MessageSquare className="w-5 h-5" />
-            Send SMS Message
-          </CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <MessageSquare className="w-5 h-5" />
+              Send SMS Message
+            </CardTitle>
+            <ContactsDialog />
+          </div>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSendSMS} className="space-y-4">
+            <div>
+              <Label htmlFor="contact_select">Select Contact</Label>
+              <Select value={selectedContact} onValueChange={handleContactSelect}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose a contact or enter manually" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="manual">Enter manually</SelectItem>
+                  {contacts.map((contact) => (
+                    <SelectItem key={contact.id} value={contact.id}>
+                      {contact.name} ({contact.mobile_number})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
             <div>
               <Label htmlFor="mobile_number">Mobile Number</Label>
               <Input
@@ -78,6 +117,7 @@ const SMSManager = () => {
                 onChange={(e) => setMobileNumber(e.target.value)}
                 placeholder="+1234567890"
                 required
+                disabled={selectedContact !== '' && selectedContact !== 'manual'}
               />
               <p className="text-sm text-muted-foreground mt-1">
                 Include country code (e.g., +1 for US numbers)
