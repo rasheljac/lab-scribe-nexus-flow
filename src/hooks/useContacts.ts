@@ -30,7 +30,7 @@ export const useContacts = () => {
         .order('name', { ascending: true });
 
       if (error) throw error;
-      return (data || []) as Contact[];
+      return (data as unknown as Contact[]) || [];
     },
     enabled: !!user,
   });
