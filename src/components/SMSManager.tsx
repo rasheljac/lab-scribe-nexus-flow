@@ -5,11 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { MessageSquare, Send, Clock, CheckCircle, XCircle } from "lucide-react";
 import { useSMS } from "@/hooks/useSMS";
 import { format } from "date-fns";
+import { SMSLog } from "@/types/sms";
 
 const SMSManager = () => {
   const [message, setMessage] = useState('');
@@ -38,7 +38,7 @@ const SMSManager = () => {
     }
   };
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (status: SMSLog['status']) => {
     switch (status) {
       case 'sent':
         return <Badge variant="default" className="bg-green-100 text-green-800"><CheckCircle className="w-3 h-3 mr-1" />Sent</Badge>;
@@ -121,7 +121,7 @@ const SMSManager = () => {
             <div className="text-center py-4">Loading SMS history...</div>
           ) : smsLogs && smsLogs.length > 0 ? (
             <div className="space-y-4">
-              {smsLogs.map((log) => (
+              {smsLogs.map((log: SMSLog) => (
                 <div key={log.id} className="border rounded-lg p-4">
                   <div className="flex items-center justify-between mb-2">
                     <span className="font-medium">{log.mobile_number}</span>

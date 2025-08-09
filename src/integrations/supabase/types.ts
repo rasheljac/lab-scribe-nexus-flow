@@ -842,6 +842,39 @@ export type Database = {
         }
         Relationships: []
       }
+      sms_logs: {
+        Row: {
+          api_response: string | null
+          created_at: string
+          id: string
+          message: string
+          mobile_number: string
+          sent_at: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          api_response?: string | null
+          created_at?: string
+          id?: string
+          message: string
+          mobile_number: string
+          sent_at?: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          api_response?: string | null
+          created_at?: string
+          id?: string
+          message?: string
+          mobile_number?: string
+          sent_at?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       tasks: {
         Row: {
           assignee: string

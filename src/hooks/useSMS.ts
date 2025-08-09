@@ -3,6 +3,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { SMSLog } from "@/types/sms";
 
 export const useSMS = () => {
   const { user } = useAuth();
@@ -42,18 +43,19 @@ export const useSMS = () => {
 
   const { data: smsLogs, isLoading: logsLoading } = useQuery({
     queryKey: ['sms-logs', user?.id],
-    queryFn: async () => {
+    queryFn: async (): Promise<SMSLog[]> => {
       if (!user) return [];
       
+      // Use a raw query since the table might not be in the generated types yet
       const { data, error } = await supabase
-        .from('sms_logs')
+        .from('sms_logs' as any)
         .select('*')
         .eq('user_id', user.id)
         .order('sent_at', { ascending: false })
         .limit(50);
 
       if (error) throw error;
-      return data;
+      return data as SMSLog[];
     },
     enabled: !!user,
   });
