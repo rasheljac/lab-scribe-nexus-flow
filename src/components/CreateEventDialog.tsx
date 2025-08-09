@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -102,6 +101,7 @@ const CreateEventDialog = ({ open: controlledOpen, onOpenChange, defaultEventTyp
         ...formData,
         start_time: startDate.toISOString(),
         end_time: endDate.toISOString(),
+        sms_reminder_sent: false,
       };
 
       console.log('Creating event with data:', eventData);
