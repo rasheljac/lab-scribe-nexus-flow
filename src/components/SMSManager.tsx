@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -76,6 +77,20 @@ const SMSManager = () => {
     }
   };
 
+  const getSelectedContactName = () => {
+    if (selectedContact && selectedContact !== 'manual') {
+      const contact = contacts.find(c => c.id === selectedContact);
+      return contact?.name;
+    }
+    return null;
+  };
+
+  const getRecipientDisplay = (log: SMSLog) => {
+    // Try to find a contact with this mobile number
+    const contact = contacts.find(c => c.mobile_number === log.mobile_number);
+    return contact ? `${contact.name} (${log.mobile_number})` : log.mobile_number;
+  };
+
   return (
     <div className="space-y-6">
       <Card>
@@ -83,7 +98,7 @@ const SMSManager = () => {
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
               <MessageSquare className="w-5 h-5" />
-              Send SMS Message
+              {getSelectedContactName() ? `Send SMS to ${getSelectedContactName()}` : 'Send SMS Message'}
             </CardTitle>
             <ContactsDialog />
           </div>
@@ -133,9 +148,6 @@ const SMSManager = () => {
                 rows={4}
                 required
               />
-              <p className="text-sm text-muted-foreground mt-1">
-                {message.length} characters
-              </p>
             </div>
             
             <Button 
@@ -171,7 +183,7 @@ const SMSManager = () => {
               {smsLogs.map((log: SMSLog) => (
                 <div key={log.id} className="border rounded-lg p-4">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="font-medium">{log.mobile_number}</span>
+                    <span className="font-medium">{getRecipientDisplay(log)}</span>
                     <div className="flex items-center gap-2">
                       {getStatusBadge(log.status)}
                       <AlertDialog>
