@@ -27,6 +27,9 @@ export type Database = {
           reminder_enabled: boolean | null
           reminder_minutes_before: number | null
           reminder_sent: boolean | null
+          sms_reminder_enabled: boolean | null
+          sms_reminder_phone: string | null
+          sms_reminder_sent: boolean | null
           start_time: string
           status: string
           title: string
@@ -45,6 +48,9 @@ export type Database = {
           reminder_enabled?: boolean | null
           reminder_minutes_before?: number | null
           reminder_sent?: boolean | null
+          sms_reminder_enabled?: boolean | null
+          sms_reminder_phone?: string | null
+          sms_reminder_sent?: boolean | null
           start_time: string
           status?: string
           title: string
@@ -63,6 +69,9 @@ export type Database = {
           reminder_enabled?: boolean | null
           reminder_minutes_before?: number | null
           reminder_sent?: boolean | null
+          sms_reminder_enabled?: boolean | null
+          sms_reminder_phone?: string | null
+          sms_reminder_sent?: boolean | null
           start_time?: string
           status?: string
           title?: string

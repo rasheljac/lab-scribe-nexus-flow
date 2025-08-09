@@ -49,7 +49,7 @@ const handler = async (req: Request): Promise<Response> => {
     for (const event of events) {
       try {
         const eventStart = new Date(event.start_time);
-        const reminderTime = new Date(eventStart.getTime() - (event.sms_reminder_minutes_before || 15) * 60 * 1000);
+        const reminderTime = new Date(eventStart.getTime() - 15 * 60 * 1000); // Default 15 minutes before
         const now = new Date();
 
         // Check if it's time to send the reminder
