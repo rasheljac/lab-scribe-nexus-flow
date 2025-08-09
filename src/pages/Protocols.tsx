@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -25,7 +24,8 @@ import {
   BookOpen,
   Tag,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  ArrowUpDown
 } from "lucide-react";
 import Sidebar from "@/components/Sidebar";
 import Header from "@/components/Header";
@@ -82,44 +82,30 @@ const Protocols = () => {
     navigate(`/protocols/${protocolId}`);
   };
 
-  // Enhanced reorder function to handle cross-page dragging
+  // Enhanced reorder function with better cross-page support
   const handleReorder = async (reorderedItems: any[]) => {
     try {
-      // Calculate the global position for each item in the reordered list
-      const updates = reorderedItems.map((protocol, index) => {
-        // Find the original position of this protocol in the filtered list
-        const originalIndex = filteredProtocols.findIndex(p => p.id === protocol.id);
-        
-        // If it was moved within the current page, use current page positioning
-        if (originalIndex >= startIndex && originalIndex < endIndex) {
-          return {
-            id: protocol.id,
-            display_order: startIndex + index + 1
-          };
-        }
-        
-        // If it was dragged from another page, insert it at the dropped position
+      // Calculate global positions for all reordered items
+      const updates = reorderedItems.map((protocol, localIndex) => {
+        const globalPosition = startIndex + localIndex + 1;
         return {
           id: protocol.id,
-          display_order: startIndex + index + 1
+          display_order: globalPosition
         };
       });
 
-      // Also need to update any protocols that were displaced
+      // Find items that were displaced and need their positions updated
+      const reorderedIds = new Set(reorderedItems.map(item => item.id));
       const displacedUpdates: { id: string; display_order: number }[] = [];
       
-      // Find protocols that need their order adjusted due to the reordering
+      // Update positions for items that weren't in the reordered list
       filteredProtocols.forEach((protocol, globalIndex) => {
-        const isInReorderedList = reorderedItems.some(r => r.id === protocol.id);
-        
-        if (!isInReorderedList) {
-          // This protocol wasn't in the reordered list, but might need repositioning
-          const newOrder = globalIndex < startIndex ? globalIndex + 1 : globalIndex + 1;
-          
-          if (newOrder !== protocol.display_order) {
+        if (!reorderedIds.has(protocol.id)) {
+          const newPosition = globalIndex + 1;
+          if (newPosition !== protocol.display_order) {
             displacedUpdates.push({
               id: protocol.id,
-              display_order: newOrder
+              display_order: newPosition
             });
           }
         }
@@ -130,6 +116,10 @@ const Protocols = () => {
       
       if (allUpdates.length > 0) {
         await updateProtocolOrder.mutateAsync(allUpdates);
+        toast({
+          title: "Success",
+          description: `Updated order for ${allUpdates.length} protocol(s)`,
+        });
       }
     } catch (error) {
       console.error("Error updating protocol order:", error);
@@ -142,7 +132,10 @@ const Protocols = () => {
   };
 
   const renderProtocolCard = (protocol: any, index: number) => (
-    <Card key={protocol.id} className="hover:shadow-md transition-shadow">
+    <Card key={protocol.id} className="hover:shadow-md transition-shadow relative">
+      <div className="absolute top-2 right-2 opacity-30 hover:opacity-70 transition-opacity">
+        <ArrowUpDown className="h-4 w-4 text-gray-400" />
+      </div>
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-2 flex-1">
@@ -275,14 +268,17 @@ const Protocols = () => {
               </div>
             </div>
 
-            {/* Results Count */}
+            {/* Enhanced Results Count with drag instructions */}
             {!isLoading && (
-              <div className="text-sm text-gray-600">
-                Showing {Math.min(startIndex + 1, filteredProtocols.length)} to {Math.min(endIndex, filteredProtocols.length)} of {filteredProtocols.length} protocols
-                {currentPage > 1 && ` (Page ${currentPage} of ${totalPages})`}
-                <span className="ml-2 text-xs text-blue-600">
-                  💡 You can drag protocols between pages to reorder them globally
-                </span>
+              <div className="flex items-center justify-between text-sm text-gray-600 bg-blue-50 p-3 rounded-lg">
+                <div>
+                  Showing {Math.min(startIndex + 1, filteredProtocols.length)} to {Math.min(endIndex, filteredProtocols.length)} of {filteredProtocols.length} protocols
+                  {currentPage > 1 && ` (Page ${currentPage} of ${totalPages})`}
+                </div>
+                <div className="flex items-center gap-2 text-xs text-blue-600">
+                  <ArrowUpDown className="h-4 w-4" />
+                  <span>💡 Drag protocols to reorder them. Changes apply globally across all pages!</span>
+                </div>
               </div>
             )}
 
@@ -298,7 +294,7 @@ const Protocols = () => {
                     items={currentProtocols}
                     onReorder={handleReorder}
                     renderItem={renderProtocolCard}
-                    droppableId="protocols"
+                    droppableId={`protocols-page-${currentPage}`}
                   />
                 ) : (
                   <div className="text-center py-12">

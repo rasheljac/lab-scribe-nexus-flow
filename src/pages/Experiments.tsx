@@ -6,15 +6,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
-  Pagination,
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
-import { 
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -34,8 +25,13 @@ import {
   Clock,
   CheckCircle,
   AlertCircle,
+  Pause,
   Loader2,
-  Trash2
+  Plus,
+  Trash2,
+  ChevronLeft,
+  ChevronRight,
+  ArrowUpDown
 } from "lucide-react";
 import Sidebar from "@/components/Sidebar";
 import Header from "@/components/Header";
@@ -45,6 +41,8 @@ import DraggableGrid from "@/components/DraggableGrid";
 import { useExperiments, Experiment } from "@/hooks/useExperiments";
 import { useToast } from "@/hooks/use-toast";
 
+const ITEMS_PER_PAGE = 8;
+
 const Experiments = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -53,12 +51,10 @@ const Experiments = () => {
   const [filterCategory, setFilterCategory] = useState("all");
   const [createExperimentOpen, setCreateExperimentOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 8;
   const { toast } = useToast();
 
   const { experiments, isLoading, error, deleteExperiment, updateExperimentOrder } = useExperiments();
 
-  // Update search params when search term changes
   useEffect(() => {
     if (searchTerm) {
       setSearchParams({ search: searchTerm });
@@ -67,7 +63,6 @@ const Experiments = () => {
     }
   }, [searchTerm, setSearchParams]);
 
-  // Reset to first page when filters change
   useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm, filterStatus, filterCategory]);
@@ -80,6 +75,8 @@ const Experiments = () => {
         return <Clock className="h-4 w-4 text-blue-600" />;
       case "planning":
         return <AlertCircle className="h-4 w-4 text-yellow-600" />;
+      case "on_hold":
+        return <Pause className="h-4 w-4 text-gray-600" />;
       default:
         return <Beaker className="h-4 w-4 text-gray-600" />;
     }
@@ -93,6 +90,8 @@ const Experiments = () => {
         return "bg-blue-100 text-blue-800";
       case "planning":
         return "bg-yellow-100 text-yellow-800";
+      case "on_hold":
+        return "bg-gray-100 text-gray-800";
       default:
         return "bg-gray-100 text-gray-800";
     }
@@ -104,54 +103,34 @@ const Experiments = () => {
     return tmp.textContent || tmp.innerText || "";
   };
 
-  const filteredExperiments = experiments.filter(exp => {
-    const matchesSearch = exp.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (exp.description && stripHtmlTags(exp.description).toLowerCase().includes(searchTerm.toLowerCase()));
-    const matchesStatus = filterStatus === "all" || exp.status === filterStatus;
-    const matchesCategory = filterCategory === "all" || exp.category === filterCategory;
+  const filteredExperiments = experiments.filter(experiment => {
+    const matchesSearch = experiment.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         (experiment.description && stripHtmlTags(experiment.description).toLowerCase().includes(searchTerm.toLowerCase()));
+    const matchesStatus = filterStatus === "all" || experiment.status === filterStatus;
+    const matchesCategory = filterCategory === "all" || experiment.category === filterCategory;
     return matchesSearch && matchesStatus && matchesCategory;
   });
 
-  // Calculate pagination
-  const totalPages = Math.ceil(filteredExperiments.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const paginatedExperiments = filteredExperiments.slice(startIndex, endIndex);
+  const categories = ["all", ...Array.from(new Set(experiments.map(e => e.category)))];
 
-  // Generate page numbers for pagination
-  const getPageNumbers = () => {
-    const pages = [];
-    const maxVisiblePages = 5;
-    
-    if (totalPages <= maxVisiblePages) {
-      for (let i = 1; i <= totalPages; i++) {
-        pages.push(i);
-      }
-    } else {
-      const startPage = Math.max(1, currentPage - 2);
-      const endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
-      
-      for (let i = startPage; i <= endPage; i++) {
-        pages.push(i);
-      }
-    }
-    
-    return pages;
-  };
+  // Calculate pagination
+  const totalPages = Math.ceil(filteredExperiments.length / ITEMS_PER_PAGE);
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const endIndex = startIndex + ITEMS_PER_PAGE;
+  const paginatedExperiments = filteredExperiments.slice(startIndex, endIndex);
 
   const handleExperimentClick = (experimentId: string) => {
     navigate(`/experiments/${experimentId}/notes`);
   };
 
-  const handleDeleteExperiment = async (experimentId: string) => {
+  const handleDeleteExperiment = async (experimentId: string, experimentTitle: string) => {
     try {
       await deleteExperiment.mutateAsync(experimentId);
       toast({
         title: "Success",
-        description: "Experiment deleted successfully!",
+        description: `Experiment "${experimentTitle}" deleted successfully`,
       });
     } catch (error) {
-      console.error("Error deleting experiment:", error);
       toast({
         title: "Error",
         description: "Failed to delete experiment",
@@ -160,53 +139,35 @@ const Experiments = () => {
     }
   };
 
-  const handleCreateExperiment = () => {
-    setCreateExperimentOpen(true);
-  };
-
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Enhanced reorder function to handle cross-page dragging
-  const handleReorder = async (reorderedExperiments: Experiment[]) => {
+  // Enhanced reorder function with better cross-page support
+  const handleReorder = async (reorderedItems: Experiment[]) => {
     try {
-      // Calculate the global position for each item in the reordered list
-      const updates = reorderedExperiments.map((exp, index) => {
-        // Find the original position of this experiment in the filtered list
-        const originalIndex = filteredExperiments.findIndex(e => e.id === exp.id);
-        
-        // If it was moved within the current page, use current page positioning
-        if (originalIndex >= startIndex && originalIndex < endIndex) {
-          return {
-            id: exp.id,
-            display_order: startIndex + index + 1
-          };
-        }
-        
-        // If it was dragged from another page, insert it at the dropped position
+      // Calculate global positions for all reordered items
+      const updates = reorderedItems.map((experiment, localIndex) => {
+        const globalPosition = startIndex + localIndex + 1;
         return {
-          id: exp.id,
-          display_order: startIndex + index + 1
+          id: experiment.id,
+          display_order: globalPosition
         };
       });
 
-      // Also need to update any experiments that were displaced
+      // Find items that were displaced and need their positions updated
+      const reorderedIds = new Set(reorderedItems.map(item => item.id));
       const displacedUpdates: { id: string; display_order: number }[] = [];
       
-      // Find experiments that need their order adjusted due to the reordering
-      filteredExperiments.forEach((exp, globalIndex) => {
-        const isInReorderedList = reorderedExperiments.some(r => r.id === exp.id);
-        
-        if (!isInReorderedList) {
-          // This experiment wasn't in the reordered list, but might need repositioning
-          const newOrder = globalIndex < startIndex ? globalIndex + 1 : globalIndex + 1;
-          
-          if (newOrder !== exp.display_order) {
+      // Update positions for items that weren't in the reordered list
+      filteredExperiments.forEach((experiment, globalIndex) => {
+        if (!reorderedIds.has(experiment.id)) {
+          const newPosition = globalIndex + 1;
+          if (newPosition !== experiment.display_order) {
             displacedUpdates.push({
-              id: exp.id,
-              display_order: newOrder
+              id: experiment.id,
+              display_order: newPosition
             });
           }
         }
@@ -217,6 +178,10 @@ const Experiments = () => {
       
       if (allUpdates.length > 0) {
         await updateExperimentOrder.mutateAsync(allUpdates);
+        toast({
+          title: "Success",
+          description: `Updated order for ${allUpdates.length} experiment(s)`,
+        });
       }
     } catch (error) {
       console.error("Error updating experiment order:", error);
@@ -229,13 +194,16 @@ const Experiments = () => {
   };
 
   const renderExperimentCard = (experiment: Experiment) => (
-    <Card key={experiment.id} className="hover:shadow-md transition-shadow">
+    <Card key={experiment.id} className="hover:shadow-md transition-shadow relative">
+      <div className="absolute top-2 right-2 opacity-30 hover:opacity-70 transition-opacity">
+        <ArrowUpDown className="h-4 w-4 text-gray-400" />
+      </div>
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-2 flex-1">
             {getStatusIcon(experiment.status)}
             <CardTitle 
-              className="text-lg cursor-pointer hover:text-blue-600"
+              className="text-lg cursor-pointer hover:text-blue-600 transition-colors"
               onClick={() => handleExperimentClick(experiment.id)}
             >
               {experiment.title}
@@ -262,7 +230,7 @@ const Experiments = () => {
                 <AlertDialogFooter>
                   <AlertDialogCancel>Cancel</AlertDialogCancel>
                   <AlertDialogAction
-                    onClick={() => handleDeleteExperiment(experiment.id)}
+                    onClick={() => handleDeleteExperiment(experiment.id, experiment.title)}
                     className="bg-red-600 hover:bg-red-700"
                   >
                     Delete
@@ -272,12 +240,14 @@ const Experiments = () => {
             </AlertDialog>
           </div>
         </div>
-        <p 
-          className="text-sm text-gray-600 mt-2 cursor-pointer"
-          onClick={() => handleExperimentClick(experiment.id)}
-        >
-          {experiment.description ? stripHtmlTags(experiment.description) : ""}
-        </p>
+        {experiment.description && (
+          <p 
+            className="text-sm text-gray-600 mt-2 cursor-pointer"
+            onClick={() => handleExperimentClick(experiment.id)}
+          >
+            {stripHtmlTags(experiment.description)}
+          </p>
+        )}
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Progress Bar */}
@@ -346,16 +316,16 @@ const Experiments = () => {
             {/* Header */}
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-3xl font-bold text-gray-900">Laboratory Experiments</h1>
-                <p className="text-gray-600 mt-1">Track and manage your research experiments</p>
+                <h1 className="text-3xl font-bold text-gray-900">Experiments</h1>
+                <p className="text-gray-600 mt-1">Manage your experiments and track progress</p>
               </div>
-              <Button onClick={handleCreateExperiment} className="gap-2">
-                <Beaker className="h-4 w-4" />
+              <Button onClick={() => setCreateExperimentOpen(true)} className="gap-2">
+                <Plus className="h-4 w-4" />
                 Create Experiment
               </Button>
             </div>
 
-            {/* Filters */}
+            {/* Search and Filters */}
             <div className="flex items-center gap-4">
               <div className="flex-1 relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
@@ -375,6 +345,7 @@ const Experiments = () => {
                   <SelectItem value="planning">Planning</SelectItem>
                   <SelectItem value="in_progress">In Progress</SelectItem>
                   <SelectItem value="completed">Completed</SelectItem>
+                  <SelectItem value="on_hold">On Hold</SelectItem>
                 </SelectContent>
               </Select>
               <Select value={filterCategory} onValueChange={setFilterCategory}>
@@ -382,27 +353,26 @@ const Experiments = () => {
                   <SelectValue placeholder="Category" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Categories</SelectItem>
-                  <SelectItem value="biochemistry">Biochemistry</SelectItem>
-                  <SelectItem value="molecular-biology">Molecular Biology</SelectItem>
-                  <SelectItem value="cell-biology">Cell Biology</SelectItem>
-                  <SelectItem value="genetics">Genetics</SelectItem>
-                  <SelectItem value="microbiology">Microbiology</SelectItem>
-                  <SelectItem value="immunology">Immunology</SelectItem>
-                  <SelectItem value="neuroscience">Neuroscience</SelectItem>
-                  <SelectItem value="pharmacology">Pharmacology</SelectItem>
+                  {categories.map((category) => (
+                    <SelectItem key={category} value={category} className="capitalize">
+                      {category === "all" ? "All Categories" : category}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
 
-            {/* Results Count */}
+            {/* Enhanced Results Count with drag instructions */}
             {!isLoading && (
-              <div className="text-sm text-gray-600">
-                Showing {paginatedExperiments.length} of {filteredExperiments.length} experiments
-                {currentPage > 1 && ` (Page ${currentPage} of ${totalPages})`}
-                <span className="ml-2 text-xs text-blue-600">
-                  💡 You can drag experiments between pages to reorder them globally
-                </span>
+              <div className="flex items-center justify-between text-sm text-gray-600 bg-blue-50 p-3 rounded-lg">
+                <div>
+                  Showing {paginatedExperiments.length} of {filteredExperiments.length} experiments
+                  {currentPage > 1 && ` (Page ${currentPage} of ${totalPages})`}
+                </div>
+                <div className="flex items-center gap-2 text-xs text-blue-600">
+                  <ArrowUpDown className="h-4 w-4" />
+                  <span>💡 Drag experiments to reorder them. Changes apply globally across all pages!</span>
+                </div>
               </div>
             )}
 
@@ -418,7 +388,7 @@ const Experiments = () => {
                     items={paginatedExperiments}
                     onReorder={handleReorder}
                     renderItem={renderExperimentCard}
-                    droppableId="experiments"
+                    droppableId={`experiments-page-${currentPage}`}
                   />
                 ) : (
                   <div className="text-center py-12">
@@ -431,97 +401,63 @@ const Experiments = () => {
                     </p>
                     <Button 
                       className="mt-4 gap-2" 
-                      onClick={handleCreateExperiment}
+                      onClick={() => setCreateExperimentOpen(true)}
                     >
-                      <Beaker className="h-4 w-4" />
-                      Create New Experiment
+                      <Plus className="h-4 w-4" />
+                      Create First Experiment
                     </Button>
                   </div>
                 )}
 
-                {/* Pagination */}
+                {/* Enhanced Pagination with page navigation */}
                 {totalPages > 1 && (
-                  <div className="flex justify-center mt-8">
-                    <Pagination>
-                      <PaginationContent>
-                        {currentPage > 1 && (
-                          <PaginationItem>
-                            <PaginationPrevious 
-                              href="#"
-                              onClick={(e) => {
-                                e.preventDefault();
-                                handlePageChange(currentPage - 1);
-                              }}
-                            />
-                          </PaginationItem>
-                        )}
+                  <div className="flex items-center justify-center gap-2 mt-6">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                      disabled={currentPage === 1}
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                      Previous
+                    </Button>
+                    
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                        let page;
+                        if (totalPages <= 5) {
+                          page = i + 1;
+                        } else if (currentPage <= 3) {
+                          page = i + 1;
+                        } else if (currentPage >= totalPages - 2) {
+                          page = totalPages - 4 + i;
+                        } else {
+                          page = currentPage - 2 + i;
+                        }
                         
-                        {currentPage > 3 && totalPages > 5 && (
-                          <>
-                            <PaginationItem>
-                              <PaginationLink 
-                                href="#"
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  handlePageChange(1);
-                                }}
-                              >
-                                1
-                              </PaginationLink>
-                            </PaginationItem>
-                            <PaginationItem>
-                              <PaginationEllipsis />
-                            </PaginationItem>
-                          </>
-                        )}
-                        
-                        {getPageNumbers().map((pageNum) => (
-                          <PaginationItem key={pageNum}>
-                            <PaginationLink
-                              href="#"
-                              isActive={pageNum === currentPage}
-                              onClick={(e) => {
-                                e.preventDefault();
-                                handlePageChange(pageNum);
-                              }}
-                            >
-                              {pageNum}
-                            </PaginationLink>
-                          </PaginationItem>
-                        ))}
-                        
-                        {currentPage < totalPages - 2 && totalPages > 5 && (
-                          <>
-                            <PaginationItem>
-                              <PaginationEllipsis />
-                            </PaginationItem>
-                            <PaginationItem>
-                              <PaginationLink 
-                                href="#"
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  handlePageChange(totalPages);
-                                }}
-                              >
-                                {totalPages}
-                              </PaginationLink>
-                            </PaginationItem>
-                          </>
-                        )}
-                        
-                        {currentPage < totalPages && (
-                          <PaginationItem>
-                            <PaginationNext 
-                              href="#"
-                              onClick={(e) => {
-                                e.preventDefault();
-                                handlePageChange(currentPage + 1);
-                              }}
-                            />
-                          </PaginationItem>
-                        )}
-                      </PaginationContent>
-                    </Pagination>
+                        return (
+                          <Button
+                            key={page}
+                            variant={currentPage === page ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setCurrentPage(page)}
+                            className="w-8 h-8 p-0"
+                          >
+                            {page}
+                          </Button>
+                        );
+                      })}
+                    </div>
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                      disabled={currentPage === totalPages}
+                    >
+                      Next
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
                   </div>
                 )}
               </>

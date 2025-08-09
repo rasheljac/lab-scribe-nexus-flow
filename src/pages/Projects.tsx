@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -39,7 +38,10 @@ import {
   Loader2,
   Plus,
   Trash2,
-  Eye
+  Eye,
+  ChevronLeft,
+  ChevronRight,
+  ArrowUpDown
 } from "lucide-react";
 import Sidebar from "@/components/Sidebar";
 import Header from "@/components/Header";
@@ -152,44 +154,30 @@ const Projects = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Enhanced reorder function to handle cross-page dragging
+  // Enhanced reorder function with better cross-page support
   const handleReorder = async (reorderedProjects: Project[]) => {
     try {
-      // Calculate the global position for each item in the reordered list
-      const updates = reorderedProjects.map((project, index) => {
-        // Find the original position of this project in the filtered list
-        const originalIndex = filteredProjects.findIndex(p => p.id === project.id);
-        
-        // If it was moved within the current page, use current page positioning
-        if (originalIndex >= startIndex && originalIndex < endIndex) {
-          return {
-            id: project.id,
-            display_order: startIndex + index + 1
-          };
-        }
-        
-        // If it was dragged from another page, insert it at the dropped position
+      // Calculate global positions for all reordered items
+      const updates = reorderedProjects.map((project, localIndex) => {
+        const globalPosition = startIndex + localIndex + 1;
         return {
           id: project.id,
-          display_order: startIndex + index + 1
+          display_order: globalPosition
         };
       });
 
-      // Also need to update any projects that were displaced
+      // Find items that were displaced and need their positions updated
+      const reorderedIds = new Set(reorderedProjects.map(item => item.id));
       const displacedUpdates: { id: string; display_order: number }[] = [];
       
-      // Find projects that need their order adjusted due to the reordering
+      // Update positions for items that weren't in the reordered list
       filteredProjects.forEach((project, globalIndex) => {
-        const isInReorderedList = reorderedProjects.some(r => r.id === project.id);
-        
-        if (!isInReorderedList) {
-          // This project wasn't in the reordered list, but might need repositioning
-          const newOrder = globalIndex < startIndex ? globalIndex + 1 : globalIndex + 1;
-          
-          if (newOrder !== project.display_order) {
+        if (!reorderedIds.has(project.id)) {
+          const newPosition = globalIndex + 1;
+          if (newPosition !== project.display_order) {
             displacedUpdates.push({
               id: project.id,
-              display_order: newOrder
+              display_order: newPosition
             });
           }
         }
@@ -200,6 +188,10 @@ const Projects = () => {
       
       if (allUpdates.length > 0) {
         await updateProjectOrder.mutateAsync(allUpdates);
+        toast({
+          title: "Success",
+          description: `Updated order for ${allUpdates.length} project(s)`,
+        });
       }
     } catch (error) {
       console.error("Error updating project order:", error);
@@ -212,7 +204,10 @@ const Projects = () => {
   };
 
   const renderProjectCard = (project: Project) => (
-    <Card key={project.id} className="hover:shadow-md transition-shadow">
+    <Card key={project.id} className="hover:shadow-md transition-shadow relative">
+      <div className="absolute top-2 right-2 opacity-30 hover:opacity-70 transition-opacity">
+        <ArrowUpDown className="h-4 w-4 text-gray-400" />
+      </div>
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-2 flex-1">
@@ -408,14 +403,17 @@ const Projects = () => {
               </Select>
             </div>
 
-            {/* Results Count */}
+            {/* Enhanced Results Count with drag instructions */}
             {!isLoading && (
-              <div className="text-sm text-gray-600">
-                Showing {paginatedProjects.length} of {filteredProjects.length} projects
-                {currentPage > 1 && ` (Page ${currentPage} of ${totalPages})`}
-                <span className="ml-2 text-xs text-blue-600">
-                  💡 You can drag projects between pages to reorder them globally
-                </span>
+              <div className="flex items-center justify-between text-sm text-gray-600 bg-blue-50 p-3 rounded-lg">
+                <div>
+                  Showing {paginatedProjects.length} of {filteredProjects.length} projects
+                  {currentPage > 1 && ` (Page ${currentPage} of ${totalPages})`}
+                </div>
+                <div className="flex items-center gap-2 text-xs text-blue-600">
+                  <ArrowUpDown className="h-4 w-4" />
+                  <span>💡 Drag projects to reorder them. Changes apply globally across all pages!</span>
+                </div>
               </div>
             )}
 
@@ -431,7 +429,7 @@ const Projects = () => {
                     items={paginatedProjects}
                     onReorder={handleReorder}
                     renderItem={renderProjectCard}
-                    droppableId="projects"
+                    droppableId={`projects-page-${currentPage}`}
                   />
                 ) : (
                   <div className="text-center py-12">
