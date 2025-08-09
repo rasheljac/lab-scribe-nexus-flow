@@ -46,16 +46,15 @@ export const useSMS = () => {
     queryFn: async (): Promise<SMSLog[]> => {
       if (!user) return [];
       
-      // Use a raw query since the table might not be in the generated types yet
       const { data, error } = await supabase
-        .from('sms_logs' as any)
+        .from('sms_logs')
         .select('*')
         .eq('user_id', user.id)
         .order('sent_at', { ascending: false })
         .limit(50);
 
       if (error) throw error;
-      return data as SMSLog[];
+      return (data || []) as SMSLog[];
     },
     enabled: !!user,
   });
