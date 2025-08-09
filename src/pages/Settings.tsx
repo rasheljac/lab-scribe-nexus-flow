@@ -1,15 +1,15 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Copy, Calendar, ExternalLink } from "lucide-react";
+import { Copy, Calendar, ExternalLink, AlertCircle } from "lucide-react";
 import Sidebar from "@/components/Sidebar";
 import Header from "@/components/Header";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const Settings = () => {
   const { user } = useAuth();
@@ -18,9 +18,19 @@ const Settings = () => {
   const [emailUpdates, setEmailUpdates] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
   
+  // Get the correct base URL for the iCal feed
+  const getBaseUrl = () => {
+    // Check if we're in development or production
+    if (window.location.hostname === 'localhost') {
+      return 'http://localhost:54321';
+    }
+    // For production, use the Supabase project URL
+    return 'https://lurczbwtmavcfpqcckpg.supabase.co';
+  };
+
   // Generate the iCal URL using the user ID as a simple token
   const icalUrl = user ? 
-    `${window.location.origin}/functions/v1/ical-feed?user_id=${user.id}&token=${user.id}` :
+    `${getBaseUrl()}/functions/v1/ical-feed?user_id=${user.id}&token=${user.id}` :
     '';
   
   const webcalUrl = icalUrl.replace('https://', 'webcal://').replace('http://', 'webcal://');
@@ -36,6 +46,30 @@ const Settings = () => {
       toast({
         title: "Failed to copy",
         description: "Please copy the URL manually",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const testICalFeed = async () => {
+    try {
+      const response = await fetch(icalUrl);
+      if (response.ok) {
+        toast({
+          title: "Success!",
+          description: "iCal feed is working correctly",
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: `iCal feed returned status: ${response.status}`,
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to test iCal feed",
         variant: "destructive",
       });
     }
@@ -66,10 +100,17 @@ const Settings = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
+                <Alert>
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    Use these URLs to subscribe to your laboratory calendar in external applications. The calendar will automatically update when you add or modify events.
+                  </AlertDescription>
+                </Alert>
+
                 <div>
-                  <Label className="text-sm font-medium">iCal Feed URL</Label>
+                  <Label className="text-sm font-medium">iCal Feed URL (For manual subscription)</Label>
                   <p className="text-sm text-gray-600 mb-2">
-                    Use this URL to subscribe to your laboratory calendar in external applications like Outlook, Google Calendar, or Apple Calendar.
+                    Copy this URL and paste it into your calendar application's "Add Calendar" or "Subscribe to Calendar" feature.
                   </p>
                   <div className="flex gap-2">
                     <Input
@@ -84,13 +125,20 @@ const Settings = () => {
                     >
                       <Copy className="h-4 w-4" />
                     </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={testICalFeed}
+                    >
+                      Test
+                    </Button>
                   </div>
                 </div>
 
                 <div>
-                  <Label className="text-sm font-medium">Webcal URL (for direct subscription)</Label>
+                  <Label className="text-sm font-medium">Webcal URL (For one-click subscription)</Label>
                   <p className="text-sm text-gray-600 mb-2">
-                    Click this URL or copy it to directly subscribe to your calendar in supported applications.
+                    Click the external link button to automatically open your calendar application and subscribe to the calendar.
                   </p>
                   <div className="flex gap-2">
                     <Input
@@ -108,7 +156,7 @@ const Settings = () => {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => window.open(webcalUrl, '_blank')}
+                      onClick={() => window.open(webcalUrl)}
                     >
                       <ExternalLink className="h-4 w-4" />
                     </Button>
@@ -116,19 +164,51 @@ const Settings = () => {
                 </div>
 
                 <div className="bg-blue-50 p-4 rounded-lg">
-                  <h4 className="font-medium text-blue-900 mb-2">How to use:</h4>
-                  <ul className="text-sm text-blue-800 space-y-1">
-                    <li>• <strong>Outlook:</strong> Go to Calendar → Add Calendar → Subscribe from web, then paste the iCal URL</li>
-                    <li>• <strong>Google Calendar:</strong> Settings → Add calendar → From URL, then paste the iCal URL</li>
-                    <li>• <strong>Apple Calendar:</strong> File → New Calendar Subscription, then paste the iCal URL</li>
-                    <li>• <strong>Quick subscription:</strong> Click the webcal URL to open directly in your default calendar app</li>
-                  </ul>
+                  <h4 className="font-medium text-blue-900 mb-2">Step-by-step instructions:</h4>
+                  <div className="text-sm text-blue-800 space-y-2">
+                    <div>
+                      <strong>Microsoft Outlook (Desktop):</strong>
+                      <ol className="list-decimal list-inside ml-4 mt-1">
+                        <li>Open Outlook and go to Calendar view</li>
+                        <li>Right-click on "Other Calendars" and select "Add Calendar"</li>
+                        <li>Choose "From Internet" and paste the iCal URL</li>
+                        <li>Click "OK" to subscribe</li>
+                      </ol>
+                    </div>
+                    <div>
+                      <strong>Outlook.com (Web):</strong>
+                      <ol className="list-decimal list-inside ml-4 mt-1">
+                        <li>Go to Calendar in Outlook.com</li>
+                        <li>Click "Add calendar" → "Subscribe from web"</li>
+                        <li>Paste the iCal URL and give it a name</li>
+                        <li>Click "Import"</li>
+                      </ol>
+                    </div>
+                    <div>
+                      <strong>Google Calendar:</strong>
+                      <ol className="list-decimal list-inside ml-4 mt-1">
+                        <li>Open Google Calendar</li>
+                        <li>On the left, click the "+" next to "Other calendars"</li>
+                        <li>Select "From URL" and paste the iCal URL</li>
+                        <li>Click "Add calendar"</li>
+                      </ol>
+                    </div>
+                    <div>
+                      <strong>Apple Calendar:</strong>
+                      <ol className="list-decimal list-inside ml-4 mt-1">
+                        <li>Open Calendar app</li>
+                        <li>Go to File → New Calendar Subscription</li>
+                        <li>Paste the iCal URL and click "Subscribe"</li>
+                        <li>Configure refresh settings and click "OK"</li>
+                      </ol>
+                    </div>
+                  </div>
                   <Button
                     variant="link"
-                    className="p-0 h-auto text-blue-600 hover:text-blue-800"
+                    className="p-0 h-auto text-blue-600 hover:text-blue-800 mt-2"
                     onClick={openCalendarInstructions}
                   >
-                    View detailed instructions for Outlook →
+                    View Microsoft's official guide →
                   </Button>
                 </div>
               </CardContent>
