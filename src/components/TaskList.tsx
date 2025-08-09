@@ -1,7 +1,9 @@
+
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,13 +22,28 @@ import {
   Trash2, 
   Edit,
   Calendar,
-  User
+  User,
+  GripVertical,
+  ChevronLeft,
+  ChevronRight
 } from "lucide-react";
 import { useTasks, Task } from "@/hooks/useTasks";
 import { useToast } from "@/hooks/use-toast";
 import EditTaskDialog from "@/components/EditTaskDialog";
 
-const TaskList = () => {
+interface TaskListProps {
+  currentPage?: number;
+  totalPages?: number;
+  onMoveToPreviousPage?: (task: Task, index: number) => void;
+  onMoveToNextPage?: (task: Task, index: number) => void;
+}
+
+const TaskList = ({ 
+  currentPage = 1, 
+  totalPages = 1,
+  onMoveToPreviousPage,
+  onMoveToNextPage 
+}: TaskListProps) => {
   const { tasks, isLoading, updateTask, deleteTask } = useTasks();
   const { toast } = useToast();
 
@@ -97,11 +114,48 @@ const TaskList = () => {
 
   return (
     <div className="space-y-4">
-      {tasks.map((task) => (
+      {tasks.map((task, index) => (
         <Card key={task.id} className="hover:shadow-md transition-shadow">
           <CardHeader className="pb-3">
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-2">
+                {totalPages > 1 && (
+                  <TooltipProvider>
+                    <div className="flex items-center gap-1">
+                      <GripVertical className="h-4 w-4 text-gray-400 cursor-grab" />
+                      <Tooltip>
+                        <TooltipTrigger>
+                          <ChevronLeft 
+                            className={`h-4 w-4 cursor-pointer transition-colors ${
+                              currentPage === 1 
+                                ? 'text-gray-300 cursor-not-allowed' 
+                                : 'text-blue-600 hover:text-blue-800'
+                            }`}
+                            onClick={() => currentPage > 1 && onMoveToPreviousPage?.(task, index)}
+                          />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          {currentPage === 1 ? 'Already on first page' : 'Move to previous page'}
+                        </TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger>
+                          <ChevronRight 
+                            className={`h-4 w-4 cursor-pointer transition-colors ${
+                              currentPage === totalPages 
+                                ? 'text-gray-300 cursor-not-allowed' 
+                                : 'text-blue-600 hover:text-blue-800'
+                            }`}
+                            onClick={() => currentPage < totalPages && onMoveToNextPage?.(task, index)}
+                          />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          {currentPage === totalPages ? 'Already on last page' : 'Move to next page'}
+                        </TooltipContent>
+                      </Tooltip>
+                    </div>
+                  </TooltipProvider>
+                )}
                 {getStatusIcon(task.status)}
                 <CardTitle className="text-lg">{task.title}</CardTitle>
               </div>

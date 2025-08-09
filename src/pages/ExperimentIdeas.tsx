@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { 
   AlertDialog,
   AlertDialogAction,
@@ -30,7 +31,8 @@ import {
   Tag,
   FileText,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  GripVertical
 } from "lucide-react";
 import Sidebar from "@/components/Sidebar";
 import Header from "@/components/Header";
@@ -178,11 +180,108 @@ const ExperimentIdeas = () => {
     }
   };
 
+  const handleMoveToPreviousPage = async (idea: any, currentIndex: number) => {
+    if (currentPage === 1) return;
+    
+    try {
+      // Calculate new position (end of previous page)
+      const previousPageEndIndex = (currentPage - 2) * ITEMS_PER_PAGE + ITEMS_PER_PAGE;
+      const newGlobalOrder = previousPageEndIndex;
+      
+      // Update this idea's order and shift others
+      const updatedOrders = [{
+        id: idea.id,
+        display_order: newGlobalOrder
+      }];
+      
+      await updateIdeaOrder.mutateAsync(updatedOrders);
+      setCurrentPage(currentPage - 1);
+      
+      toast({
+        title: "Success",
+        description: `Moved "${idea.title}" to page ${currentPage - 1}`,
+      });
+    } catch (error) {
+      console.error("Error moving idea:", error);
+      toast({
+        title: "Error",
+        description: "Failed to move idea",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleMoveToNextPage = async (idea: any, currentIndex: number) => {
+    if (currentPage === totalPages) return;
+    
+    try {
+      // Calculate new position (beginning of next page)
+      const nextPageStartIndex = currentPage * ITEMS_PER_PAGE + 1;
+      const newGlobalOrder = nextPageStartIndex;
+      
+      // Update this idea's order
+      const updatedOrders = [{
+        id: idea.id,
+        display_order: newGlobalOrder
+      }];
+      
+      await updateIdeaOrder.mutateAsync(updatedOrders);
+      setCurrentPage(currentPage + 1);
+      
+      toast({
+        title: "Success",
+        description: `Moved "${idea.title}" to page ${currentPage + 1}`,
+      });
+    } catch (error) {
+      console.error("Error moving idea:", error);
+      toast({
+        title: "Error",
+        description: "Failed to move idea",
+        variant: "destructive",
+      });
+    }
+  };
+
   const renderIdeaCard = (idea: any, index: number) => (
     <Card key={idea.id} className="hover:shadow-md transition-shadow">
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-2 flex-1">
+            <TooltipProvider>
+              <div className="flex items-center gap-1">
+                <GripVertical className="h-4 w-4 text-gray-400 cursor-grab" />
+                <Tooltip>
+                  <TooltipTrigger>
+                    <ChevronLeft 
+                      className={`h-4 w-4 cursor-pointer transition-colors ${
+                        currentPage === 1 
+                          ? 'text-gray-300 cursor-not-allowed' 
+                          : 'text-blue-600 hover:text-blue-800'
+                      }`}
+                      onClick={() => currentPage > 1 && handleMoveToPreviousPage(idea, index)}
+                    />
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {currentPage === 1 ? 'Already on first page' : 'Move to previous page'}
+                  </TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger>
+                    <ChevronRight 
+                      className={`h-4 w-4 cursor-pointer transition-colors ${
+                        currentPage === totalPages 
+                          ? 'text-gray-300 cursor-not-allowed' 
+                          : 'text-blue-600 hover:text-blue-800'
+                      }`}
+                      onClick={() => currentPage < totalPages && handleMoveToNextPage(idea, index)}
+                    />
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {currentPage === totalPages ? 'Already on last page' : 'Move to next page'}
+                  </TooltipContent>
+                </Tooltip>
+              </div>
+            </TooltipProvider>
             {getStatusIcon(idea.status)}
             <CardTitle className="text-lg">{idea.title}</CardTitle>
           </div>
@@ -399,6 +498,17 @@ const ExperimentIdeas = () => {
                 </SelectContent>
               </Select>
             </div>
+
+            {totalPages > 1 && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex items-center gap-2 text-blue-800">
+                  <GripVertical className="h-4 w-4" />
+                  <span className="text-sm">
+                    <strong>Drag and Drop:</strong> Use the grip handle to reorder ideas within this page, or use the arrow buttons to move ideas between pages.
+                  </span>
+                </div>
+              </div>
+            )}
 
             {isLoading ? (
               <div className="flex justify-center py-12">

@@ -1,88 +1,103 @@
 
 import { useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
-  Pagination,
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
-import { Search, Loader2 } from "lucide-react";
+  Search, 
+  CheckCircle, 
+  Clock, 
+  AlertTriangle, 
+  ChevronLeft,
+  ChevronRight,
+  GripVertical,
+  Loader2
+} from "lucide-react";
 import Sidebar from "@/components/Sidebar";
 import Header from "@/components/Header";
 import CreateTaskDialog from "@/components/CreateTaskDialog";
-import DraggableTaskList from "@/components/DraggableTaskList";
-import { useTasks } from "@/hooks/useTasks";
+import TaskList from "@/components/TaskList";
+import { useTasks, Task } from "@/hooks/useTasks";
+import { useToast } from "@/hooks/use-toast";
+
+const ITEMS_PER_PAGE = 6;
 
 const Tasks = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterPriority, setFilterPriority] = useState("all");
-  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [filterCategory, setFilterCategory] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
+  const { toast } = useToast();
 
   const { tasks, isLoading, error } = useTasks();
 
-  // Apply filters to get filtered tasks
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case "completed":
+        return <CheckCircle className="h-4 w-4 text-green-600" />;
+      case "in_progress":
+        return <Clock className="h-4 w-4 text-blue-600" />;
+      case "pending":
+        return <AlertTriangle className="h-4 w-4 text-yellow-600" />;
+      default:
+        return <Clock className="h-4 w-4 text-gray-600" />;
+    }
+  };
+
   const filteredTasks = tasks.filter(task => {
     const matchesSearch = task.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          (task.description && task.description.toLowerCase().includes(searchTerm.toLowerCase()));
     const matchesStatus = filterStatus === "all" || task.status === filterStatus;
     const matchesPriority = filterPriority === "all" || task.priority === filterPriority;
-    return matchesSearch && matchesStatus && matchesPriority;
+    const matchesCategory = filterCategory === "all" || task.category === filterCategory;
+    return matchesSearch && matchesStatus && matchesPriority && matchesCategory;
   });
 
-  // Calculate pagination
-  const totalPages = Math.ceil(filteredTasks.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const paginatedTasks = filteredTasks.slice(startIndex, endIndex);
+  // Pagination logic
+  const totalPages = Math.ceil(filteredTasks.length / ITEMS_PER_PAGE);
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const endIndex = startIndex + ITEMS_PER_PAGE;
+  const currentTasks = filteredTasks.slice(startIndex, endIndex);
 
-  // Generate page numbers for pagination
-  const getPageNumbers = () => {
-    const pages = [];
-    const maxVisiblePages = 5;
+  const handleMoveToPreviousPage = async (task: Task, currentIndex: number) => {
+    if (currentPage === 1) return;
     
-    if (totalPages <= maxVisiblePages) {
-      for (let i = 1; i <= totalPages; i++) {
-        pages.push(i);
-      }
-    } else {
-      const startPage = Math.max(1, currentPage - 2);
-      const endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
-      
-      for (let i = startPage; i <= endPage; i++) {
-        pages.push(i);
-      }
+    try {
+      setCurrentPage(currentPage - 1);
+      toast({
+        title: "Success",
+        description: `Moved "${task.title}" to page ${currentPage - 1}`,
+      });
+    } catch (error) {
+      console.error("Error moving task:", error);
+      toast({
+        title: "Error",
+        description: "Failed to move task",
+        variant: "destructive",
+      });
     }
+  };
+
+  const handleMoveToNextPage = async (task: Task, currentIndex: number) => {
+    if (currentPage === totalPages) return;
     
-    return pages;
-  };
-
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  // Reset to first page when filters change
-  const handleSearchChange = (value: string) => {
-    setSearchTerm(value);
-    setCurrentPage(1);
-  };
-
-  const handleStatusChange = (value: string) => {
-    setFilterStatus(value);
-    setCurrentPage(1);
-  };
-
-  const handlePriorityChange = (value: string) => {
-    setFilterPriority(value);
-    setCurrentPage(1);
+    try {
+      setCurrentPage(currentPage + 1);
+      toast({
+        title: "Success",
+        description: `Moved "${task.title}" to page ${currentPage + 1}`,
+      });
+    } catch (error) {
+      console.error("Error moving task:", error);
+      toast({
+        title: "Error",
+        description: "Failed to move task",
+        variant: "destructive",
+      });
+    }
   };
 
   if (error) {
@@ -110,26 +125,25 @@ const Tasks = () => {
         <Header />
         <main className="flex-1 p-6 overflow-auto">
           <div className="max-w-7xl mx-auto space-y-6">
-            {/* Header */}
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-3xl font-bold text-gray-900">Task Manager</h1>
-                <p className="text-gray-600 mt-1">Organize and track your laboratory tasks</p>
+                <h1 className="text-3xl font-bold text-gray-900">Task Management</h1>
+                <p className="text-gray-600 mt-1">Organize and track your research tasks</p>
               </div>
+              <CreateTaskDialog />
             </div>
 
-            {/* Filters */}
             <div className="flex items-center gap-4">
               <div className="flex-1 relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                 <Input
                   placeholder="Search tasks..."
                   value={searchTerm}
-                  onChange={(e) => handleSearchChange(e.target.value)}
+                  onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10"
                 />
               </div>
-              <Select value={filterStatus} onValueChange={handleStatusChange}>
+              <Select value={filterStatus} onValueChange={setFilterStatus}>
                 <SelectTrigger className="w-[150px]">
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
@@ -140,7 +154,7 @@ const Tasks = () => {
                   <SelectItem value="completed">Completed</SelectItem>
                 </SelectContent>
               </Select>
-              <Select value={filterPriority} onValueChange={handlePriorityChange}>
+              <Select value={filterPriority} onValueChange={setFilterPriority}>
                 <SelectTrigger className="w-[150px]">
                   <SelectValue placeholder="Priority" />
                 </SelectTrigger>
@@ -151,127 +165,145 @@ const Tasks = () => {
                   <SelectItem value="low">Low</SelectItem>
                 </SelectContent>
               </Select>
+              <Select value={filterCategory} onValueChange={setFilterCategory}>
+                <SelectTrigger className="w-[150px]">
+                  <SelectValue placeholder="Category" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Categories</SelectItem>
+                  <SelectItem value="experiment">Experiment</SelectItem>
+                  <SelectItem value="analysis">Analysis</SelectItem>
+                  <SelectItem value="documentation">Documentation</SelectItem>
+                  <SelectItem value="maintenance">Maintenance</SelectItem>
+                  <SelectItem value="quality-control">Quality Control</SelectItem>
+                  <SelectItem value="administrative">Administrative</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
-            {/* Results Count */}
-            {!isLoading && (
-              <div className="text-sm text-gray-600">
-                Showing {paginatedTasks.length} of {filteredTasks.length} tasks
-                {currentPage > 1 && ` (Page ${currentPage} of ${totalPages})`}
+            {totalPages > 1 && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex items-center gap-2 text-blue-800">
+                  <GripVertical className="h-4 w-4" />
+                  <span className="text-sm">
+                    <strong>Navigation:</strong> Use the arrow buttons to move tasks between pages for better organization.
+                  </span>
+                </div>
               </div>
             )}
 
-            {/* Tasks List */}
             {isLoading ? (
               <div className="flex justify-center py-12">
                 <Loader2 className="h-8 w-8 animate-spin" />
               </div>
             ) : (
               <>
-                <DraggableTaskList
-                  tasks={paginatedTasks}
-                  searchTerm=""
-                  filterStatus="all"
-                  filterPriority="all"
-                />
+                <div className="space-y-4">
+                  {currentTasks.map((task, index) => (
+                    <Card key={task.id} className="hover:shadow-md transition-shadow">
+                      <CardHeader className="pb-3">
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-center gap-2">
+                            {totalPages > 1 && (
+                              <div className="flex items-center gap-1">
+                                <GripVertical className="h-4 w-4 text-gray-400 cursor-grab" />
+                                <ChevronLeft 
+                                  className={`h-4 w-4 cursor-pointer transition-colors ${
+                                    currentPage === 1 
+                                      ? 'text-gray-300 cursor-not-allowed' 
+                                      : 'text-blue-600 hover:text-blue-800'
+                                  }`}
+                                  onClick={() => currentPage > 1 && handleMoveToPreviousPage(task, index)}
+                                />
+                                <ChevronRight 
+                                  className={`h-4 w-4 cursor-pointer transition-colors ${
+                                    currentPage === totalPages 
+                                      ? 'text-gray-300 cursor-not-allowed' 
+                                      : 'text-blue-600 hover:text-blue-800'
+                                  }`}
+                                  onClick={() => currentPage < totalPages && handleMoveToNextPage(task, index)}
+                                />
+                              </div>
+                            )}
+                            {getStatusIcon(task.status)}
+                            <CardTitle className="text-lg">{task.title}</CardTitle>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline">{task.priority}</Badge>
+                            <Badge variant="secondary">{task.status}</Badge>
+                          </div>
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        <div 
+                          className="text-gray-700 prose prose-sm max-w-none mb-4"
+                          dangerouslySetInnerHTML={{ __html: task.description || 'No description' }}
+                        />
+                        <div className="flex items-center justify-between text-sm text-gray-500">
+                          <span>Assigned to: {task.assignee}</span>
+                          <span>Due: {new Date(task.due_date).toLocaleDateString()}</span>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+
+                {currentTasks.length === 0 && !isLoading && (
+                  <div className="text-center py-12">
+                    <AlertTriangle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                    <p className="text-gray-600">
+                      {searchTerm ? "No tasks found matching your search." : "No tasks found. Create your first task to get started."}
+                    </p>
+                  </div>
+                )}
 
                 {/* Pagination */}
                 {totalPages > 1 && (
-                  <div className="flex justify-center mt-8">
-                    <Pagination>
-                      <PaginationContent>
-                        {currentPage > 1 && (
-                          <PaginationItem>
-                            <PaginationPrevious 
-                              href="#"
-                              onClick={(e) => {
-                                e.preventDefault();
-                                handlePageChange(currentPage - 1);
-                              }}
-                            />
-                          </PaginationItem>
-                        )}
-                        
-                        {currentPage > 3 && totalPages > 5 && (
-                          <>
-                            <PaginationItem>
-                              <PaginationLink 
-                                href="#"
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  handlePageChange(1);
-                                }}
-                              >
-                                1
-                              </PaginationLink>
-                            </PaginationItem>
-                            <PaginationItem>
-                              <PaginationEllipsis />
-                            </PaginationItem>
-                          </>
-                        )}
-                        
-                        {getPageNumbers().map((pageNum) => (
-                          <PaginationItem key={pageNum}>
-                            <PaginationLink
-                              href="#"
-                              isActive={pageNum === currentPage}
-                              onClick={(e) => {
-                                e.preventDefault();
-                                handlePageChange(pageNum);
-                              }}
-                            >
-                              {pageNum}
-                            </PaginationLink>
-                          </PaginationItem>
-                        ))}
-                        
-                        {currentPage < totalPages - 2 && totalPages > 5 && (
-                          <>
-                            <PaginationItem>
-                              <PaginationEllipsis />
-                            </PaginationItem>
-                            <PaginationItem>
-                              <PaginationLink 
-                                href="#"
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  handlePageChange(totalPages);
-                                }}
-                              >
-                                {totalPages}
-                              </PaginationLink>
-                            </PaginationItem>
-                          </>
-                        )}
-                        
-                        {currentPage < totalPages && (
-                          <PaginationItem>
-                            <PaginationNext 
-                              href="#"
-                              onClick={(e) => {
-                                e.preventDefault();
-                                handlePageChange(currentPage + 1);
-                              }}
-                            />
-                          </PaginationItem>
-                        )}
-                      </PaginationContent>
-                    </Pagination>
+                  <div className="flex items-center justify-center gap-2 mt-6">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                      disabled={currentPage === 1}
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                      Previous
+                    </Button>
+                    
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                        <Button
+                          key={page}
+                          variant={currentPage === page ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setCurrentPage(page)}
+                          className="w-8 h-8 p-0"
+                        >
+                          {page}
+                        </Button>
+                      ))}
+                    </div>
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                      disabled={currentPage === totalPages}
+                    >
+                      Next
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
                   </div>
                 )}
+
+                {/* Items count */}
+                <div className="text-center text-sm text-gray-500 mt-4">
+                  Showing {Math.min(startIndex + 1, filteredTasks.length)} to {Math.min(endIndex, filteredTasks.length)} of {filteredTasks.length} tasks
+                </div>
               </>
             )}
           </div>
         </main>
-      </div>
-
-      {/* Hidden Create Task Dialog */}
-      <div className="hidden">
-        <CreateTaskDialog
-          open={createDialogOpen}
-          onOpenChange={setCreateDialogOpen}
-        />
       </div>
     </div>
   );
