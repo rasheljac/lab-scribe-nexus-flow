@@ -24,13 +24,13 @@ export const useContacts = () => {
       if (!user) return [];
       
       const { data, error } = await supabase
-        .from('contacts')
+        .from('contacts' as any)
         .select('*')
         .eq('user_id', user.id)
         .order('name', { ascending: true });
 
       if (error) throw error;
-      return data || [];
+      return (data || []) as Contact[];
     },
     enabled: !!user,
   });
@@ -40,7 +40,7 @@ export const useContacts = () => {
       if (!user) throw new Error('User not authenticated');
 
       const { data, error } = await supabase
-        .from('contacts')
+        .from('contacts' as any)
         .insert({
           ...contactData,
           user_id: user.id,
@@ -72,7 +72,7 @@ export const useContacts = () => {
       if (!user) throw new Error('User not authenticated');
 
       const { data, error } = await supabase
-        .from('contacts')
+        .from('contacts' as any)
         .update(updates)
         .eq('id', id)
         .eq('user_id', user.id)
@@ -103,7 +103,7 @@ export const useContacts = () => {
       if (!user) throw new Error('User not authenticated');
 
       const { error } = await supabase
-        .from('contacts')
+        .from('contacts' as any)
         .delete()
         .eq('id', contactId)
         .eq('user_id', user.id);
