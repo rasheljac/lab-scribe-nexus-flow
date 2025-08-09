@@ -1,4 +1,3 @@
-
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,10 +12,22 @@ import Sidebar from "@/components/Sidebar";
 import Header from "@/components/Header";
 import { useToast } from "@/hooks/use-toast";
 import { useUserPreferences } from "@/hooks/useUserPreferences";
+import { useServerStats } from "@/hooks/useServerStats";
+import { useDatabaseBackups } from "@/hooks/useDatabaseBackups";
+import { useSecurityLogs } from "@/hooks/useSecurityLogs";
+import DatabaseBackupsDialog from "@/components/DatabaseBackupsDialog";
+import SecurityLogsDialog from "@/components/SecurityLogsDialog";
 
 const SystemSettings = () => {
   const { toast } = useToast();
   const { preferences, updatePreferences } = useUserPreferences();
+  const { stats, isLoading: statsLoading } = useServerStats();
+  const { createBackup, isLoading: backupLoading } = useDatabaseBackups();
+  const { exportLogs } = useSecurityLogs();
+  
+  // Dialog states
+  const [showBackupsDialog, setShowBackupsDialog] = useState(false);
+  const [showSecurityLogsDialog, setShowSecurityLogsDialog] = useState(false);
   
   // General Settings State
   const [systemName, setSystemName] = useState("Lab Management System");
@@ -30,18 +41,10 @@ const SystemSettings = () => {
   // Database Settings State
   const [autoBackups, setAutoBackups] = useState(true);
   const [backupRetention, setBackupRetention] = useState("30");
-  const [backupInProgress, setBackupInProgress] = useState(false);
 
   // Server Settings State
   const [maxUsers, setMaxUsers] = useState("100");
   const [sessionTimeout, setSessionTimeout] = useState("60");
-  const [serverStats, setServerStats] = useState({
-    uptime: "99.2%",
-    activeUsers: 47,
-    memoryUsage: "2.8GB",
-    cpuUsage: "12%",
-    diskSpace: "78%"
-  });
 
   // Security Settings State
   const [minPasswordLength, setMinPasswordLength] = useState("8");
@@ -82,23 +85,6 @@ const SystemSettings = () => {
     }
   }, [preferences]);
 
-  // Update server stats periodically
-  useEffect(() => {
-    const updateServerStats = () => {
-      setServerStats({
-        uptime: `${(99 + Math.random() * 1).toFixed(1)}%`,
-        activeUsers: Math.floor(40 + Math.random() * 20),
-        memoryUsage: `${(2.5 + Math.random() * 1).toFixed(1)}GB`,
-        cpuUsage: `${Math.floor(8 + Math.random() * 15)}%`,
-        diskSpace: `${Math.floor(70 + Math.random() * 20)}%`
-      });
-    };
-
-    updateServerStats();
-    const interval = setInterval(updateServerStats, 30000); // Update every 30 seconds
-    return () => clearInterval(interval);
-  }, []);
-
   const handleSaveGeneral = () => {
     console.log("Saving general settings:", {
       systemName,
@@ -137,25 +123,55 @@ const SystemSettings = () => {
     );
   };
 
+  const handleCreateBackup = async () => {
+    try {
+      await createBackup();
+      toast({
+        title: "Backup Complete",
+        description: "Database backup has been created successfully.",
+      });
+    } catch (error) {
+      toast({
+        title: "Backup Failed",
+        description: "Failed to create database backup. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleDatabaseAction = async (action: string) => {
     console.log(`Performing database action: ${action}`);
     
-    if (action === "Create Backup") {
-      setBackupInProgress(true);
-      // Simulate backup process
-      setTimeout(() => {
-        setBackupInProgress(false);
+    switch (action) {
+      case "Create Backup":
+        await handleCreateBackup();
+        break;
+      case "View Backups":
+        setShowBackupsDialog(true);
+        break;
+      case "Restore":
         toast({
-          title: "Backup Complete",
-          description: "Database backup has been created successfully.",
+          title: "Restore Function",
+          description: "Database restore functionality would be implemented here.",
         });
-      }, 3000);
-    } else {
-      toast({
-        title: "Database Operation",
-        description: `${action} operation has been initiated.`,
-      });
+        break;
+      default:
+        toast({
+          title: "Database Operation",
+          description: `${action} operation has been initiated.`,
+        });
     }
+  };
+
+  const handleSaveDatabase = () => {
+    console.log("Saving database settings:", {
+      autoBackups,
+      backupRetention
+    });
+    toast({
+      title: "Database Settings Saved",
+      description: "Database configuration has been updated successfully.",
+    });
   };
 
   const handleSaveServer = () => {
@@ -172,7 +188,6 @@ const SystemSettings = () => {
   const handleSaveSecurity = async () => {
     setSecurityUpdating(true);
     try {
-      // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1000));
       
       console.log("Saving security settings:", {
@@ -200,10 +215,31 @@ const SystemSettings = () => {
 
   const handleSecurityAction = (action: string) => {
     console.log(`Performing security action: ${action}`);
-    toast({
-      title: "Security Operation",
-      description: `${action} operation has been completed.`,
-    });
+    
+    switch (action) {
+      case "View Security Logs":
+        setShowSecurityLogsDialog(true);
+        break;
+      case "Export Audit Trail":
+        exportLogs('csv');
+        toast({
+          title: "Export Started",
+          description: "Audit trail export has been started.",
+        });
+        break;
+      case "Security Report":
+        exportLogs('pdf');
+        toast({
+          title: "Report Generated",
+          description: "Security report has been generated and downloaded.",
+        });
+        break;
+      default:
+        toast({
+          title: "Security Operation",
+          description: `${action} operation has been completed.`,
+        });
+    }
   };
 
   return (
@@ -392,9 +428,9 @@ const SystemSettings = () => {
                       <div className="flex gap-2 flex-wrap">
                         <Button 
                           onClick={() => handleDatabaseAction("Create Backup")}
-                          disabled={backupInProgress}
+                          disabled={backupLoading}
                         >
-                          {backupInProgress ? "Creating Backup..." : "Create Backup"}
+                          {backupLoading ? "Creating Backup..." : "Create Backup"}
                         </Button>
                         <Button variant="outline" onClick={() => handleDatabaseAction("View Backups")}>
                           View Backups
@@ -406,9 +442,7 @@ const SystemSettings = () => {
                     </div>
 
                     <div className="flex justify-end">
-                      <Button onClick={() => handleDatabaseAction("Save Database Settings")}>
-                        Save Database Settings
-                      </Button>
+                      <Button onClick={handleSaveDatabase}>Save Database Settings</Button>
                     </div>
                   </CardContent>
                 </Card>
@@ -446,28 +480,32 @@ const SystemSettings = () => {
 
                     <div className="border rounded-lg p-4 space-y-4">
                       <h4 className="font-medium">Real-Time Performance Monitoring</h4>
-                      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                        <div className="text-center p-4 border rounded">
-                          <div className="text-2xl font-bold text-green-600">{serverStats.uptime}</div>
-                          <div className="text-sm text-muted-foreground">Uptime</div>
+                      {statsLoading ? (
+                        <div className="text-center py-4 text-muted-foreground">Loading server statistics...</div>
+                      ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                          <div className="text-center p-4 border rounded">
+                            <div className="text-2xl font-bold text-green-600">{stats.uptime}</div>
+                            <div className="text-sm text-muted-foreground">Uptime</div>
+                          </div>
+                          <div className="text-center p-4 border rounded">
+                            <div className="text-2xl font-bold text-blue-600">{stats.activeUsers}</div>
+                            <div className="text-sm text-muted-foreground">Active Users</div>
+                          </div>
+                          <div className="text-center p-4 border rounded">
+                            <div className="text-2xl font-bold text-orange-600">{stats.memoryUsage}</div>
+                            <div className="text-sm text-muted-foreground">Memory Usage</div>
+                          </div>
+                          <div className="text-center p-4 border rounded">
+                            <div className="text-2xl font-bold text-purple-600">{stats.cpuUsage}</div>
+                            <div className="text-sm text-muted-foreground">CPU Usage</div>
+                          </div>
+                          <div className="text-center p-4 border rounded">
+                            <div className="text-2xl font-bold text-red-600">{stats.diskSpace}</div>
+                            <div className="text-sm text-muted-foreground">Disk Usage</div>
+                          </div>
                         </div>
-                        <div className="text-center p-4 border rounded">
-                          <div className="text-2xl font-bold text-blue-600">{serverStats.activeUsers}</div>
-                          <div className="text-sm text-muted-foreground">Active Users</div>
-                        </div>
-                        <div className="text-center p-4 border rounded">
-                          <div className="text-2xl font-bold text-orange-600">{serverStats.memoryUsage}</div>
-                          <div className="text-sm text-muted-foreground">Memory Usage</div>
-                        </div>
-                        <div className="text-center p-4 border rounded">
-                          <div className="text-2xl font-bold text-purple-600">{serverStats.cpuUsage}</div>
-                          <div className="text-sm text-muted-foreground">CPU Usage</div>
-                        </div>
-                        <div className="text-center p-4 border rounded">
-                          <div className="text-2xl font-bold text-red-600">{serverStats.diskSpace}</div>
-                          <div className="text-sm text-muted-foreground">Disk Usage</div>
-                        </div>
-                      </div>
+                      )}
                     </div>
 
                     <div className="flex justify-end">
@@ -561,6 +599,16 @@ const SystemSettings = () => {
                 </Card>
               </TabsContent>
             </Tabs>
+
+            {/* Dialogs */}
+            <DatabaseBackupsDialog 
+              open={showBackupsDialog} 
+              onOpenChange={setShowBackupsDialog} 
+            />
+            <SecurityLogsDialog 
+              open={showSecurityLogsDialog} 
+              onOpenChange={setShowSecurityLogsDialog} 
+            />
           </div>
         </SidebarInset>
       </div>
