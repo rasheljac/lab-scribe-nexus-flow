@@ -80,18 +80,28 @@ export const useCalendarEvents = () => {
 
   const updateEvent = useMutation({
     mutationFn: async ({ id, ...updates }: Partial<CalendarEvent> & { id: string }) => {
+      if (!user) throw new Error('User not authenticated');
+      
       console.log('Updating calendar event:', id, updates);
       
+      // Remove undefined values and prepare clean update data
+      const cleanUpdates = Object.fromEntries(
+        Object.entries(updates).filter(([_, value]) => value !== undefined)
+      );
+      
+      console.log('Clean update data:', cleanUpdates);
+
       const { data, error } = await supabase
         .from('calendar_events')
-        .update(updates)
+        .update(cleanUpdates)
         .eq('id', id)
-        .eq('user_id', user?.id)
+        .eq('user_id', user.id)
         .select()
         .single();
 
       if (error) {
         console.error('Error updating calendar event:', error);
+        console.error('Error details:', error.message, error.details, error.hint);
         throw error;
       }
       
@@ -100,6 +110,9 @@ export const useCalendarEvents = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['calendarEvents'] });
+    },
+    onError: (error) => {
+      console.error('Update mutation error:', error);
     },
   });
 

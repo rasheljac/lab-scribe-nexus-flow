@@ -84,10 +84,20 @@ const EventDetailsDialog = ({ event, open, onOpenChange }: EventDetailsDialogPro
         return;
       }
 
+      // Prepare update data with only the fields that exist in the database
       const updateData = {
-        ...formData,
+        title: formData.title,
+        description: formData.description,
+        event_type: formData.event_type,
         start_time: startDate.toISOString(),
         end_time: endDate.toISOString(),
+        location: formData.location,
+        status: formData.status,
+        reminder_enabled: formData.reminder_enabled,
+        reminder_minutes_before: formData.reminder_minutes_before,
+        sms_reminder_enabled: formData.sms_reminder_enabled,
+        sms_reminder_phone: formData.sms_reminder_phone,
+        sms_reminder_minutes_before: formData.sms_reminder_minutes_before,
       };
 
       console.log('Updating event with data:', updateData);
@@ -105,7 +115,7 @@ const EventDetailsDialog = ({ event, open, onOpenChange }: EventDetailsDialogPro
       console.error("Error updating event:", error);
       toast({
         title: "Error",
-        description: "Failed to update event",
+        description: "Failed to update event. Please try again.",
         variant: "destructive",
       });
     }
@@ -412,6 +422,20 @@ const EventDetailsDialog = ({ event, open, onOpenChange }: EventDetailsDialogPro
                 {event.status}
               </span>
             </div>
+
+            {(event.reminder_enabled || event.sms_reminder_enabled) && (
+              <div className="space-y-2">
+                <Label>Reminders:</Label>
+                <div className="text-sm text-gray-600">
+                  {event.reminder_enabled && (
+                    <div>Email reminder: {event.reminder_minutes_before} minutes before</div>
+                  )}
+                  {event.sms_reminder_enabled && (
+                    <div>SMS reminder: {event.sms_reminder_minutes_before || event.reminder_minutes_before} minutes before to {event.sms_reminder_phone}</div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </DialogContent>
