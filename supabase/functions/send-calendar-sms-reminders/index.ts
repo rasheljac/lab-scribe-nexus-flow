@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.8";
 
@@ -49,19 +48,30 @@ const handler = async (req: Request): Promise<Response> => {
     for (const event of events) {
       try {
         const eventStart = new Date(event.start_time);
-        // Use sms_reminder_minutes_before if available, otherwise fall back to reminder_minutes_before, then 15 minutes
-        const reminderMinutes = event.sms_reminder_minutes_before || event.reminder_minutes_before || 15;
-        const reminderTime = new Date(eventStart.getTime() - reminderMinutes * 60 * 1000);
         const now = new Date();
+        const timeUntilEvent = eventStart.getTime() - now.getTime();
+        const minutesUntilEvent = Math.floor(timeUntilEvent / (1000 * 60));
 
-        console.log(`Event: ${event.title}, Start: ${eventStart}, Reminder time: ${reminderTime}, Now: ${now}`);
+        // Smart reminder timing logic
+        let reminderMinutes: number;
+        if (minutesUntilEvent <= 15) {
+          // If event is starting within 15 minutes, send reminder 2 minutes before
+          reminderMinutes = 2;
+        } else {
+          // Otherwise, use the configured reminder time or default to 15 minutes
+          reminderMinutes = event.reminder_minutes_before || 15;
+        }
+
+        const reminderTime = new Date(eventStart.getTime() - reminderMinutes * 60 * 1000);
+
+        console.log(`Event: ${event.title}, Start: ${eventStart}, Minutes until event: ${minutesUntilEvent}, Using reminder: ${reminderMinutes} minutes before, Reminder time: ${reminderTime}, Now: ${now}`);
 
         // Check if it's time to send the reminder
         if (now >= reminderTime) {
-          console.log(`Sending SMS reminder for event: ${event.title}`);
+          console.log(`Sending SMS reminder for event: ${event.title} (${reminderMinutes} minutes before)`);
 
-          // Prepare SMS message
-          const message = `Reminder: ${event.title} is scheduled for ${eventStart.toLocaleString()}${event.location ? ` at ${event.location}` : ''}`;
+          // Prepare SMS message with dynamic timing
+          const message = `Reminder: ${event.title} is scheduled for ${eventStart.toLocaleString()}${event.location ? ` at ${event.location}` : ''} (${reminderMinutes} min reminder)`;
 
           // Send SMS using the existing send-sms function
           const smsResponse = await fetch('https://docs.kapelczak.net/api/v1/sms/send', {
@@ -94,7 +104,7 @@ const handler = async (req: Request): Promise<Response> => {
               console.error('Error updating event reminder status:', updateError);
             } else {
               remindersSent++;
-              console.log(`SMS reminder sent for event: ${event.title}`);
+              console.log(`SMS reminder sent for event: ${event.title} (${reminderMinutes} minutes before)`);
 
               // Log the SMS for audit trail
               const { error: logError } = await supabaseClient
