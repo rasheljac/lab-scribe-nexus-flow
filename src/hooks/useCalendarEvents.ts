@@ -20,6 +20,7 @@ export interface CalendarEvent {
   sms_reminder_enabled: boolean | null;
   sms_reminder_phone: string | null;
   sms_reminder_sent: boolean | null;
+  sms_reminder_minutes_before?: number | null;
   created_at: string;
   updated_at: string;
 }

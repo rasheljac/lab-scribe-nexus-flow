@@ -52,6 +52,7 @@ const EventDetailsDialog = ({ event, open, onOpenChange }: EventDetailsDialogPro
     reminder_minutes_before: event.reminder_minutes_before || 15,
     sms_reminder_enabled: event.sms_reminder_enabled || false,
     sms_reminder_phone: event.sms_reminder_phone || "",
+    sms_reminder_minutes_before: event.reminder_minutes_before || 15,
   });
 
   const { updateEvent, deleteEvent } = useCalendarEvents();
@@ -317,7 +318,7 @@ const EventDetailsDialog = ({ event, open, onOpenChange }: EventDetailsDialogPro
               </div>
 
               {formData.sms_reminder_enabled && (
-                <div className="space-y-2">
+                <div className="space-y-4">
                   <div>
                     <Label htmlFor="sms_reminder_phone">Phone Number for SMS</Label>
                     <Input
@@ -328,6 +329,27 @@ const EventDetailsDialog = ({ event, open, onOpenChange }: EventDetailsDialogPro
                       placeholder="+1234567890"
                     />
                     <p className="text-sm text-muted-foreground">Include country code (e.g., +1 for US numbers)</p>
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="sms_reminder_minutes">SMS reminder (minutes before)</Label>
+                    <Select
+                      value={formData.sms_reminder_minutes_before.toString()}
+                      onValueChange={(value) => 
+                        setFormData({ ...formData, sms_reminder_minutes_before: parseInt(value) })
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="5">5 minutes</SelectItem>
+                        <SelectItem value="15">15 minutes</SelectItem>
+                        <SelectItem value="30">30 minutes</SelectItem>
+                        <SelectItem value="60">1 hour</SelectItem>
+                        <SelectItem value="1440">1 day</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
               )}

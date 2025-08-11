@@ -49,10 +49,12 @@ const handler = async (req: Request): Promise<Response> => {
     for (const event of events) {
       try {
         const eventStart = new Date(event.start_time);
-        // Use reminder_minutes_before field (falls back to 15 minutes if not set)
-        const reminderMinutes = event.reminder_minutes_before || 15;
+        // Use sms_reminder_minutes_before if available, otherwise fall back to reminder_minutes_before, then 15 minutes
+        const reminderMinutes = event.sms_reminder_minutes_before || event.reminder_minutes_before || 15;
         const reminderTime = new Date(eventStart.getTime() - reminderMinutes * 60 * 1000);
         const now = new Date();
+
+        console.log(`Event: ${event.title}, Start: ${eventStart}, Reminder time: ${reminderTime}, Now: ${now}`);
 
         // Check if it's time to send the reminder
         if (now >= reminderTime) {
@@ -112,7 +114,25 @@ const handler = async (req: Request): Promise<Response> => {
             }
           } else {
             console.error(`Failed to send SMS for event ${event.title}:`, smsResult);
+            
+            // Log failed SMS attempt
+            const { error: logError } = await supabaseClient
+              .from('sms_logs')
+              .insert({
+                user_id: event.user_id,
+                mobile_number: event.sms_reminder_phone,
+                message: message,
+                status: 'failed',
+                api_response: smsResult,
+                sent_at: new Date().toISOString()
+              });
+
+            if (logError) {
+              console.error('Error logging failed SMS:', logError);
+            }
           }
+        } else {
+          console.log(`Not yet time to send reminder for event: ${event.title}. Reminder time: ${reminderTime}, Current time: ${now}`);
         }
       } catch (error) {
         console.error(`Error processing event ${event.id}:`, error);
