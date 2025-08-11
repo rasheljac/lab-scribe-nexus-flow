@@ -49,7 +49,9 @@ const handler = async (req: Request): Promise<Response> => {
     for (const event of events) {
       try {
         const eventStart = new Date(event.start_time);
-        const reminderTime = new Date(eventStart.getTime() - 15 * 60 * 1000); // Default 15 minutes before
+        // Use reminder_minutes_before field (falls back to 15 minutes if not set)
+        const reminderMinutes = event.reminder_minutes_before || 15;
+        const reminderTime = new Date(eventStart.getTime() - reminderMinutes * 60 * 1000);
         const now = new Date();
 
         // Check if it's time to send the reminder

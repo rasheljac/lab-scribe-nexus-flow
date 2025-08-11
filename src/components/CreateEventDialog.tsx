@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -27,7 +28,6 @@ interface FormData {
   reminder_sent: boolean;
   sms_reminder_enabled: boolean;
   sms_reminder_phone: string;
-  sms_reminder_minutes_before: number;
 }
 
 interface CreateEventDialogProps {
@@ -52,7 +52,6 @@ const CreateEventDialog = ({ open: controlledOpen, onOpenChange, defaultEventTyp
     reminder_sent: false,
     sms_reminder_enabled: false,
     sms_reminder_phone: "",
-    sms_reminder_minutes_before: 15,
   });
 
   const { createEvent } = useCalendarEvents();
@@ -126,7 +125,6 @@ const CreateEventDialog = ({ open: controlledOpen, onOpenChange, defaultEventTyp
         reminder_sent: false,
         sms_reminder_enabled: false,
         sms_reminder_phone: "",
-        sms_reminder_minutes_before: 15,
       });
     } catch (error) {
       console.error("Error creating event:", error);
@@ -264,38 +262,16 @@ const CreateEventDialog = ({ open: controlledOpen, onOpenChange, defaultEventTyp
           </div>
 
           {formData.sms_reminder_enabled && (
-            <div className="space-y-2">
-              <div>
-                <Label htmlFor="sms_reminder_phone">Phone Number for SMS</Label>
-                <Input
-                  id="sms_reminder_phone"
-                  type="tel"
-                  value={formData.sms_reminder_phone}
-                  onChange={(e) => setFormData({ ...formData, sms_reminder_phone: e.target.value })}
-                  placeholder="+1234567890"
-                />
-                <p className="text-sm text-muted-foreground">Include country code (e.g., +1 for US numbers)</p>
-              </div>
-              <div>
-                <Label htmlFor="sms_reminder_minutes">SMS reminder (minutes before)</Label>
-                <Select
-                  value={formData.sms_reminder_minutes_before.toString()}
-                  onValueChange={(value) => 
-                    setFormData({ ...formData, sms_reminder_minutes_before: parseInt(value) })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="5">5 minutes</SelectItem>
-                    <SelectItem value="15">15 minutes</SelectItem>
-                    <SelectItem value="30">30 minutes</SelectItem>
-                    <SelectItem value="60">1 hour</SelectItem>
-                    <SelectItem value="1440">1 day</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+            <div>
+              <Label htmlFor="sms_reminder_phone">Phone Number for SMS</Label>
+              <Input
+                id="sms_reminder_phone"
+                type="tel"
+                value={formData.sms_reminder_phone}
+                onChange={(e) => setFormData({ ...formData, sms_reminder_phone: e.target.value })}
+                placeholder="+1234567890"
+              />
+              <p className="text-sm text-muted-foreground">Include country code (e.g., +1 for US numbers)</p>
             </div>
           )}
         </div>
