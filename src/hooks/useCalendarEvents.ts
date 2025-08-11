@@ -84,9 +84,19 @@ export const useCalendarEvents = () => {
       
       console.log('Updating calendar event:', id, updates);
       
-      // Remove undefined values and prepare clean update data
+      // Define valid database fields that can be updated
+      const validFields = [
+        'title', 'description', 'event_type', 'start_time', 'end_time', 
+        'location', 'status', 'reminder_enabled', 'reminder_minutes_before',
+        'sms_reminder_enabled', 'sms_reminder_phone', 'sms_reminder_sent',
+        'reminder_sent', 'attendees'
+      ];
+      
+      // Filter out invalid fields and undefined values
       const cleanUpdates = Object.fromEntries(
-        Object.entries(updates).filter(([_, value]) => value !== undefined)
+        Object.entries(updates).filter(([key, value]) => 
+          validFields.includes(key) && value !== undefined
+        )
       );
       
       console.log('Clean update data:', cleanUpdates);
