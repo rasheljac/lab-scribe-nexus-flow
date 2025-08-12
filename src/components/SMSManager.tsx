@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -19,6 +18,7 @@ const SMSManager = () => {
   const [message, setMessage] = useState('');
   const [mobileNumber, setMobileNumber] = useState('');
   const [selectedContact, setSelectedContact] = useState<string>('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { sendSMS, smsLogs, logsLoading, deleteSMS } = useSMS();
   const { contacts } = useContacts();
 
@@ -38,7 +38,7 @@ const SMSManager = () => {
   const handleSendSMS = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!message.trim() || !mobileNumber.trim()) {
+    if (!message.trim() || !mobileNumber.trim() || isSubmitting) {
       return;
     }
 
@@ -48,6 +48,8 @@ const SMSManager = () => {
       return;
     }
 
+    setIsSubmitting(true);
+
     try {
       await sendSMS.mutateAsync({ message, mobile_number: mobileNumber });
       setMessage('');
@@ -55,6 +57,8 @@ const SMSManager = () => {
       setSelectedContact('');
     } catch (error) {
       console.error('Failed to send SMS:', error);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -152,10 +156,10 @@ const SMSManager = () => {
             
             <Button 
               type="submit" 
-              disabled={sendSMS.isPending || !message.trim() || !mobileNumber.trim()}
+              disabled={isSubmitting || sendSMS.isPending || !message.trim() || !mobileNumber.trim()}
               className="w-full"
             >
-              {sendSMS.isPending ? (
+              {(isSubmitting || sendSMS.isPending) ? (
                 <>
                   <Clock className="w-4 h-4 mr-2 animate-spin" />
                   Sending...

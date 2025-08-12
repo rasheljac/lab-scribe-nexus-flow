@@ -13,6 +13,10 @@ interface SMSRequest {
   user_id: string;
 }
 
+// Simple in-memory cache to prevent duplicate requests
+const requestCache = new Map<string, number>();
+const CACHE_DURATION = 10000; // 10 seconds
+
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -33,7 +37,33 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    console.log('Sending SMS:', { mobile_number, message: message.substring(0, 50) + '...' });
+    // Create a unique request identifier to prevent duplicates
+    const requestId = `${user_id}-${mobile_number}-${message.substring(0, 50)}-${Date.now()}`;
+    const truncatedRequestId = `${user_id}-${mobile_number}-${message.substring(0, 50)}`;
+    
+    // Check if this exact request was made recently
+    const cachedTime = requestCache.get(truncatedRequestId);
+    const now = Date.now();
+    
+    if (cachedTime && (now - cachedTime) < CACHE_DURATION) {
+      console.log('Duplicate request detected, rejecting:', truncatedRequestId);
+      return new Response(
+        JSON.stringify({ error: 'Duplicate request detected. Please wait before sending another identical message.' }),
+        { status: 429, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
+      );
+    }
+
+    // Cache this request
+    requestCache.set(truncatedRequestId, now);
+
+    // Clean up old cache entries
+    for (const [key, time] of requestCache.entries()) {
+      if (now - time > CACHE_DURATION) {
+        requestCache.delete(key);
+      }
+    }
+
+    console.log('Sending SMS:', { mobile_number, message: message.substring(0, 50) + '...', requestId });
 
     // Check if user is admin
     const { data: userProfile, error: profileError } = await supabaseClient
@@ -75,7 +105,7 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error(`SMS API error: ${smsResult}`);
     }
 
-    // Log the SMS in database for audit trail
+    // Log the SMS in database for audit trail with request ID
     const { error: logError } = await supabaseClient
       .from('sms_logs')
       .insert({
@@ -95,7 +125,8 @@ const handler = async (req: Request): Promise<Response> => {
       JSON.stringify({ 
         success: true, 
         message: 'SMS sent successfully',
-        api_response: smsResult
+        api_response: smsResult,
+        request_id: requestId
       }),
       {
         status: 200,
