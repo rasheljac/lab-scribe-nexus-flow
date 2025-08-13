@@ -5,8 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CalendarDays, Beaker, FolderOpen, CheckSquare, BarChart3, FileText, Users, Settings } from "lucide-react";
-import Sidebar from "@/components/Sidebar";
-import Header from "@/components/Header";
 import StatsCard from "@/components/StatsCard";
 import DashboardTaskList from "@/components/DashboardTaskList";
 import QuickActions from "@/components/QuickActions";
@@ -69,164 +67,158 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
-      <Sidebar />
-      <div className="flex-1 flex flex-col">
-        <Header />
-        <main className="flex-1 p-6 overflow-auto">
-          <div className="max-w-7xl mx-auto space-y-6">
-            {/* Welcome Section */}
-            <div className="bg-white rounded-lg shadow-sm border p-6">
-              <div className="flex items-center gap-4">
-                <img 
-                  src="/lovable-uploads/23fe0903-c1fa-4493-b830-482c645b0541.png" 
-                  alt="Kapelczak Lab Logo" 
-                  className="h-16 w-16 object-contain"
-                />
-                <div>
-                  <h1 className="text-3xl font-bold text-gray-900">Welcome to Kapelczak ELN</h1>
-                  <p className="text-gray-600 mt-1">Your comprehensive electronic laboratory notebook</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Stats Overview */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <StatsCard
-                title="Active Experiments"
-                value={activeExperiments}
-                icon={Beaker}
-                color="text-blue-600"
-                bgColor="bg-blue-50"
-              />
-              <StatsCard
-                title="Completed Experiments"
-                value={completedExperiments}
-                icon={CheckSquare}
-                color="text-green-600"
-                bgColor="bg-green-50"
-              />
-              <StatsCard
-                title="Total Projects"
-                value={totalProjects}
-                icon={FolderOpen}
-                color="text-purple-600"
-                bgColor="bg-purple-50"
-              />
-              <StatsCard
-                title="Pending Reports"
-                value={pendingReports}
-                icon={FileText}
-                color="text-orange-600"
-                bgColor="bg-orange-50"
-              />
-            </div>
-
-            {/* Main Content */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Task List */}
-              <div className="lg:col-span-2">
-                <DashboardTaskList />
-              </div>
-
-              {/* Right Column - Quick Actions and Upcoming Schedule */}
-              <div className="space-y-6">
-                <QuickActions />
-                
-                {/* Upcoming Schedule */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <CalendarDays className="h-5 w-5" />
-                      Upcoming Schedule
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      {upcomingEvents.map((event) => (
-                        <div key={event.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                          <div className={`w-2 h-2 rounded-full ${getEventColor(event.event_type)}`} />
-                          <div className="flex-1">
-                            <p className="font-medium text-sm">{event.title}</p>
-                            <p className="text-xs text-gray-600">{formatDateTime(event.start_time)}</p>
-                          </div>
-                        </div>
-                      ))}
-                      {upcomingEvents.length === 0 && (
-                        <div className="text-center py-4 text-gray-500 text-sm">
-                          No upcoming events
-                        </div>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            </div>
-
-            {/* Charts and Analytics */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <BarChart3 className="h-5 w-5" />
-                    Experiment Progress
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {experiments.slice(0, 3).map((experiment) => (
-                      <div key={experiment.id}>
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm font-medium">{experiment.title}</span>
-                          <Badge variant="outline">{experiment.progress}%</Badge>
-                        </div>
-                        <div className="w-full bg-gray-200 rounded-full h-2 mt-1">
-                          <div 
-                            className="bg-blue-600 h-2 rounded-full" 
-                            style={{ width: `${experiment.progress}%` }}
-                          />
-                        </div>
-                      </div>
-                    ))}
-                    {experiments.length === 0 && (
-                      <p className="text-gray-500 text-sm">No experiments found</p>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Recent Insights */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Key Insights</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="p-4 bg-blue-50 rounded-lg">
-                      <h4 className="font-semibold text-blue-900">Experiment Status</h4>
-                      <p className="text-sm text-blue-700 mt-1">
-                        You have {experiments.length} experiments with {completedExperiments} completed 
-                        ({experiments.length > 0 ? Math.round((completedExperiments / experiments.length) * 100) : 0}% completion rate).
-                      </p>
-                    </div>
-                    <div className="p-4 bg-green-50 rounded-lg">
-                      <h4 className="font-semibold text-green-900">Project Overview</h4>
-                      <p className="text-sm text-green-700 mt-1">
-                        {totalProjects} active projects with {pendingReports} pending reports.
-                      </p>
-                    </div>
-                    <div className="p-4 bg-yellow-50 rounded-lg">
-                      <h4 className="font-semibold text-yellow-900">Activity Summary</h4>
-                      <p className="text-sm text-yellow-700 mt-1">
-                        {activeExperiments} experiments currently in progress across your projects.
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+    <div className="p-6 overflow-auto">
+      <div className="max-w-7xl mx-auto space-y-6">
+        {/* Welcome Section */}
+        <div className="bg-white rounded-lg shadow-sm border p-6">
+          <div className="flex items-center gap-4">
+            <img 
+              src="/lovable-uploads/23fe0903-c1fa-4493-b830-482c645b0541.png" 
+              alt="Kapelczak Lab Logo" 
+              className="h-16 w-16 object-contain"
+            />
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">Welcome to Kapelczak ELN</h1>
+              <p className="text-gray-600 mt-1">Your comprehensive electronic laboratory notebook</p>
             </div>
           </div>
-        </main>
+        </div>
+
+        {/* Stats Overview */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <StatsCard
+            title="Active Experiments"
+            value={activeExperiments}
+            icon={Beaker}
+            color="text-blue-600"
+            bgColor="bg-blue-50"
+          />
+          <StatsCard
+            title="Completed Experiments"
+            value={completedExperiments}
+            icon={CheckSquare}
+            color="text-green-600"
+            bgColor="bg-green-50"
+          />
+          <StatsCard
+            title="Total Projects"
+            value={totalProjects}
+            icon={FolderOpen}
+            color="text-purple-600"
+            bgColor="bg-purple-50"
+          />
+          <StatsCard
+            title="Pending Reports"
+            value={pendingReports}
+            icon={FileText}
+            color="text-orange-600"
+            bgColor="bg-orange-50"
+          />
+        </div>
+
+        {/* Main Content */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Task List */}
+          <div className="lg:col-span-2">
+            <DashboardTaskList />
+          </div>
+
+          {/* Right Column - Quick Actions and Upcoming Schedule */}
+          <div className="space-y-6">
+            <QuickActions />
+            
+            {/* Upcoming Schedule */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <CalendarDays className="h-5 w-5" />
+                  Upcoming Schedule
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {upcomingEvents.map((event) => (
+                    <div key={event.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                      <div className={`w-2 h-2 rounded-full ${getEventColor(event.event_type)}`} />
+                      <div className="flex-1">
+                        <p className="font-medium text-sm">{event.title}</p>
+                        <p className="text-xs text-gray-600">{formatDateTime(event.start_time)}</p>
+                      </div>
+                    </div>
+                  ))}
+                  {upcomingEvents.length === 0 && (
+                    <div className="text-center py-4 text-gray-500 text-sm">
+                      No upcoming events
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+
+        {/* Charts and Analytics */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <BarChart3 className="h-5 w-5" />
+                Experiment Progress
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {experiments.slice(0, 3).map((experiment) => (
+                  <div key={experiment.id}>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm font-medium">{experiment.title}</span>
+                      <Badge variant="outline">{experiment.progress}%</Badge>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2 mt-1">
+                      <div 
+                        className="bg-blue-600 h-2 rounded-full" 
+                        style={{ width: `${experiment.progress}%` }}
+                      />
+                    </div>
+                  </div>
+                ))}
+                {experiments.length === 0 && (
+                  <p className="text-gray-500 text-sm">No experiments found</p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Recent Insights */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Key Insights</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="p-4 bg-blue-50 rounded-lg">
+                  <h4 className="font-semibold text-blue-900">Experiment Status</h4>
+                  <p className="text-sm text-blue-700 mt-1">
+                    You have {experiments.length} experiments with {completedExperiments} completed 
+                    ({experiments.length > 0 ? Math.round((completedExperiments / experiments.length) * 100) : 0}% completion rate).
+                  </p>
+                </div>
+                <div className="p-4 bg-green-50 rounded-lg">
+                  <h4 className="font-semibold text-green-900">Project Overview</h4>
+                  <p className="text-sm text-green-700 mt-1">
+                    {totalProjects} active projects with {pendingReports} pending reports.
+                  </p>
+                </div>
+                <div className="p-4 bg-yellow-50 rounded-lg">
+                  <h4 className="font-semibold text-yellow-900">Activity Summary</h4>
+                  <p className="text-sm text-yellow-700 mt-1">
+                    {activeExperiments} experiments currently in progress across your projects.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );
