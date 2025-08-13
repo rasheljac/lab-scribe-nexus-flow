@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,8 +25,8 @@ const Inventory = () => {
                          item.location?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = selectedCategory === "all" || item.category === selectedCategory;
     const matchesStatus = selectedStatus === "all" || 
-                         (selectedStatus === "low_stock" && item.current_stock <= item.min_stock) ||
-                         (selectedStatus === "in_stock" && item.current_stock > item.min_stock) ||
+                         (selectedStatus === "low_stock" && item.current_stock <= 10) ||
+                         (selectedStatus === "in_stock" && item.current_stock > 10) ||
                          (selectedStatus === "out_of_stock" && item.current_stock === 0);
     
     return matchesSearch && matchesCategory && matchesStatus;
@@ -35,7 +34,7 @@ const Inventory = () => {
 
   const getStockStatus = (item: any) => {
     if (item.current_stock === 0) return { status: 'out_of_stock', label: 'Out of Stock', color: 'bg-red-100 text-red-800' };
-    if (item.current_stock <= item.min_stock) return { status: 'low_stock', label: 'Low Stock', color: 'bg-yellow-100 text-yellow-800' };
+    if (item.current_stock <= 10) return { status: 'low_stock', label: 'Low Stock', color: 'bg-yellow-100 text-yellow-800' };
     return { status: 'in_stock', label: 'In Stock', color: 'bg-green-100 text-green-800' };
   };
 
@@ -62,8 +61,7 @@ const Inventory = () => {
     setDetailsDialogOpen(true);
   };
 
-  const handleUpdateItem = () => {
-    // Refetch items after update
+  const handleUpdateItem = async () => {
     window.location.reload();
   };
 
@@ -159,7 +157,7 @@ const Inventory = () => {
                 <div>
                   <p className="text-sm text-gray-600">In Stock</p>
                   <p className="text-2xl font-bold">
-                    {items.filter(item => item.current_stock > item.min_stock).length}
+                    {items.filter(item => item.current_stock > 10).length}
                   </p>
                 </div>
               </div>
@@ -173,7 +171,7 @@ const Inventory = () => {
                 <div>
                   <p className="text-sm text-gray-600">Low Stock</p>
                   <p className="text-2xl font-bold">
-                    {items.filter(item => item.current_stock <= item.min_stock && item.current_stock > 0).length}
+                    {items.filter(item => item.current_stock <= 10 && item.current_stock > 0).length}
                   </p>
                 </div>
               </div>
@@ -228,7 +226,7 @@ const Inventory = () => {
                     
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-gray-600">Min. Quantity:</span>
-                      <span className="font-medium">{item.min_stock} {item.unit}</span>
+                      <span className="font-medium">10 {item.unit}</span>
                     </div>
                     
                     {item.location && (

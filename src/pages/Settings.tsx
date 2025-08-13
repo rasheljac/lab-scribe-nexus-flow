@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,8 +14,8 @@ import { useUserPreferences } from "@/hooks/useUserPreferences";
 import { toast } from "sonner";
 
 const Settings = () => {
-  const { data: profile, updateProfile } = useUserProfile();
-  const { data: preferences, updatePreferences } = useUserPreferences();
+  const { profile, updateProfile } = useUserProfile();
+  const { preferences, updatePreferences } = useUserPreferences();
   const [profileData, setProfileData] = useState({
     first_name: profile?.first_name || '',
     last_name: profile?.last_name || '',
@@ -25,7 +24,7 @@ const Settings = () => {
 
   const handleProfileUpdate = async () => {
     try {
-      await updateProfile.mutateAsync(profileData);
+      await updateProfile(profileData);
       toast.success("Profile updated successfully");
     } catch (error) {
       toast.error("Failed to update profile");
@@ -39,7 +38,7 @@ const Settings = () => {
         ? hiddenPages.filter(p => p !== page)
         : [...hiddenPages, page];
       
-      await updatePreferences.mutateAsync({
+      await updatePreferences({
         hidden_pages: newHiddenPages
       });
       toast.success("Navigation settings updated");
@@ -148,8 +147,8 @@ const Settings = () => {
                   />
                 </div>
 
-                <Button onClick={handleProfileUpdate} disabled={updateProfile.isPending}>
-                  {updateProfile.isPending ? "Updating..." : "Update Profile"}
+                <Button onClick={handleProfileUpdate}>
+                  Update Profile
                 </Button>
               </CardContent>
             </Card>

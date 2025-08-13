@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -118,9 +117,9 @@ const Projects = () => {
               <div className="flex items-center gap-2">
                 <Clock className="h-5 w-5 text-yellow-600" />
                 <div>
-                  <p className="text-sm text-gray-600">In Progress</p>
+                  <p className="text-sm text-gray-600">Active</p>
                   <p className="text-2xl font-bold">
-                    {projects.filter(p => p.status === 'in_progress').length}
+                    {projects.filter(p => p.status === 'active').length}
                   </p>
                 </div>
               </div>

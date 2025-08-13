@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Calendar, Search, Plus, CheckCircle, Clock, AlertTriangle, User } from "lucide-react";
-import { useTasks } from "@/hooks/useTasks";
+import { useTasks, Task } from "@/hooks/useTasks";
 import CreateTaskDialog from "@/components/CreateTaskDialog";
 import EditTaskDialog from "@/components/EditTaskDialog";
 import TaskList from "@/components/TaskList";
@@ -197,18 +196,12 @@ const Tasks = () => {
           </TabsList>
 
           <TabsContent value="list">
-            <TaskList 
-              tasks={filteredTasks} 
-              onEdit={handleEdit}
-              onUpdate={updateTask}
-            />
+            <TaskList />
           </TabsContent>
 
           <TabsContent value="kanban">
             <DraggableTaskList 
               tasks={filteredTasks}
-              onEdit={handleEdit}
-              onUpdate={updateTask}
             />
           </TabsContent>
         </Tabs>
@@ -220,8 +213,6 @@ const Tasks = () => {
         
         {selectedTask && (
           <EditTaskDialog 
-            open={editDialogOpen} 
-            onOpenChange={setEditDialogOpen}
             task={selectedTask}
           />
         )}
