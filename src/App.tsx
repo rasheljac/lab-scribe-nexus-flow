@@ -8,6 +8,7 @@ import {
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster"
 import { queryClient } from "@/lib/react-query";
+import { AuthProvider } from "@/hooks/useAuth";
 
 import Auth from "./pages/Auth";
 import Index from "./pages/Index";
@@ -45,52 +46,54 @@ function App() {
   return (
     <BrowserRouter>
       <QueryClientProvider client={queryClient}>
-        <div className="min-h-screen bg-background">
-          <Routes>
-            <Route path="/auth" element={<Auth />} />
-            <Route path="*" element={
-              <ProtectedRoute>
-                <div className="flex">
-                  <Sidebar />
-                  <div className="flex-1 ml-64">
-                    <Header />
-                    <main className="pt-16">
-                      <Routes>
-                        <Route path="/" element={<Index />} />
-                        <Route path="/experiments" element={<Experiments />} />
-                        <Route path="/experiments/:id" element={<ExperimentDetails />} />
-                        <Route path="/experiments/:id/notes" element={<ExperimentNotes />} />
-                        <Route path="/projects" element={<Projects />} />
-                        <Route path="/projects/:id/experiments" element={<ProjectExperiments />} />
-                        <Route path="/protocols" element={<Protocols />} />
-                        <Route path="/protocols/:id" element={<ProtocolDetails />} />
-                        <Route path="/tasks" element={<Tasks />} />
-                        <Route path="/calendar" element={<Calendar />} />
-                        <Route path="/inventory" element={<Inventory />} />
-                        <Route path="/reports" element={<Reports />} />
-                        <Route path="/analytics" element={<Analytics />} />
-                        <Route path="/team" element={<Team />} />
-                        <Route path="/orders" element={<Orders />} />
-                        <Route path="/mice-orders" element={<MiceOrders />} />
-                        <Route path="/diet-cohorts" element={<DietCohorts />} />
-                        <Route path="/idea-notes/:ideaId" element={<IdeaNotes />} />
-                        <Route path="/experiment-ideas" element={<ExperimentIdeas />} />
-                        <Route path="/label-printer" element={<LabelPrinter />} />
-                        <Route path="/messages" element={<Messages />} />
-                        <Route path="/sms" element={<SMS />} />
-                        <Route path="/video-chat" element={<VideoChat />} />
-                        <Route path="/settings" element={<Settings />} />
-                        <Route path="/users" element={<Users />} />
-                        <Route path="/system-settings" element={<SystemSettings />} />
-                        <Route path="*" element={<NotFound />} />
-                      </Routes>
-                    </main>
+        <AuthProvider>
+          <div className="min-h-screen bg-background">
+            <Routes>
+              <Route path="/auth" element={<Auth />} />
+              <Route path="*" element={
+                <ProtectedRoute>
+                  <div className="flex">
+                    <Sidebar />
+                    <div className="flex-1 ml-64">
+                      <Header />
+                      <main className="pt-16">
+                        <Routes>
+                          <Route path="/" element={<Index />} />
+                          <Route path="/experiments" element={<Experiments />} />
+                          <Route path="/experiments/:id" element={<ExperimentDetails />} />
+                          <Route path="/experiments/:id/notes" element={<ExperimentNotes />} />
+                          <Route path="/projects" element={<Projects />} />
+                          <Route path="/projects/:id/experiments" element={<ProjectExperiments />} />
+                          <Route path="/protocols" element={<Protocols />} />
+                          <Route path="/protocols/:id" element={<ProtocolDetails />} />
+                          <Route path="/tasks" element={<Tasks />} />
+                          <Route path="/calendar" element={<Calendar />} />
+                          <Route path="/inventory" element={<Inventory />} />
+                          <Route path="/reports" element={<Reports />} />
+                          <Route path="/analytics" element={<Analytics />} />
+                          <Route path="/team" element={<Team />} />
+                          <Route path="/orders" element={<Orders />} />
+                          <Route path="/mice-orders" element={<MiceOrders />} />
+                          <Route path="/diet-cohorts" element={<DietCohorts />} />
+                          <Route path="/idea-notes/:ideaId" element={<IdeaNotes />} />
+                          <Route path="/experiment-ideas" element={<ExperimentIdeas />} />
+                          <Route path="/label-printer" element={<LabelPrinter />} />
+                          <Route path="/messages" element={<Messages />} />
+                          <Route path="/sms" element={<SMS />} />
+                          <Route path="/video-chat" element={<VideoChat />} />
+                          <Route path="/settings" element={<Settings />} />
+                          <Route path="/users" element={<Users />} />
+                          <Route path="/system-settings" element={<SystemSettings />} />
+                          <Route path="*" element={<NotFound />} />
+                        </Routes>
+                      </main>
+                    </div>
                   </div>
-                </div>
-              </ProtectedRoute>
-            } />
-          </Routes>
-        </div>
+                </ProtectedRoute>
+              } />
+            </Routes>
+          </div>
+        </AuthProvider>
         <Toaster />
       </QueryClientProvider>
     </BrowserRouter>
