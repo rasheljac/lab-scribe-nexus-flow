@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -21,7 +22,8 @@ import {
   ChevronRight,
   Lightbulb,
   MousePointer2,
-  Smartphone
+  Smartphone,
+  Apple
 } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useExperiments } from "@/hooks/useExperiments";
@@ -33,6 +35,7 @@ import { useProtocols } from "@/hooks/useProtocols";
 import { useMiceOrders } from "@/hooks/useMiceOrders";
 import { useUserPreferences } from "@/hooks/useUserPreferences";
 import { useSMS } from "@/hooks/useSMS";
+import { useDietCohorts } from "@/hooks/useDietCohorts";
 
 const Sidebar = () => {
   const [collapsed, setCollapsed] = useState(false);
@@ -49,6 +52,7 @@ const Sidebar = () => {
   const { protocols } = useProtocols();
   const { orders } = useMiceOrders();
   const { smsLogs } = useSMS();
+  const { cohorts } = useDietCohorts();
 
   // Filter uncompleted tasks
   const uncompletedTasksCount = tasks.filter(task => task.status !== 'completed').length;
@@ -67,6 +71,7 @@ const Sidebar = () => {
     { icon: Printer, label: "Label Printer", path: "/labels", badge: null, key: "labels" },
     { icon: ShoppingCart, label: "Order Portal", path: "/orders", badge: "2", key: "orders" },
     { icon: MousePointer2, label: "Mice Orders", path: "/mice-orders", badge: orders.length.toString(), key: "mice-orders" },
+    { icon: Apple, label: "Diet Cohorts", path: "/diet-cohorts", badge: cohorts?.length.toString() || "0", key: "diet-cohorts" },
     { icon: MessageSquare, label: "Messages", path: "/messages", badge: "5", key: "messages" },
     { icon: Smartphone, label: "SMS", path: "/sms", badge: smsLogs?.length.toString() || "0", key: "sms" },
     { icon: Video, label: "Video Chat", path: "/video-chat", badge: null, key: "video-chat" },
