@@ -1,161 +1,176 @@
-
-import React, { useState } from 'react';
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 import {
   Home,
   Beaker,
   FolderOpen,
-  FileText,
-  Lightbulb,
-  CheckSquare,
   Calendar,
-  Package,
-  FileBarChart,
+  CheckSquare,
   BarChart3,
+  FileText,
+  Package,
   Users,
-  ShoppingCart,
-  Mouse,
-  Printer,
-  MessageSquare,
-  Phone,
-  Video,
   Settings,
-  Scale,
+  MessageSquare,
+  Video,
+  Printer,
+  ShoppingCart,
+  ChevronLeft,
+  ChevronRight,
+  Lightbulb,
+  MousePointer2,
+  Smartphone
 } from "lucide-react";
-import { useAuth } from "@/hooks/useAuth";
-import { useUser } from "@/hooks/useUser";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { useNavigate, useLocation } from 'react-router-dom';
-import { useToast } from "@/hooks/use-toast";
-import { cn } from "@/lib/utils";
+import { useNavigate, useLocation } from "react-router-dom";
+import { useExperiments } from "@/hooks/useExperiments";
+import { useExperimentIdeas } from "@/hooks/useExperimentIdeas";
+import { useProjects } from "@/hooks/useProjects";
+import { useTasks } from "@/hooks/useTasks";
+import { useReports } from "@/hooks/useReports";
+import { useProtocols } from "@/hooks/useProtocols";
+import { useMiceOrders } from "@/hooks/useMiceOrders";
+import { useUserPreferences } from "@/hooks/useUserPreferences";
+import { useSMS } from "@/hooks/useSMS";
 
 const Sidebar = () => {
-  const { signOut } = useAuth();
-  const { data: user } = useUser();
+  const [collapsed, setCollapsed] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
-  const { toast } = useToast();
-  const [isExpanded, setIsExpanded] = useState(true);
+  const { preferences, loading: preferencesLoading } = useUserPreferences();
+  
+  // Get actual counts
+  const { experiments } = useExperiments();
+  const { ideas } = useExperimentIdeas();
+  const { projects } = useProjects();
+  const { tasks } = useTasks();
+  const { reports } = useReports();
+  const { protocols } = useProtocols();
+  const { orders } = useMiceOrders();
+  const { smsLogs } = useSMS();
 
-  const handleSignOut = async () => {
-    try {
-      await signOut();
-      navigate('/auth');
-      toast({
-        title: "Logged out",
-        description: "You have been successfully logged out.",
-      })
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to log out. Please try again.",
-        variant: "destructive",
-      })
-    }
-  };
+  // Filter uncompleted tasks
+  const uncompletedTasksCount = tasks.filter(task => task.status !== 'completed').length;
 
-  const menuItems = [
-    { icon: Home, label: "Dashboard", path: "/", category: "main" },
-    { icon: Beaker, label: "Experiments", path: "/experiments", category: "research" },
-    { icon: FolderOpen, label: "Projects", path: "/projects", category: "research" },
-    { icon: FileText, label: "Protocols", path: "/protocols", category: "research" },
-    { icon: Lightbulb, label: "Experiment Ideas", path: "/experiment-ideas", category: "research" },
-    { icon: CheckSquare, label: "Tasks", path: "/tasks", category: "management" },
-    { icon: Calendar, label: "Calendar", path: "/calendar", category: "management" },
-    { icon: Package, label: "Inventory", path: "/inventory", category: "management" },
-    { icon: FileBarChart, label: "Reports", path: "/reports", category: "analysis" },
-    { icon: BarChart3, label: "Analytics", path: "/analytics", category: "analysis" },
-    { icon: Users, label: "Team", path: "/team", category: "management" },
-    { icon: ShoppingCart, label: "Orders", path: "/orders", category: "management" },
-    { icon: Mouse, label: "Mice Orders", path: "/mice-orders", category: "animals" },
-    { icon: Scale, label: "Diet Cohorts", path: "/diet-cohorts", category: "animals" },
-    { icon: Printer, label: "Label Printer", path: "/label-printer", category: "tools" },
-    { icon: MessageSquare, label: "Messages", path: "/messages", category: "communication" },
-    { icon: Phone, label: "SMS", path: "/sms", category: "communication" },
-    { icon: Video, label: "Video Chat", path: "/video-chat", category: "communication" },
-    { icon: Settings, label: "Settings", path: "/settings", category: "system" },
+  const allMenuItems = [
+    { icon: Home, label: "Dashboard", path: "/", badge: null, key: "dashboard" },
+    { icon: Beaker, label: "Experiments", path: "/experiments", badge: experiments.length.toString(), key: "experiments" },
+    { icon: Lightbulb, label: "Experiment Ideas", path: "/experiment-ideas", badge: ideas.length.toString(), key: "experiment-ideas" },
+    { icon: FolderOpen, label: "Projects", path: "/projects", badge: projects.length.toString(), key: "projects" },
+    { icon: FileText, label: "Protocols", path: "/protocols", badge: protocols.length.toString(), key: "protocols" },
+    { icon: Calendar, label: "Calendar", path: "/calendar", badge: null, key: "calendar" },
+    { icon: CheckSquare, label: "Tasks", path: "/tasks", badge: uncompletedTasksCount.toString(), key: "tasks" },
+    { icon: BarChart3, label: "Analytics", path: "/analytics", badge: null, key: "analytics" },
+    { icon: FileText, label: "Reports", path: "/reports", badge: reports.length.toString(), key: "reports" },
+    { icon: Package, label: "Inventory", path: "/inventory", badge: null, key: "inventory" },
+    { icon: Printer, label: "Label Printer", path: "/labels", badge: null, key: "labels" },
+    { icon: ShoppingCart, label: "Order Portal", path: "/orders", badge: "2", key: "orders" },
+    { icon: MousePointer2, label: "Mice Orders", path: "/mice-orders", badge: orders.length.toString(), key: "mice-orders" },
+    { icon: MessageSquare, label: "Messages", path: "/messages", badge: "5", key: "messages" },
+    { icon: Smartphone, label: "SMS", path: "/sms", badge: smsLogs?.length.toString() || "0", key: "sms" },
+    { icon: Video, label: "Video Chat", path: "/video-chat", badge: null, key: "video-chat" },
+    { icon: Users, label: "Team", path: "/team", badge: null, key: "team" },
+    { icon: Settings, label: "Settings", path: "/settings", badge: null, key: "settings" },
   ];
 
-  const toggleSidebar = () => {
-    setIsExpanded(!isExpanded);
-  };
+  const adminItems = [
+    { icon: Users, label: "User Management", path: "/admin/users", badge: null, key: "admin-users" },
+    { icon: Settings, label: "System Settings", path: "/admin/settings", badge: null, key: "admin-settings" },
+  ];
+
+  // Filter out hidden pages - only apply filtering if preferences are loaded
+  const hiddenPages = preferences?.hidden_pages || [];
+  const menuItems = preferencesLoading ? allMenuItems : allMenuItems.filter(item => !hiddenPages.includes(item.key));
+  const visibleAdminItems = preferencesLoading ? adminItems : adminItems.filter(item => !hiddenPages.includes(item.key));
 
   return (
-    <div
-      className={cn(
-        "fixed left-0 top-0 h-full bg-secondary border-r z-50",
-        isExpanded ? "w-64" : "w-16",
-        "transition-all duration-300 ease-in-out"
-      )}
-    >
-      {/* Top Section: App Name and Toggle Button */}
-      <div className="flex items-center justify-between px-4 py-3">
-        <span className={cn("text-lg font-bold transition-opacity duration-300", isExpanded ? "opacity-100" : "opacity-0")}>
-          LMS
-        </span>
-        <button onClick={toggleSidebar} className="focus:outline-none">
-          {isExpanded ? '❮' : '❯'}
-        </button>
+    <div className={cn(
+      "bg-white border-r border-gray-200 flex flex-col transition-all duration-300",
+      collapsed ? "w-16" : "w-64"
+    )}>
+      {/* Logo and Toggle */}
+      <div className="p-4 border-b border-gray-200 flex items-center justify-between">
+        {!collapsed && (
+          <div className="flex items-center gap-3">
+            <img 
+              src="/lovable-uploads/23fe0903-c1fa-4493-b830-482c645b0541.png" 
+              alt="Kapelczak Logo" 
+              className="h-8 w-8 object-contain"
+            />
+            <span className="font-bold text-lg">Kapelczak ELN</span>
+          </div>
+        )}
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setCollapsed(!collapsed)}
+          className="p-2"
+        >
+          {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+        </Button>
       </div>
 
-      {/* Menu Items */}
-      <div className="flex flex-col h-[calc(100vh-120px)] justify-between">
-        <div>
-          {Object.entries(
-            menuItems.reduce((acc: { [key: string]: any[] }, item) => {
-              if (!acc[item.category]) {
-                acc[item.category] = [];
-              }
-              acc[item.category].push(item);
-              return acc;
-            }, {})
-          ).map(([category, items]) => (
-            <div key={category} className="mb-4">
-              <h3 className={cn("px-4 py-2 font-semibold text-sm uppercase transition-opacity duration-300", isExpanded ? "opacity-100" : "opacity-0")}>
-                {category}
-              </h3>
-              {items.map((item: any) => (
-                <a
-                  key={item.label}
-                  href={item.path}
-                  className={cn(
-                    "flex items-center px-4 py-2 text-sm hover:bg-accent hover:text-accent-foreground transition-colors duration-200",
-                    location.pathname === item.path ? "bg-accent text-accent-foreground" : "text-muted-foreground",
-                    isExpanded ? "justify-start" : "justify-center"
+      {/* Navigation Menu */}
+      <nav className="flex-1 p-4 space-y-2 overflow-auto">
+        {menuItems.map((item) => {
+          const isActive = location.pathname === item.path;
+          return (
+            <Button
+              key={item.path}
+              variant={isActive ? "secondary" : "ghost"}
+              className={cn(
+                "w-full justify-start gap-3 h-10",
+                collapsed && "justify-center px-2"
+              )}
+              onClick={() => navigate(item.path)}
+            >
+              <item.icon className="h-4 w-4 flex-shrink-0" />
+              {!collapsed && (
+                <>
+                  <span className="flex-1 text-left">{item.label}</span>
+                  {item.badge && (
+                    <Badge 
+                      variant={item.badge === "!" ? "destructive" : "secondary"}
+                      className="text-xs"
+                    >
+                      {item.badge}
+                    </Badge>
                   )}
-                >
-                  <item.icon className="w-4 h-4 mr-2" />
-                  <span className={cn("transition-opacity duration-300", isExpanded ? "opacity-100" : "opacity-0")}>{item.label}</span>
-                </a>
-              ))}
-            </div>
-          ))}
-        </div>
+                </>
+              )}
+            </Button>
+          );
+        })}
 
-        {/* User Profile and Sign Out */}
-        <div className="p-4">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button className="focus:outline-none flex items-center gap-2">
-                <Avatar className="w-8 h-8">
-                  <AvatarImage src={user?.avatar_url || ""} />
-                  <AvatarFallback>{user?.first_name?.charAt(0)}{user?.last_name?.charAt(0)}</AvatarFallback>
-                </Avatar>
-                <span className={cn("text-sm font-medium transition-opacity duration-300", isExpanded ? "opacity-100" : "opacity-0")}>
-                  {user?.first_name} {user?.last_name}
-                </span>
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-56">
-              <DropdownMenuLabel>My Account</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleSignOut}>
-                Sign Out
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      </div>
+        {/* Admin Section */}
+        {!collapsed && visibleAdminItems.length > 0 && (
+          <div className="pt-4 mt-4 border-t border-gray-200">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 px-2">
+              Administration
+            </p>
+            {visibleAdminItems.map((item) => {
+              const isActive = location.pathname === item.path;
+              return (
+                <Button
+                  key={item.path}
+                  variant={isActive ? "secondary" : "ghost"}
+                  className="w-full justify-start gap-3 h-10"
+                  onClick={() => navigate(item.path)}
+                >
+                  <item.icon className="h-4 w-4" />
+                  <span className="flex-1 text-left">{item.label}</span>
+                  {item.badge && (
+                    <Badge variant="secondary" className="text-xs">
+                      {item.badge}
+                    </Badge>
+                  )}
+                </Button>
+              );
+            })}
+          </div>
+        )}
+      </nav>
     </div>
   );
 };
