@@ -1,3 +1,4 @@
+
 import React from 'react';
 import {
   BrowserRouter,
@@ -8,36 +9,36 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster"
 import { queryClient } from "@/lib/react-query";
 
-import { Auth } from "./pages/Auth";
-import { Index } from "./pages";
-import { Experiments } from "./pages/Experiments";
-import { ExperimentDetails } from "./pages/ExperimentDetails";
-import { ExperimentNotes } from "./pages/ExperimentNotes";
-import { Projects } from "./pages/Projects";
-import { ProjectExperiments } from "./pages/ProjectExperiments";
-import { Protocols } from "./pages/Protocols";
-import { ProtocolDetails } from "./pages/ProtocolDetails";
-import { Tasks } from "./pages/Tasks";
-import { Calendar } from "./pages/Calendar";
-import { Inventory } from "./pages/Inventory";
-import { Reports } from "./pages/Reports";
-import { Analytics } from "./pages/Analytics";
-import { Team } from "./pages/Team";
-import { Orders } from "./pages/Orders";
-import { MiceOrders } from "./pages/MiceOrders";
-import { IdeaNotes } from "./pages/IdeaNotes";
-import { ExperimentIdeas } from "./pages/ExperimentIdeas";
-import { LabelPrinter } from "./pages/LabelPrinter";
-import { Messages } from "./pages/Messages";
-import { SMS } from "./pages/SMS";
-import { VideoChat } from "./pages/VideoChat";
-import { Settings } from "./pages/Settings";
-import { Users } from "./pages/Users";
-import { SystemSettings } from "./pages/SystemSettings";
-import { NotFound } from "./pages/NotFound";
-import { ProtectedRoute } from "./components/ProtectedRoute";
-import { Sidebar } from "./components/Sidebar";
-import { Header } from "./components/Header";
+import Auth from "./pages/Auth";
+import Index from "./pages/Index";
+import Experiments from "./pages/Experiments";
+import ExperimentDetails from "./pages/ExperimentDetails";
+import ExperimentNotes from "./pages/ExperimentNotes";
+import Projects from "./pages/Projects";
+import ProjectExperiments from "./pages/ProjectExperiments";
+import Protocols from "./pages/Protocols";
+import ProtocolDetails from "./pages/ProtocolDetails";
+import Tasks from "./pages/Tasks";
+import Calendar from "./pages/Calendar";
+import Inventory from "./pages/Inventory";
+import Reports from "./pages/Reports";
+import Analytics from "./pages/Analytics";
+import Team from "./pages/Team";
+import Orders from "./pages/Orders";
+import MiceOrders from "./pages/MiceOrders";
+import IdeaNotes from "./pages/IdeaNotes";
+import ExperimentIdeas from "./pages/ExperimentIdeas";
+import LabelPrinter from "./pages/LabelPrinter";
+import Messages from "./pages/Messages";
+import SMS from "./pages/SMS";
+import VideoChat from "./pages/VideoChat";
+import Settings from "./pages/Settings";
+import Users from "./pages/Users";
+import SystemSettings from "./pages/SystemSettings";
+import NotFound from "./pages/NotFound";
+import ProtectedRoute from "./components/ProtectedRoute";
+import Sidebar from "./components/Sidebar";
+import Header from "./components/Header";
 import DietCohorts from "./pages/DietCohorts";
 
 function App() {
