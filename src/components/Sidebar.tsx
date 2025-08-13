@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -52,7 +51,7 @@ const Sidebar = () => {
   const { protocols } = useProtocols();
   const { orders } = useMiceOrders();
   const { smsLogs } = useSMS();
-  const { cohorts } = useDietCohorts();
+  const { data: cohorts } = useDietCohorts();
 
   // Filter uncompleted tasks
   const uncompletedTasksCount = tasks.filter(task => task.status !== 'completed').length;
