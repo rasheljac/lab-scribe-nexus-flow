@@ -115,64 +115,67 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
   ];
 
   return (
-    <div className={className}>
-      <div className="relative">
-        <ReactQuill
-          ref={quillRef}
-          theme="snow"
-          value={value}
-          onChange={onChange}
-          modules={modules}
-          formats={formats}
-          placeholder={placeholder}
-          style={{ 
-            minHeight: '150px',
-            backgroundColor: 'white'
-          }}
-        />
-        
-        {/* Custom Symbol Button */}
-        <div className="absolute top-2 right-2 z-10">
-          <Popover open={symbolPopoverOpen} onOpenChange={setSymbolPopoverOpen}>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8 w-8 p-0"
-                title="Insert Symbol"
-              >
-                <Omega className="h-4 w-4" />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-80 max-h-64 overflow-y-auto">
-              <div className="space-y-2">
-                <h4 className="font-semibold text-sm">Insert Symbol</h4>
-                <div className="grid grid-cols-6 gap-1">
-                  {SYMBOLS.map((item, index) => (
-                    <Button
-                      key={index}
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 w-8 p-0 hover:bg-blue-50"
-                      onClick={() => insertSymbol(item.symbol)}
-                      title={item.name}
-                    >
-                      {item.symbol}
-                    </Button>
-                  ))}
+    <>
+      <style>
+        {`
+          .ql-toolbar .ql-symbol-insert {
+            display: none;
+          }
+        `}
+      </style>
+      <div className={className}>
+        <div className="relative">
+          <ReactQuill
+            ref={quillRef}
+            theme="snow"
+            value={value}
+            onChange={onChange}
+            modules={modules}
+            formats={formats}
+            placeholder={placeholder}
+            style={{ 
+              minHeight: '150px',
+              backgroundColor: 'white'
+            }}
+          />
+          
+          {/* Custom Symbol Button */}
+          <div className="absolute top-2 right-2 z-10">
+            <Popover open={symbolPopoverOpen} onOpenChange={setSymbolPopoverOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 w-8 p-0"
+                  title="Insert Symbol"
+                >
+                  <Omega className="h-4 w-4" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-80 max-h-64 overflow-y-auto">
+                <div className="space-y-2">
+                  <h4 className="font-semibold text-sm">Insert Symbol</h4>
+                  <div className="grid grid-cols-6 gap-1">
+                    {SYMBOLS.map((item, index) => (
+                      <Button
+                        key={index}
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0 hover:bg-blue-50"
+                        onClick={() => insertSymbol(item.symbol)}
+                        title={item.name}
+                      >
+                        {item.symbol}
+                      </Button>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            </PopoverContent>
-          </Popover>
+              </PopoverContent>
+            </Popover>
+          </div>
         </div>
       </div>
-
-      <style jsx>{`
-        .ql-toolbar .ql-symbol-insert {
-          display: none;
-        }
-      `}</style>
-    </div>
+    </>
   );
 };
 
