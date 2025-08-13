@@ -23,20 +23,19 @@ const Inventory = () => {
 
   const filteredItems = items.filter(item => {
     const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         item.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          item.location?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = selectedCategory === "all" || item.category === selectedCategory;
     const matchesStatus = selectedStatus === "all" || 
-                         (selectedStatus === "low_stock" && item.quantity <= item.minimum_quantity) ||
-                         (selectedStatus === "in_stock" && item.quantity > item.minimum_quantity) ||
-                         (selectedStatus === "out_of_stock" && item.quantity === 0);
+                         (selectedStatus === "low_stock" && item.current_stock <= item.min_stock) ||
+                         (selectedStatus === "in_stock" && item.current_stock > item.min_stock) ||
+                         (selectedStatus === "out_of_stock" && item.current_stock === 0);
     
     return matchesSearch && matchesCategory && matchesStatus;
   });
 
   const getStockStatus = (item: any) => {
-    if (item.quantity === 0) return { status: 'out_of_stock', label: 'Out of Stock', color: 'bg-red-100 text-red-800' };
-    if (item.quantity <= item.minimum_quantity) return { status: 'low_stock', label: 'Low Stock', color: 'bg-yellow-100 text-yellow-800' };
+    if (item.current_stock === 0) return { status: 'out_of_stock', label: 'Out of Stock', color: 'bg-red-100 text-red-800' };
+    if (item.current_stock <= item.min_stock) return { status: 'low_stock', label: 'Low Stock', color: 'bg-yellow-100 text-yellow-800' };
     return { status: 'in_stock', label: 'In Stock', color: 'bg-green-100 text-green-800' };
   };
 
@@ -61,6 +60,11 @@ const Inventory = () => {
   const handleViewDetails = (item: any) => {
     setSelectedItem(item);
     setDetailsDialogOpen(true);
+  };
+
+  const handleUpdateItem = () => {
+    // Refetch items after update
+    window.location.reload();
   };
 
   if (loading) {
@@ -155,7 +159,7 @@ const Inventory = () => {
                 <div>
                   <p className="text-sm text-gray-600">In Stock</p>
                   <p className="text-2xl font-bold">
-                    {items.filter(item => item.quantity > item.minimum_quantity).length}
+                    {items.filter(item => item.current_stock > item.min_stock).length}
                   </p>
                 </div>
               </div>
@@ -169,7 +173,7 @@ const Inventory = () => {
                 <div>
                   <p className="text-sm text-gray-600">Low Stock</p>
                   <p className="text-2xl font-bold">
-                    {items.filter(item => item.quantity <= item.minimum_quantity && item.quantity > 0).length}
+                    {items.filter(item => item.current_stock <= item.min_stock && item.current_stock > 0).length}
                   </p>
                 </div>
               </div>
@@ -183,7 +187,7 @@ const Inventory = () => {
                 <div>
                   <p className="text-sm text-gray-600">Out of Stock</p>
                   <p className="text-2xl font-bold">
-                    {items.filter(item => item.quantity === 0).length}
+                    {items.filter(item => item.current_stock === 0).length}
                   </p>
                 </div>
               </div>
@@ -208,9 +212,6 @@ const Inventory = () => {
                       {item.category}
                     </Badge>
                   </div>
-                  <CardDescription className="line-clamp-2">
-                    {item.description}
-                  </CardDescription>
                 </CardHeader>
                 
                 <CardContent>
@@ -218,7 +219,7 @@ const Inventory = () => {
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-gray-600">Quantity:</span>
                       <div className="flex items-center gap-2">
-                        <span className="font-medium">{item.quantity} {item.unit}</span>
+                        <span className="font-medium">{item.current_stock} {item.unit}</span>
                         <Badge className={stockStatus.color}>
                           {stockStatus.label}
                         </Badge>
@@ -227,7 +228,7 @@ const Inventory = () => {
                     
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-gray-600">Min. Quantity:</span>
-                      <span className="font-medium">{item.minimum_quantity} {item.unit}</span>
+                      <span className="font-medium">{item.min_stock} {item.unit}</span>
                     </div>
                     
                     {item.location && (
@@ -283,8 +284,8 @@ const Inventory = () => {
         )}
 
         <AddInventoryItemDialog 
-          open={addDialogOpen} 
-          onOpenChange={setAddDialogOpen} 
+          isOpen={addDialogOpen} 
+          onClose={() => setAddDialogOpen(false)} 
         />
         
         {selectedItem && (
@@ -293,12 +294,15 @@ const Inventory = () => {
               open={editDialogOpen} 
               onOpenChange={setEditDialogOpen}
               item={selectedItem}
+              onUpdateItem={handleUpdateItem}
             />
             
             <InventoryItemDetailsDialog 
               open={detailsDialogOpen} 
               onOpenChange={setDetailsDialogOpen}
               item={selectedItem}
+              onEdit={handleEdit}
+              onOrder={() => {}}
             />
           </>
         )}

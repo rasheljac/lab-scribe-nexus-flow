@@ -6,15 +6,16 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Search, Plus, Apple, Calendar, Users, BarChart3, Eye, Edit, Trash2 } from "lucide-react";
-import { useDietCohorts } from "@/hooks/useDietCohorts";
-import CreateDietCohortDialog from "@/components/CreateDietCohortDialog";
-import EditDietCohortDialog from "@/components/EditDietCohortDialog";
-import DietCohortMeasurementsDialog from "@/components/DietCohortMeasurementsDialog";
+import { useDietCohorts, useDeleteDietCohort } from "@/hooks/useDietCohorts";
+import { CreateDietCohortDialog } from "@/components/CreateDietCohortDialog";
+import { EditDietCohortDialog } from "@/components/EditDietCohortDialog";
+import { DietCohortMeasurementsDialog } from "@/components/DietCohortMeasurementsDialog";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 
 const DietCohorts = () => {
-  const { data: cohorts, isLoading, deleteCohort } = useDietCohorts();
+  const { data: cohorts, isLoading } = useDietCohorts();
+  const deleteCohort = useDeleteDietCohort();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedDietType, setSelectedDietType] = useState<string>("all");
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -159,7 +160,7 @@ const DietCohorts = () => {
                 <div>
                   <p className="text-sm text-gray-600">Active Cohorts</p>
                   <p className="text-2xl font-bold">
-                    {cohorts?.filter(c => c.is_active).length || 0}
+                    {cohorts?.filter(c => c.status === 'active').length || 0}
                   </p>
                 </div>
               </div>
@@ -173,7 +174,7 @@ const DietCohorts = () => {
                 <div>
                   <p className="text-sm text-gray-600">Total Animals</p>
                   <p className="text-2xl font-bold">
-                    {cohorts?.reduce((sum, c) => sum + (c.animal_count || 0), 0) || 0}
+                    {cohorts?.reduce((sum, c) => sum + (c.number_of_mice || 0), 0) || 0}
                   </p>
                 </div>
               </div>
@@ -209,7 +210,7 @@ const DietCohorts = () => {
                     <Badge className={getDietTypeColor(cohort.diet_type)}>
                       {cohort.diet_type.replace('_', ' ')}
                     </Badge>
-                    {cohort.is_active && (
+                    {cohort.status === 'active' && (
                       <Badge variant="outline" className="bg-green-50 text-green-700">
                         Active
                       </Badge>
@@ -225,7 +226,7 @@ const DietCohorts = () => {
                 <div className="space-y-2 mb-4">
                   <div className="flex items-center gap-2 text-sm text-gray-600">
                     <Users className="h-4 w-4" />
-                    <span>{cohort.animal_count} animals</span>
+                    <span>{cohort.number_of_mice} animals</span>
                   </div>
                   
                   <div className="flex items-center gap-2 text-sm text-gray-600">

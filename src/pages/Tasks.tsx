@@ -6,15 +6,16 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Search, Plus, CheckSquare, Calendar, Clock, User, Filter } from "lucide-react";
+import { Calendar, Search, Plus, CheckCircle, Clock, AlertTriangle, User } from "lucide-react";
 import { useTasks } from "@/hooks/useTasks";
 import CreateTaskDialog from "@/components/CreateTaskDialog";
 import EditTaskDialog from "@/components/EditTaskDialog";
 import TaskList from "@/components/TaskList";
+import DraggableTaskList from "@/components/DraggableTaskList";
 import { format } from "date-fns";
 
 const Tasks = () => {
-  const { tasks, loading, updateTask } = useTasks();
+  const { tasks, isLoading, updateTask } = useTasks();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedPriority, setSelectedPriority] = useState<string>("all");
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
@@ -30,9 +31,6 @@ const Tasks = () => {
     
     return matchesSearch && matchesPriority && matchesStatus;
   });
-
-  const pendingTasks = filteredTasks.filter(task => task.status !== 'completed');
-  const completedTasks = filteredTasks.filter(task => task.status === 'completed');
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
@@ -54,7 +52,7 @@ const Tasks = () => {
       case 'in_progress':
         return 'bg-blue-100 text-blue-800';
       case 'pending':
-        return 'bg-gray-100 text-gray-800';
+        return 'bg-yellow-100 text-yellow-800';
       default:
         return 'bg-gray-100 text-gray-800';
     }
@@ -65,15 +63,15 @@ const Tasks = () => {
     setEditDialogOpen(true);
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="p-6">
         <div className="max-w-7xl mx-auto">
           <div className="animate-pulse space-y-4">
             <div className="h-8 bg-gray-200 rounded w-1/4"></div>
-            <div className="space-y-3">
-              {[...Array(5)].map((_, i) => (
-                <div key={i} className="h-16 bg-gray-200 rounded"></div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {[...Array(6)].map((_, i) => (
+                <div key={i} className="h-48 bg-gray-200 rounded"></div>
               ))}
             </div>
           </div>
@@ -115,9 +113,9 @@ const Tasks = () => {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Priorities</SelectItem>
-              <SelectItem value="high">High</SelectItem>
-              <SelectItem value="medium">Medium</SelectItem>
-              <SelectItem value="low">Low</SelectItem>
+              <SelectItem value="high">High Priority</SelectItem>
+              <SelectItem value="medium">Medium Priority</SelectItem>
+              <SelectItem value="low">Low Priority</SelectItem>
             </SelectContent>
           </Select>
 
@@ -139,9 +137,9 @@ const Tasks = () => {
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center gap-2">
-                <CheckSquare className="h-5 w-5 text-blue-600" />
+                <CheckCircle className="h-5 w-5 text-blue-600" />
                 <div>
-                  <p className="text-sm text-gray-600">Total</p>
+                  <p className="text-sm text-gray-600">Total Tasks</p>
                   <p className="text-2xl font-bold">{tasks.length}</p>
                 </div>
               </div>
@@ -179,7 +177,7 @@ const Tasks = () => {
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center gap-2">
-                <CheckSquare className="h-5 w-5 text-green-600" />
+                <CheckCircle className="h-5 w-5 text-green-600" />
                 <div>
                   <p className="text-sm text-gray-600">Completed</p>
                   <p className="text-2xl font-bold">
@@ -191,50 +189,29 @@ const Tasks = () => {
           </Card>
         </div>
 
-        {/* Tasks Content */}
-        <Tabs defaultValue="pending" className="space-y-6">
+        {/* Task Views */}
+        <Tabs defaultValue="list" className="space-y-6">
           <TabsList>
-            <TabsTrigger value="pending">
-              Pending & In Progress ({pendingTasks.length})
-            </TabsTrigger>
-            <TabsTrigger value="completed">
-              Completed ({completedTasks.length})
-            </TabsTrigger>
+            <TabsTrigger value="list">List View</TabsTrigger>
+            <TabsTrigger value="kanban">Kanban Board</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="pending">
+          <TabsContent value="list">
             <TaskList 
-              tasks={pendingTasks} 
+              tasks={filteredTasks} 
               onEdit={handleEdit}
               onUpdate={updateTask}
             />
           </TabsContent>
 
-          <TabsContent value="completed">
-            <TaskList 
-              tasks={completedTasks} 
+          <TabsContent value="kanban">
+            <DraggableTaskList 
+              tasks={filteredTasks}
               onEdit={handleEdit}
               onUpdate={updateTask}
             />
           </TabsContent>
         </Tabs>
-
-        {filteredTasks.length === 0 && (
-          <div className="text-center py-12">
-            <CheckSquare className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No tasks found</h3>
-            <p className="text-gray-600 mb-4">
-              {searchTerm || selectedPriority !== "all" || selectedStatus !== "all"
-                ? "Try adjusting your filters"
-                : "Create your first task to get started"}
-            </p>
-            {!(searchTerm || selectedPriority !== "all" || selectedStatus !== "all") && (
-              <Button onClick={() => setCreateDialogOpen(true)}>
-                Create Task
-              </Button>
-            )}
-          </div>
-        )}
 
         <CreateTaskDialog 
           open={createDialogOpen} 

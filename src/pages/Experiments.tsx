@@ -15,7 +15,7 @@ import { format } from "date-fns";
 
 const Experiments = () => {
   const navigate = useNavigate();
-  const { experiments, loading } = useExperiments();
+  const { experiments, isLoading } = useExperiments();
   const { projects } = useProjects();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedProject, setSelectedProject] = useState<string>("all");
@@ -37,7 +37,7 @@ const Experiments = () => {
         return 'bg-green-100 text-green-800';
       case 'in_progress':
         return 'bg-blue-100 text-blue-800';
-      case 'planned':
+      case 'planning':
         return 'bg-yellow-100 text-yellow-800';
       case 'on_hold':
         return 'bg-red-100 text-red-800';
@@ -48,10 +48,10 @@ const Experiments = () => {
 
   const getProjectName = (projectId: string) => {
     const project = projects.find(p => p.id === projectId);
-    return project?.name || 'Unknown Project';
+    return project?.title || 'Unknown Project';
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="p-6">
         <div className="max-w-7xl mx-auto">
@@ -103,7 +103,7 @@ const Experiments = () => {
               <SelectItem value="all">All Projects</SelectItem>
               {projects.map((project) => (
                 <SelectItem key={project.id} value={project.id}>
-                  {project.name}
+                  {project.title}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -115,7 +115,7 @@ const Experiments = () => {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Statuses</SelectItem>
-              <SelectItem value="planned">Planned</SelectItem>
+              <SelectItem value="planning">Planning</SelectItem>
               <SelectItem value="in_progress">In Progress</SelectItem>
               <SelectItem value="completed">Completed</SelectItem>
               <SelectItem value="on_hold">On Hold</SelectItem>
@@ -170,9 +170,9 @@ const Experiments = () => {
               <div className="flex items-center gap-2">
                 <User className="h-5 w-5 text-purple-600" />
                 <div>
-                  <p className="text-sm text-gray-600">Planned</p>
+                  <p className="text-sm text-gray-600">Planning</p>
                   <p className="text-2xl font-bold">
-                    {experiments.filter(e => e.status === 'planned').length}
+                    {experiments.filter(e => e.status === 'planning').length}
                   </p>
                 </div>
               </div>

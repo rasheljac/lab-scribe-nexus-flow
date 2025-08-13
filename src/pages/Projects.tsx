@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Plus, FolderOpen, Calendar, Users, Beaker } from "lucide-react";
+import { Calendar, Search, Plus, FolderOpen, Clock, User, CheckCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useProjects } from "@/hooks/useProjects";
 import CreateProjectDialog from "@/components/CreateProjectDialog";
@@ -13,13 +13,13 @@ import { format } from "date-fns";
 
 const Projects = () => {
   const navigate = useNavigate();
-  const { projects, loading } = useProjects();
+  const { projects, isLoading } = useProjects();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
 
   const filteredProjects = projects.filter(project => {
-    const matchesSearch = project.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    const matchesSearch = project.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          project.description?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = selectedStatus === "all" || project.status === selectedStatus;
     
@@ -30,7 +30,7 @@ const Projects = () => {
     switch (status) {
       case 'completed':
         return 'bg-green-100 text-green-800';
-      case 'active':
+      case 'in_progress':
         return 'bg-blue-100 text-blue-800';
       case 'planning':
         return 'bg-yellow-100 text-yellow-800';
@@ -41,7 +41,7 @@ const Projects = () => {
     }
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="p-6">
         <div className="max-w-7xl mx-auto">
@@ -65,7 +65,7 @@ const Projects = () => {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-3xl font-bold">Projects</h1>
-            <p className="text-gray-600 mt-1">Organize your research into manageable projects</p>
+            <p className="text-gray-600 mt-1">Organize and manage your research projects</p>
           </div>
           <Button onClick={() => setCreateDialogOpen(true)} className="gap-2">
             <Plus className="h-4 w-4" />
@@ -92,7 +92,7 @@ const Projects = () => {
             <SelectContent>
               <SelectItem value="all">All Statuses</SelectItem>
               <SelectItem value="planning">Planning</SelectItem>
-              <SelectItem value="active">Active</SelectItem>
+              <SelectItem value="in_progress">In Progress</SelectItem>
               <SelectItem value="completed">Completed</SelectItem>
               <SelectItem value="on_hold">On Hold</SelectItem>
             </SelectContent>
@@ -106,7 +106,7 @@ const Projects = () => {
               <div className="flex items-center gap-2">
                 <FolderOpen className="h-5 w-5 text-blue-600" />
                 <div>
-                  <p className="text-sm text-gray-600">Total</p>
+                  <p className="text-sm text-gray-600">Total Projects</p>
                   <p className="text-2xl font-bold">{projects.length}</p>
                 </div>
               </div>
@@ -116,11 +116,11 @@ const Projects = () => {
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center gap-2">
-                <Beaker className="h-5 w-5 text-green-600" />
+                <Clock className="h-5 w-5 text-yellow-600" />
                 <div>
-                  <p className="text-sm text-gray-600">Active</p>
+                  <p className="text-sm text-gray-600">In Progress</p>
                   <p className="text-2xl font-bold">
-                    {projects.filter(p => p.status === 'active').length}
+                    {projects.filter(p => p.status === 'in_progress').length}
                   </p>
                 </div>
               </div>
@@ -130,25 +130,25 @@ const Projects = () => {
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center gap-2">
-                <Calendar className="h-5 w-5 text-yellow-600" />
-                <div>
-                  <p className="text-sm text-gray-600">Planning</p>
-                  <p className="text-2xl font-bold">
-                    {projects.filter(p => p.status === 'planning').length}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2">
-                <Users className="h-5 w-5 text-purple-600" />
+                <CheckCircle className="h-5 w-5 text-green-600" />
                 <div>
                   <p className="text-sm text-gray-600">Completed</p>
                   <p className="text-2xl font-bold">
                     {projects.filter(p => p.status === 'completed').length}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2">
+                <User className="h-5 w-5 text-purple-600" />
+                <div>
+                  <p className="text-sm text-gray-600">Planning</p>
+                  <p className="text-2xl font-bold">
+                    {projects.filter(p => p.status === 'planning').length}
                   </p>
                 </div>
               </div>
@@ -161,11 +161,11 @@ const Projects = () => {
           {filteredProjects.map((project) => (
             <Card key={project.id} className="cursor-pointer hover:shadow-lg transition-shadow">
               <CardHeader 
-                onClick={() => navigate(`/projects/${project.id}/experiments`)}
+                onClick={() => navigate(`/projects/${project.id}`)}
                 className="pb-3"
               >
                 <div className="flex items-start justify-between">
-                  <CardTitle className="text-lg line-clamp-2">{project.name}</CardTitle>
+                  <CardTitle className="text-lg line-clamp-2">{project.title}</CardTitle>
                   <Badge className={getStatusColor(project.status)}>
                     {project.status.replace('_', ' ')}
                   </Badge>
@@ -184,17 +184,15 @@ const Projects = () => {
                   
                   {project.start_date && (
                     <div className="flex items-center gap-2 text-sm text-gray-600">
-                      <Calendar className="h-4 w-4" />
+                      <Clock className="h-4 w-4" />
                       <span>Started {format(new Date(project.start_date), 'MMM d, yyyy')}</span>
                     </div>
                   )}
                   
-                  {project.end_date && (
-                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                      <Calendar className="h-4 w-4" />
-                      <span>Due {format(new Date(project.end_date), 'MMM d, yyyy')}</span>
-                    </div>
-                  )}
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <User className="h-4 w-4" />
+                    <span>{project.experiments_count} experiments</span>
+                  </div>
                 </div>
               </CardContent>
             </Card>

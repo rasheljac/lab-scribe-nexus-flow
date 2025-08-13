@@ -1,129 +1,98 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { useToast } from "@/hooks/use-toast";
-import { useUserPreferences } from "@/hooks/useUserPreferences";
+import { Textarea } from "@/components/ui/textarea";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { User, Bell, Shield, Database, Navigation, Users } from "lucide-react";
 import { useUserProfile } from "@/hooks/useUserProfile";
-import { Eye, EyeOff } from "lucide-react";
+import { useUserPreferences } from "@/hooks/useUserPreferences";
+import { toast } from "sonner";
 
 const Settings = () => {
-  const { toast } = useToast();
-  const { preferences, updatePreferences, loading } = useUserPreferences();
-  const { profile, updateProfile } = useUserProfile();
-  
-  // Navigation settings
-  const navigationItems = [
-    { key: "dashboard", label: "Dashboard" },
-    { key: "experiments", label: "Experiments" },
-    { key: "experiment-ideas", label: "Experiment Ideas" },
-    { key: "projects", label: "Projects" },
-    { key: "protocols", label: "Protocols" },
-    { key: "calendar", label: "Calendar" },
-    { key: "tasks", label: "Tasks" },
-    { key: "analytics", label: "Analytics" },
-    { key: "reports", label: "Reports" },
-    { key: "inventory", label: "Inventory" },
-    { key: "labels", label: "Label Printer" },
-    { key: "orders", label: "Order Portal" },
-    { key: "mice-orders", label: "Mice Orders" },
-    { key: "diet-cohorts", label: "Diet Cohorts" },
-    { key: "messages", label: "Messages" },
-    { key: "sms", label: "SMS" },
-    { key: "video-chat", label: "Video Chat" },
-    { key: "team", label: "Team" },
-    { key: "settings", label: "Settings" },
-    { key: "admin-users", label: "User Management" },
-    { key: "admin-settings", label: "System Settings" },
-  ];
-
-  const [profileForm, setProfileForm] = useState({
-    first_name: profile?.first_name || "",
-    last_name: profile?.last_name || "",
-    department: profile?.department || "",
-    position: profile?.position || "",
-    phone: profile?.phone || "",
-    bio: profile?.bio || "",
+  const { data: profile, updateProfile } = useUserProfile();
+  const { data: preferences, updatePreferences } = useUserPreferences();
+  const [profileData, setProfileData] = useState({
+    first_name: profile?.first_name || '',
+    last_name: profile?.last_name || '',
+    email: profile?.email || '',
   });
-
-  const handleNavigationToggle = async (itemKey: string, isVisible: boolean) => {
-    try {
-      const currentHidden = preferences?.hidden_pages || [];
-      let newHidden;
-      
-      if (isVisible) {
-        // Show the item - remove from hidden list
-        newHidden = currentHidden.filter(key => key !== itemKey);
-      } else {
-        // Hide the item - add to hidden list
-        newHidden = [...currentHidden, itemKey];
-      }
-      
-      await updatePreferences({ hidden_pages: newHidden });
-      
-      toast({
-        title: "Navigation updated",
-        description: `${navigationItems.find(item => item.key === itemKey)?.label} ${isVisible ? 'shown' : 'hidden'} in navigation`,
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to update navigation settings",
-        variant: "destructive",
-      });
-    }
-  };
 
   const handleProfileUpdate = async () => {
     try {
-      await updateProfile(profileForm);
-      toast({
-        title: "Profile updated",
-        description: "Your profile has been updated successfully",
-      });
+      await updateProfile.mutateAsync(profileData);
+      toast.success("Profile updated successfully");
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to update profile",
-        variant: "destructive",
-      });
+      toast.error("Failed to update profile");
     }
   };
 
-  const isItemVisible = (itemKey: string) => {
-    const hiddenPages = preferences?.hidden_pages || [];
-    return !hiddenPages.includes(itemKey);
+  const handleNavigationToggle = async (page: string, enabled: boolean) => {
+    try {
+      const hiddenPages = preferences?.hidden_pages || [];
+      const newHiddenPages = enabled 
+        ? hiddenPages.filter(p => p !== page)
+        : [...hiddenPages, page];
+      
+      await updatePreferences.mutateAsync({
+        hidden_pages: newHiddenPages
+      });
+      toast.success("Navigation settings updated");
+    } catch (error) {
+      toast.error("Failed to update navigation settings");
+    }
   };
 
-  if (loading) {
-    return (
-      <div className="p-6">
-        <div className="max-w-4xl mx-auto">
-          <h1 className="text-3xl font-bold mb-6">Settings</h1>
-          <div>Loading...</div>
-        </div>
-      </div>
-    );
-  }
+  const navigationPages = [
+    { id: 'experiments', label: 'Experiments', icon: '🧪' },
+    { id: 'projects', label: 'Projects', icon: '📁' },
+    { id: 'protocols', label: 'Protocols', icon: '📝' },
+    { id: 'calendar', label: 'Calendar', icon: '📅' },
+    { id: 'tasks', label: 'Tasks', icon: '✅' },
+    { id: 'inventory', label: 'Inventory', icon: '📦' },
+    { id: 'diet-cohorts', label: 'Diet Cohorts', icon: '🐭' },
+    { id: 'mice-orders', label: 'Mice Orders', icon: '🛒' },
+    { id: 'team', label: 'Team', icon: '👥' },
+    { id: 'reports', label: 'Reports', icon: '📊' },
+    { id: 'analytics', label: 'Analytics', icon: '📈' },
+    { id: 'sms', label: 'SMS', icon: '💬' },
+    { id: 'labels', label: 'Label Printer', icon: '🏷️' },
+    { id: 'system-settings', label: 'System Settings', icon: '⚙️' },
+  ];
+
+  const hiddenPages = preferences?.hidden_pages || [];
 
   return (
     <div className="p-6">
       <div className="max-w-4xl mx-auto">
-        <h1 className="text-3xl font-bold mb-6">Settings</h1>
-        
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold">Settings</h1>
+          <p className="text-gray-600 mt-1">Manage your account and application preferences</p>
+        </div>
+
         <Tabs defaultValue="profile" className="space-y-6">
           <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="profile">Profile</TabsTrigger>
-            <TabsTrigger value="navigation">Navigation</TabsTrigger>
-            <TabsTrigger value="notifications">Notifications</TabsTrigger>
-            <TabsTrigger value="preferences">Preferences</TabsTrigger>
+            <TabsTrigger value="profile" className="flex items-center gap-2">
+              <User className="h-4 w-4" />
+              Profile
+            </TabsTrigger>
+            <TabsTrigger value="navigation" className="flex items-center gap-2">
+              <Navigation className="h-4 w-4" />
+              Navigation
+            </TabsTrigger>
+            <TabsTrigger value="notifications" className="flex items-center gap-2">
+              <Bell className="h-4 w-4" />
+              Notifications
+            </TabsTrigger>
+            <TabsTrigger value="security" className="flex items-center gap-2">
+              <Shield className="h-4 w-4" />
+              Security
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="profile">
@@ -131,70 +100,56 @@ const Settings = () => {
               <CardHeader>
                 <CardTitle>Profile Information</CardTitle>
                 <CardDescription>
-                  Update your personal information and lab details
+                  Update your personal information and profile settings
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+              <CardContent className="space-y-6">
+                <div className="flex items-center gap-4">
+                  <Avatar className="h-20 w-20">
+                    <AvatarImage src={profile?.avatar_url} />
+                    <AvatarFallback>
+                      {profile?.first_name?.charAt(0)}{profile?.last_name?.charAt(0)}
+                    </AvatarFallback>
+                  </Avatar>
                   <div>
+                    <Button variant="outline">Upload Photo</Button>
+                    <p className="text-sm text-gray-600 mt-1">
+                      JPG, PNG or GIF. Max size 2MB.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
                     <Label htmlFor="first_name">First Name</Label>
                     <Input
                       id="first_name"
-                      value={profileForm.first_name}
-                      onChange={(e) => setProfileForm({ ...profileForm, first_name: e.target.value })}
+                      value={profileData.first_name}
+                      onChange={(e) => setProfileData({...profileData, first_name: e.target.value})}
                     />
                   </div>
-                  <div>
+                  <div className="space-y-2">
                     <Label htmlFor="last_name">Last Name</Label>
                     <Input
                       id="last_name"
-                      value={profileForm.last_name}
-                      onChange={(e) => setProfileForm({ ...profileForm, last_name: e.target.value })}
-                    />
-                  </div>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="department">Department</Label>
-                    <Input
-                      id="department"
-                      value={profileForm.department}
-                      onChange={(e) => setProfileForm({ ...profileForm, department: e.target.value })}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="position">Position</Label>
-                    <Input
-                      id="position"
-                      value={profileForm.position}
-                      onChange={(e) => setProfileForm({ ...profileForm, position: e.target.value })}
+                      value={profileData.last_name}
+                      onChange={(e) => setProfileData({...profileData, last_name: e.target.value})}
                     />
                   </div>
                 </div>
 
-                <div>
-                  <Label htmlFor="phone">Phone</Label>
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
                   <Input
-                    id="phone"
-                    value={profileForm.phone}
-                    onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })}
+                    id="email"
+                    type="email"
+                    value={profileData.email}
+                    onChange={(e) => setProfileData({...profileData, email: e.target.value})}
                   />
                 </div>
 
-                <div>
-                  <Label htmlFor="bio">Bio</Label>
-                  <Textarea
-                    id="bio"
-                    value={profileForm.bio}
-                    onChange={(e) => setProfileForm({ ...profileForm, bio: e.target.value })}
-                    placeholder="Tell us about yourself and your research..."
-                    rows={3}
-                  />
-                </div>
-
-                <Button onClick={handleProfileUpdate}>
-                  Update Profile
+                <Button onClick={handleProfileUpdate} disabled={updateProfile.isPending}>
+                  {updateProfile.isPending ? "Updating..." : "Update Profile"}
                 </Button>
               </CardContent>
             </Card>
@@ -210,25 +165,18 @@ const Settings = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {navigationItems.map((item) => (
-                    <div key={item.key} className="flex items-center justify-between p-3 border rounded-lg">
+                  {navigationPages.map((page) => (
+                    <div key={page.id} className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        {isItemVisible(item.key) ? (
-                          <Eye className="h-4 w-4 text-green-600" />
-                        ) : (
-                          <EyeOff className="h-4 w-4 text-gray-400" />
-                        )}
-                        <Label htmlFor={`nav-${item.key}`} className="font-medium">
-                          {item.label}
-                        </Label>
-                        <Badge variant={isItemVisible(item.key) ? "default" : "secondary"}>
-                          {isItemVisible(item.key) ? "Visible" : "Hidden"}
-                        </Badge>
+                        <span className="text-xl">{page.icon}</span>
+                        <div>
+                          <Label htmlFor={page.id}>{page.label}</Label>
+                        </div>
                       </div>
                       <Switch
-                        id={`nav-${item.key}`}
-                        checked={isItemVisible(item.key)}
-                        onCheckedChange={(checked) => handleNavigationToggle(item.key, checked)}
+                        id={page.id}
+                        checked={!hiddenPages.includes(page.id)}
+                        onCheckedChange={(checked) => handleNavigationToggle(page.id, checked)}
                       />
                     </div>
                   ))}
@@ -242,80 +190,77 @@ const Settings = () => {
               <CardHeader>
                 <CardTitle>Notification Preferences</CardTitle>
                 <CardDescription>
-                  Configure how you receive notifications
+                  Manage how you receive notifications and reminders
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label>Email Notifications</Label>
-                    <p className="text-sm text-muted-foreground">Receive notifications via email</p>
+              <CardContent className="space-y-6">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label>Email Notifications</Label>
+                      <p className="text-sm text-gray-600">Receive notifications via email</p>
+                    </div>
+                    <Switch defaultChecked />
                   </div>
-                  <Switch defaultChecked />
-                </div>
-                
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label>Task Reminders</Label>
-                    <p className="text-sm text-muted-foreground">Get reminded about upcoming tasks</p>
+                  
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label>Task Reminders</Label>
+                      <p className="text-sm text-gray-600">Get reminded about upcoming tasks</p>
+                    </div>
+                    <Switch defaultChecked />
                   </div>
-                  <Switch defaultChecked />
-                </div>
-                
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label>Experiment Updates</Label>
-                    <p className="text-sm text-muted-foreground">Notifications for experiment changes</p>
+                  
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label>Calendar Reminders</Label>
+                      <p className="text-sm text-gray-600">Receive calendar event reminders</p>
+                    </div>
+                    <Switch defaultChecked />
                   </div>
-                  <Switch defaultChecked />
+                  
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label>SMS Notifications</Label>
+                      <p className="text-sm text-gray-600">Receive important updates via SMS</p>
+                    </div>
+                    <Switch />
+                  </div>
                 </div>
               </CardContent>
             </Card>
           </TabsContent>
 
-          <TabsContent value="preferences">
+          <TabsContent value="security">
             <Card>
               <CardHeader>
-                <CardTitle>Application Preferences</CardTitle>
+                <CardTitle>Security Settings</CardTitle>
                 <CardDescription>
-                  Customize your application experience
+                  Manage your account security and privacy settings
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <Label>Default View</Label>
-                  <Select defaultValue="grid">
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="grid">Grid View</SelectItem>
-                      <SelectItem value="list">List View</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                <div>
-                  <Label>Items per Page</Label>
-                  <Select defaultValue="20">
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="10">10</SelectItem>
-                      <SelectItem value="20">20</SelectItem>
-                      <SelectItem value="50">50</SelectItem>
-                      <SelectItem value="100">100</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                <div className="flex items-center justify-between">
+              <CardContent className="space-y-6">
+                <div className="space-y-4">
                   <div>
-                    <Label>Auto-save</Label>
-                    <p className="text-sm text-muted-foreground">Automatically save changes</p>
+                    <Label>Change Password</Label>
+                    <p className="text-sm text-gray-600 mb-2">Update your account password</p>
+                    <Button variant="outline">Change Password</Button>
                   </div>
-                  <Switch defaultChecked />
+                  
+                  <div>
+                    <Label>Two-Factor Authentication</Label>
+                    <p className="text-sm text-gray-600 mb-2">Add an extra layer of security</p>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline">Not Enabled</Badge>
+                      <Button variant="outline" size="sm">Enable 2FA</Button>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <Label>Active Sessions</Label>
+                    <p className="text-sm text-gray-600 mb-2">Manage your active login sessions</p>
+                    <Button variant="outline">View Sessions</Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>

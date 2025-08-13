@@ -18,7 +18,7 @@ const Calendar = () => {
   const [dayEventsOpen, setDayEventsOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<any>(null);
   
-  const { events, loading } = useCalendarEvents();
+  const { events, isLoading } = useCalendarEvents();
 
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(currentDate);
@@ -26,7 +26,7 @@ const Calendar = () => {
 
   const getEventsForDay = (date: Date) => {
     return events.filter(event => {
-      const eventDate = new Date(event.event_date);
+      const eventDate = new Date(event.start_time);
       return isSameDay(eventDate, date);
     });
   };
@@ -37,10 +37,12 @@ const Calendar = () => {
         return 'bg-blue-100 text-blue-800';
       case 'meeting':
         return 'bg-green-100 text-green-800';
-      case 'deadline':
-        return 'bg-red-100 text-red-800';
       case 'maintenance':
         return 'bg-yellow-100 text-yellow-800';
+      case 'training':
+        return 'bg-purple-100 text-purple-800';
+      case 'booking':
+        return 'bg-orange-100 text-orange-800';
       default:
         return 'bg-gray-100 text-gray-800';
     }
@@ -70,7 +72,7 @@ const Calendar = () => {
     setCurrentDate(addMonths(currentDate, 1));
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="p-6">
         <div className="max-w-7xl mx-auto">
@@ -126,12 +128,12 @@ const Calendar = () => {
               <span className="text-sm">Meetings</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-3 h-3 bg-red-500 rounded"></div>
-              <span className="text-sm">Deadlines</span>
-            </div>
-            <div className="flex items-center gap-2">
               <div className="w-3 h-3 bg-yellow-500 rounded"></div>
               <span className="text-sm">Maintenance</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 bg-purple-500 rounded"></div>
+              <span className="text-sm">Training</span>
             </div>
           </div>
         </div>
@@ -181,7 +183,8 @@ const Calendar = () => {
                           style={{
                             backgroundColor: event.event_type === 'experiment' ? '#dbeafe' :
                                            event.event_type === 'meeting' ? '#dcfce7' :
-                                           event.event_type === 'deadline' ? '#fee2e2' : '#fef3c7'
+                                           event.event_type === 'maintenance' ? '#fef3c7' :
+                                           event.event_type === 'training' ? '#f3e8ff' : '#fed7aa'
                           }}
                         >
                           {event.title}
@@ -209,8 +212,8 @@ const Calendar = () => {
           <CardContent>
             <div className="space-y-3">
               {events
-                .filter(event => new Date(event.event_date) >= new Date())
-                .sort((a, b) => new Date(a.event_date).getTime() - new Date(b.event_date).getTime())
+                .filter(event => new Date(event.start_time) >= new Date())
+                .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime())
                 .slice(0, 5)
                 .map(event => (
                   <div 
@@ -222,8 +225,7 @@ const Calendar = () => {
                     <div className="flex-1">
                       <div className="font-medium">{event.title}</div>
                       <div className="text-sm text-gray-600">
-                        {format(new Date(event.event_date), 'MMM d, yyyy')}
-                        {event.event_time && ` at ${event.event_time}`}
+                        {format(new Date(event.start_time), 'MMM d, yyyy')} at {format(new Date(event.start_time), 'HH:mm')}
                       </div>
                     </div>
                     <Badge className={getEventTypeColor(event.event_type)}>
@@ -232,7 +234,7 @@ const Calendar = () => {
                   </div>
                 ))}
               
-              {events.filter(event => new Date(event.event_date) >= new Date()).length === 0 && (
+              {events.filter(event => new Date(event.start_time) >= new Date()).length === 0 && (
                 <div className="text-center py-8 text-gray-500">
                   No upcoming events scheduled
                 </div>
@@ -244,7 +246,6 @@ const Calendar = () => {
         <CreateEventDialog 
           open={createDialogOpen} 
           onOpenChange={setCreateDialogOpen}
-          selectedDate={selectedDate}
         />
         
         {selectedEvent && (
