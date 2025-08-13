@@ -22,9 +22,9 @@ export const useUser = () => {
 
       // Get additional user profile data if available
       const { data: profile } = await supabase
-        .from('profiles')
+        .from('user_profiles')
         .select('first_name, last_name, avatar_url')
-        .eq('id', user.id)
+        .eq('user_id', user.id)
         .single();
 
       return {

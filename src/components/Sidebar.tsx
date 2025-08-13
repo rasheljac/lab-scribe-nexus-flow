@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import {
   Home,
@@ -30,7 +31,7 @@ import { cn } from "@/lib/utils";
 
 const Sidebar = () => {
   const { signOut } = useAuth();
-  const { user } = useUser();
+  const { data: user } = useUser();
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
