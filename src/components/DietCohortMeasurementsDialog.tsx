@@ -28,7 +28,7 @@ export const DietCohortMeasurementsDialog = ({ cohort, open, onOpenChange }: Die
     notes: ""
   });
 
-  const { measurements, loading } = useDietCohortMeasurements(cohort?.id);
+  const { data: measurements = [], isLoading } = useDietCohortMeasurements(cohort?.id);
   const createMutation = useCreateDietCohortMeasurement();
   const deleteMutation = useDeleteDietCohortMeasurement();
 
@@ -182,7 +182,7 @@ export const DietCohortMeasurementsDialog = ({ cohort, open, onOpenChange }: Die
           )}
 
           <div className="space-y-3">
-            {loading ? (
+            {isLoading ? (
               <div className="text-center py-4 text-muted-foreground">Loading measurements...</div>
             ) : measurements && measurements.length > 0 ? (
               measurements.map((measurement: any) => (

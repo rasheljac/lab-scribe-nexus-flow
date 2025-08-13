@@ -107,6 +107,120 @@ export type Database = {
         }
         Relationships: []
       }
+      diet_cohort_measurements: {
+        Row: {
+          average_value: number | null
+          cohort_id: string
+          created_at: string
+          id: string
+          individual_values: number[] | null
+          measurement_date: string
+          measurement_type: string
+          notes: string | null
+          unit: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          average_value?: number | null
+          cohort_id: string
+          created_at?: string
+          id?: string
+          individual_values?: number[] | null
+          measurement_date: string
+          measurement_type: string
+          notes?: string | null
+          unit?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          average_value?: number | null
+          cohort_id?: string
+          created_at?: string
+          id?: string
+          individual_values?: number[] | null
+          measurement_date?: string
+          measurement_type?: string
+          notes?: string | null
+          unit?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      diet_mice_cohorts: {
+        Row: {
+          age_at_start_weeks: number | null
+          cage_numbers: string[] | null
+          cohort_name: string
+          created_at: string
+          diet_description: string | null
+          diet_type: string
+          display_order: number | null
+          duration_weeks: number | null
+          end_date: string | null
+          expected_weight_change_percent: number | null
+          id: string
+          monitoring_frequency: string | null
+          mouse_strain: string | null
+          notes: string | null
+          number_of_mice: number
+          sex: string
+          start_date: string
+          status: string
+          updated_at: string
+          user_id: string
+          weight_at_start_grams: number | null
+        }
+        Insert: {
+          age_at_start_weeks?: number | null
+          cage_numbers?: string[] | null
+          cohort_name: string
+          created_at?: string
+          diet_description?: string | null
+          diet_type: string
+          display_order?: number | null
+          duration_weeks?: number | null
+          end_date?: string | null
+          expected_weight_change_percent?: number | null
+          id?: string
+          monitoring_frequency?: string | null
+          mouse_strain?: string | null
+          notes?: string | null
+          number_of_mice?: number
+          sex: string
+          start_date: string
+          status?: string
+          updated_at?: string
+          user_id: string
+          weight_at_start_grams?: number | null
+        }
+        Update: {
+          age_at_start_weeks?: number | null
+          cage_numbers?: string[] | null
+          cohort_name?: string
+          created_at?: string
+          diet_description?: string | null
+          diet_type?: string
+          display_order?: number | null
+          duration_weeks?: number | null
+          end_date?: string | null
+          expected_weight_change_percent?: number | null
+          id?: string
+          monitoring_frequency?: string | null
+          mouse_strain?: string | null
+          notes?: string | null
+          number_of_mice?: number
+          sex?: string
+          start_date?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+          weight_at_start_grams?: number | null
+        }
+        Relationships: []
+      }
       experiment_attachments: {
         Row: {
           created_at: string

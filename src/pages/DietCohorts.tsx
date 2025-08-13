@@ -16,7 +16,7 @@ const DietCohorts = () => {
   const [measurementsDialogOpen, setMeasurementsDialogOpen] = useState(false);
   const [selectedCohort, setSelectedCohort] = useState<any>(null);
   
-  const { cohorts, loading } = useDietCohorts();
+  const { data: cohorts = [], isLoading } = useDietCohorts();
 
   const handleEdit = (cohort: any) => {
     setSelectedCohort(cohort);
@@ -43,7 +43,7 @@ const DietCohorts = () => {
     return differenceInDays(end, start);
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="container mx-auto py-6">
         <div className="flex items-center justify-center h-64">

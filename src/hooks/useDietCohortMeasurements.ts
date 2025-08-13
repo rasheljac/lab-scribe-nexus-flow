@@ -9,10 +9,14 @@ export const useDietCohortMeasurements = (cohortId: string) => {
     queryFn: async () => {
       if (!cohortId) return [];
       
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
       const { data, error } = await supabase
         .from("diet_cohort_measurements")
         .select("*")
         .eq("cohort_id", cohortId)
+        .eq("user_id", user.id)
         .order("measurement_date", { ascending: false });
 
       if (error) throw error;
@@ -27,9 +31,12 @@ export const useCreateDietCohortMeasurement = () => {
 
   return useMutation({
     mutationFn: async (measurementData: any) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
       const { data, error } = await supabase
         .from("diet_cohort_measurements")
-        .insert([measurementData])
+        .insert([{ ...measurementData, user_id: user.id }])
         .select()
         .single();
 
@@ -52,10 +59,14 @@ export const useDeleteDietCohortMeasurement = () => {
 
   return useMutation({
     mutationFn: async (id: string) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
       const { error } = await supabase
         .from("diet_cohort_measurements")
         .delete()
-        .eq("id", id);
+        .eq("id", id)
+        .eq("user_id", user.id);
 
       if (error) throw error;
     },

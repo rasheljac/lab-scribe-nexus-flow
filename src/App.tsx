@@ -35,7 +35,7 @@ import DietCohorts from "./pages/DietCohorts";
 import NotFound from "./pages/NotFound";
 import Sidebar from "./components/Sidebar";
 import Header from "./components/Header";
-import { ProtectedRoute } from "./components/ProtectedRoute";
+import ProtectedRoute from "./components/ProtectedRoute";
 
 const queryClient = new QueryClient();
 
