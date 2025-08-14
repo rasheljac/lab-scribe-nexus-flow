@@ -282,6 +282,8 @@ const Inventory = () => {
         )}
 
         <AddInventoryItemDialog 
+          open={addDialogOpen}
+          onOpenChange={setAddDialogOpen}
           onAddItem={handleAddItem}
         />
         

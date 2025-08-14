@@ -1,21 +1,21 @@
 
 import { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { InventoryItem } from "@/hooks/useInventoryItems";
 
 interface AddInventoryItemDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
   onAddItem: (item: Omit<InventoryItem, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => Promise<void>;
 }
 
-const AddInventoryItemDialog = ({ onAddItem }: AddInventoryItemDialogProps) => {
+const AddInventoryItemDialog = ({ open, onOpenChange, onAddItem }: AddInventoryItemDialogProps) => {
   const { toast } = useToast();
-  const [open, setOpen] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     category: "",
@@ -68,7 +68,7 @@ const AddInventoryItemDialog = ({ onAddItem }: AddInventoryItemDialogProps) => {
         cost: "",
         url: "",
       });
-      setOpen(false);
+      onOpenChange(false);
       toast({
         title: "Success",
         description: "Item added successfully",
@@ -84,13 +84,7 @@ const AddInventoryItemDialog = ({ onAddItem }: AddInventoryItemDialogProps) => {
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button className="gap-2">
-          <Plus className="h-4 w-4" />
-          Add Item
-        </Button>
-      </DialogTrigger>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>Add New Inventory Item</DialogTitle>
@@ -205,7 +199,7 @@ const AddInventoryItemDialog = ({ onAddItem }: AddInventoryItemDialogProps) => {
           </div>
 
           <div className="flex justify-end space-x-2">
-            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
             <Button type="submit">Add Item</Button>
