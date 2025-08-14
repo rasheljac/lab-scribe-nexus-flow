@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,6 +8,7 @@ import { Search, Plus, Users, Calendar, Activity, BarChart3 } from "lucide-react
 import { useDietCohorts, useUpdateDietCohort } from "@/hooks/useDietCohorts";
 import { CreateDietCohortDialog } from "@/components/CreateDietCohortDialog";
 import { EditDietCohortDialog } from "@/components/EditDietCohortDialog";
+import { DietCohortDetailsDialog } from "@/components/DietCohortDetailsDialog";
 import PaginatedDraggableGrid from "@/components/PaginatedDraggableGrid";
 import { format } from "date-fns";
 
@@ -19,6 +19,7 @@ const DietCohorts = () => {
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [selectedCohort, setSelectedCohort] = useState<any>(null);
 
   const filteredCohorts = cohorts.filter(cohort => {
@@ -64,8 +65,17 @@ const DietCohorts = () => {
     }
   };
 
+  const handleViewDetails = (cohort: any) => {
+    setSelectedCohort(cohort);
+    setDetailsDialogOpen(true);
+  };
+
   const renderCohortCard = (cohort: any) => (
-    <Card key={cohort.id} className="cursor-pointer hover:shadow-lg transition-shadow">
+    <Card 
+      key={cohort.id} 
+      className="cursor-pointer hover:shadow-lg transition-shadow"
+      onClick={() => handleViewDetails(cohort)}
+    >
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <CardTitle className="text-lg line-clamp-2">{cohort.cohort_name}</CardTitle>
@@ -265,11 +275,18 @@ const DietCohorts = () => {
         />
         
         {selectedCohort && (
-          <EditDietCohortDialog 
-            cohort={selectedCohort}
-            open={editDialogOpen}
-            onOpenChange={setEditDialogOpen}
-          />
+          <>
+            <EditDietCohortDialog 
+              cohort={selectedCohort}
+              open={editDialogOpen}
+              onOpenChange={setEditDialogOpen}
+            />
+            <DietCohortDetailsDialog
+              cohort={selectedCohort}
+              open={detailsDialogOpen}
+              onOpenChange={setDetailsDialogOpen}
+            />
+          </>
         )}
       </div>
     </div>

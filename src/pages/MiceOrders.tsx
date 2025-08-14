@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,6 +8,7 @@ import { Calendar, Search, Plus, Package, Truck, CheckCircle, Clock, AlertCircle
 import { useMiceOrders } from "@/hooks/useMiceOrders";
 import AddMiceOrderDialog from "@/components/AddMiceOrderDialog";
 import EditMiceOrderDialog from "@/components/EditMiceOrderDialog";
+import { MiceOrderDetailsDialog } from "@/components/MiceOrderDetailsDialog";
 import PaginatedDraggableGrid from "@/components/PaginatedDraggableGrid";
 import { format } from "date-fns";
 
@@ -18,6 +18,7 @@ const MiceOrders = () => {
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
 
   const filteredOrders = orders.filter(order => {
     const matchesSearch = order.strain_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -57,6 +58,11 @@ const MiceOrders = () => {
     }
   };
 
+  const handleViewDetails = (order: any) => {
+    setSelectedOrder(order);
+    setDetailsDialogOpen(true);
+  };
+
   const handleEditOrder = (order: any) => {
     setSelectedOrder(order);
     setEditDialogOpen(true);
@@ -77,7 +83,11 @@ const MiceOrders = () => {
   };
 
   const renderOrderCard = (order: any) => (
-    <Card key={order.id} className="cursor-pointer hover:shadow-lg transition-shadow">
+    <Card 
+      key={order.id} 
+      className="cursor-pointer hover:shadow-lg transition-shadow"
+      onClick={() => handleViewDetails(order)}
+    >
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <CardTitle className="text-lg line-clamp-2">{order.strain_name}</CardTitle>
@@ -261,12 +271,19 @@ const MiceOrders = () => {
         />
         
         {selectedOrder && (
-          <EditMiceOrderDialog 
-            open={editDialogOpen}
-            onOpenChange={setEditDialogOpen}
-            order={selectedOrder}
-            onUpdateOrder={handleUpdateOrder}
-          />
+          <>
+            <EditMiceOrderDialog 
+              open={editDialogOpen}
+              onOpenChange={setEditDialogOpen}
+              order={selectedOrder}
+              onUpdateOrder={handleUpdateOrder}
+            />
+            <MiceOrderDetailsDialog
+              order={selectedOrder}
+              open={detailsDialogOpen}
+              onOpenChange={setDetailsDialogOpen}
+            />
+          </>
         )}
       </div>
     </div>
