@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -39,7 +38,6 @@ const IdeaNotes = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [createNoteOpen, setCreateNoteOpen] = useState(false);
-  const [editingNote, setEditingNote] = useState<any>(null);
   
   const { ideas, isLoading: ideasLoading } = useExperimentIdeas();
   const { notes, isLoading: notesLoading, deleteNote } = useIdeaNotes(ideaId || '');
@@ -207,14 +205,10 @@ const IdeaNotes = () => {
                     <div className="flex items-start justify-between mb-3">
                       <h3 className="font-medium text-gray-900">{note.title}</h3>
                       <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => setEditingNote(note)}
-                          className="p-1 h-6 w-6"
-                        >
-                          <Edit2 className="h-3 w-3" />
-                        </Button>
+                        <EditIdeaNoteDialog
+                          note={note}
+                          ideaId={ideaId || ''}
+                        />
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
                             <Button
@@ -275,14 +269,6 @@ const IdeaNotes = () => {
         open={createNoteOpen}
         onOpenChange={setCreateNoteOpen}
       />
-
-      {editingNote && (
-        <EditIdeaNoteDialog
-          note={editingNote}
-          open={!!editingNote}
-          onOpenChange={() => setEditingNote(null)}
-        />
-      )}
     </main>
   );
 };
