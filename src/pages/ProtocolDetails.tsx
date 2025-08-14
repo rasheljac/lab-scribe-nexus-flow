@@ -20,7 +20,7 @@ import { exportProtocolToPDF } from "@/utils/pdfExport";
 import { useToast } from "@/hooks/use-toast";
 
 const ProtocolDetails = () => {
-  const { protocolId } = useParams();
+  const { id } = useParams();
   const navigate = useNavigate();
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
@@ -28,7 +28,7 @@ const ProtocolDetails = () => {
   const { protocols, isLoading, error } = useProtocols();
   const { toast } = useToast();
   
-  const protocol = protocols.find(p => p.id === protocolId);
+  const protocol = protocols.find(p => p.id === id);
 
   const handleExportPDF = async () => {
     if (!protocol) return;
