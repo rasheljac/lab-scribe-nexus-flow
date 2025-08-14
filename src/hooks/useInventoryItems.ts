@@ -39,7 +39,14 @@ export const useInventoryItems = () => {
         .order('display_order', { ascending: true });
 
       if (error) throw error;
-      setItems(data || []);
+      
+      // Ensure all items have display_order, fallback to 0 if missing
+      const itemsWithOrder = (data || []).map(item => ({
+        ...item,
+        display_order: item.display_order ?? 0
+      })) as InventoryItem[];
+      
+      setItems(itemsWithOrder);
     } catch (error) {
       console.error('Error fetching inventory items:', error);
       toast({
@@ -97,8 +104,14 @@ export const useInventoryItems = () => {
         throw error;
       }
       
-      setItems(prev => [...prev, data].sort((a, b) => (a.display_order || 0) - (b.display_order || 0)));
-      return data;
+      // Ensure the returned data has display_order
+      const newItem = {
+        ...data,
+        display_order: data.display_order ?? nextOrder
+      } as InventoryItem;
+      
+      setItems(prev => [...prev, newItem].sort((a, b) => (a.display_order || 0) - (b.display_order || 0)));
+      return newItem;
     } catch (error) {
       console.error('Error adding inventory item:', error);
       toast({
@@ -120,8 +133,15 @@ export const useInventoryItems = () => {
         .single();
 
       if (error) throw error;
-      setItems(prev => prev.map(item => item.id === id ? data : item));
-      return data;
+      
+      // Ensure the returned data has display_order
+      const updatedItem = {
+        ...data,
+        display_order: data.display_order ?? 0
+      } as InventoryItem;
+      
+      setItems(prev => prev.map(item => item.id === id ? updatedItem : item));
+      return updatedItem;
     } catch (error) {
       console.error('Error updating inventory item:', error);
       toast({
