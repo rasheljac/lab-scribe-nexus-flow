@@ -154,7 +154,8 @@ export const useInventoryItems = () => {
 
   const updateItemOrder = async (updates: Array<{ id: string; display_order: number }>) => {
     try {
-      const { error } = await supabase.rpc('update_inventory_display_order', {
+      // Use a type assertion to bypass the TypeScript type checking for the RPC call
+      const { error } = await (supabase as any).rpc('update_inventory_display_order', {
         updates: updates
       });
 

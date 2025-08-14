@@ -1193,6 +1193,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
+      update_inventory_display_order: {
+        Args: { updates: Json }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never
