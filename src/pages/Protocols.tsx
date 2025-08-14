@@ -27,8 +27,6 @@ import {
   Eye,
   Loader2
 } from "lucide-react";
-import Sidebar from "@/components/Sidebar";
-import Header from "@/components/Header";
 import CreateProtocolDialog from "@/components/CreateProtocolDialog";
 import EditProtocolDialog from "@/components/EditProtocolDialog";
 import DraggableGrid from "@/components/DraggableGrid";
@@ -177,96 +175,84 @@ const Protocols = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 flex">
-        <Sidebar />
-        <div className="flex-1 flex flex-col">
-          <Header />
-          <main className="flex-1 p-6 overflow-auto">
-            <div className="max-w-7xl mx-auto">
-              <div className="text-center py-12">
-                <p className="text-red-600">Error loading protocols: {error.message}</p>
-              </div>
-            </div>
-          </main>
+      <main className="flex-1 p-6 overflow-auto">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center py-12">
+            <p className="text-red-600">Error loading protocols: {error.message}</p>
+          </div>
         </div>
-      </div>
+      </main>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
-      <Sidebar />
-      <div className="flex-1 flex flex-col">
-        <Header />
-        <main className="flex-1 p-6 overflow-auto">
-          <div className="max-w-7xl mx-auto space-y-6">
-            {/* Header */}
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900">Protocols</h1>
-                <p className="text-gray-600 mt-1">
-                  Manage your research protocols and procedures
-                </p>
-              </div>
-              <Button onClick={() => setCreateProtocolOpen(true)} className="gap-2">
-                <Plus className="h-4 w-4" />
-                New Protocol
-              </Button>
-            </div>
-
-            {/* Search */}
-            <div className="flex items-center gap-4">
-              <div className="flex-1 relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                <Input
-                  placeholder="Search protocols..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-            </div>
-
-            {/* Protocols Grid */}
-            {isLoading ? (
-              <div className="flex justify-center py-12">
-                <Loader2 className="h-8 w-8 animate-spin" />
-              </div>
-            ) : (
-              <>
-                {filteredProtocols.length > 0 ? (
-                  <DraggableGrid
-                    items={filteredProtocols}
-                    onReorder={handleReorder}
-                    renderItem={renderProtocolCard}
-                    droppableId="protocols"
-                  />
-                ) : (
-                  <div className="text-center py-12">
-                    <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                    <p className="text-gray-600">
-                      {searchTerm ? "No protocols found matching your criteria." : "No protocols found."}
-                    </p>
-                    <Button 
-                      className="mt-4 gap-2" 
-                      onClick={() => setCreateProtocolOpen(true)}
-                    >
-                      <Plus className="h-4 w-4" />
-                      Create Your First Protocol
-                    </Button>
-                  </div>
-                )}
-              </>
-            )}
+    <main className="flex-1 p-6 overflow-auto">
+      <div className="max-w-7xl mx-auto space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Protocols</h1>
+            <p className="text-gray-600 mt-1">
+              Manage your research protocols and procedures
+            </p>
           </div>
-        </main>
+          <Button onClick={() => setCreateProtocolOpen(true)} className="gap-2">
+            <Plus className="h-4 w-4" />
+            New Protocol
+          </Button>
+        </div>
+
+        {/* Search */}
+        <div className="flex items-center gap-4">
+          <div className="flex-1 relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+            <Input
+              placeholder="Search protocols..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+        </div>
+
+        {/* Protocols Grid */}
+        {isLoading ? (
+          <div className="flex justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin" />
+          </div>
+        ) : (
+          <>
+            {filteredProtocols.length > 0 ? (
+              <DraggableGrid
+                items={filteredProtocols}
+                onReorder={handleReorder}
+                renderItem={renderProtocolCard}
+                droppableId="protocols"
+              />
+            ) : (
+              <div className="text-center py-12">
+                <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-600">
+                  {searchTerm ? "No protocols found matching your criteria." : "No protocols found."}
+                </p>
+                <Button 
+                  className="mt-4 gap-2" 
+                  onClick={() => setCreateProtocolOpen(true)}
+                >
+                  <Plus className="h-4 w-4" />
+                  Create Your First Protocol
+                </Button>
+              </div>
+            )}
+          </>
+        )}
       </div>
       
       <CreateProtocolDialog 
         open={createProtocolOpen} 
         onOpenChange={setCreateProtocolOpen}
       />
-    </div>
+    </main>
   );
 };
 
