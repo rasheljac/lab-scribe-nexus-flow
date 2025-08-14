@@ -11,7 +11,7 @@ import { InventoryItem } from "@/hooks/useInventoryItems";
 interface AddInventoryItemDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onAddItem: (item: Omit<InventoryItem, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => Promise<void>;
+  onAddItem: (item: Omit<InventoryItem, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'display_order'>) => Promise<void>;
 }
 
 const AddInventoryItemDialog = ({ open, onOpenChange, onAddItem }: AddInventoryItemDialogProps) => {
