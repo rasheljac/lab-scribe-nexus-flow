@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,9 +10,10 @@ import { useInventoryItems } from "@/hooks/useInventoryItems";
 import AddInventoryItemDialog from "@/components/AddInventoryItemDialog";
 import EditInventoryItemDialog from "@/components/EditInventoryItemDialog";
 import InventoryItemDetailsDialog from "@/components/InventoryItemDetailsDialog";
+import PaginatedDraggableGrid from "@/components/PaginatedDraggableGrid";
 
 const Inventory = () => {
-  const { items, loading, addItem, updateItem } = useInventoryItems();
+  const { items, loading, addItem, updateItem, updateItemOrder } = useInventoryItems();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
@@ -69,6 +71,94 @@ const Inventory = () => {
   const handleAddItem = async (item: any) => {
     await addItem(item);
   };
+
+  const handleReorder = async (reorderedItems: any[]) => {
+    const updates = reorderedItems.map((item, index) => ({
+      id: item.id,
+      display_order: index + 1
+    }));
+    await updateItemOrder(updates);
+  };
+
+  const renderInventoryCard = (item: any) => {
+    const stockStatus = getStockStatus(item);
+    
+    return (
+      <Card key={item.id} className="cursor-pointer hover:shadow-lg transition-shadow">
+        <CardHeader 
+          onClick={() => handleViewDetails(item)}
+          className="pb-3"
+        >
+          <div className="flex items-start justify-between">
+            <CardTitle className="text-lg line-clamp-2">{item.name}</CardTitle>
+            <Badge className={getCategoryColor(item.category)}>
+              {item.category}
+            </Badge>
+          </div>
+        </CardHeader>
+        
+        <CardContent>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-gray-600">Quantity:</span>
+              <div className="flex items-center gap-2">
+                <span className="font-medium">{item.current_stock} {item.unit}</span>
+                <Badge className={stockStatus.color}>
+                  {stockStatus.label}
+                </Badge>
+              </div>
+            </div>
+            
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-gray-600">Min. Quantity:</span>
+              <span className="font-medium">10 {item.unit}</span>
+            </div>
+            
+            {item.location && (
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-600">Location:</span>
+                <span className="font-medium">{item.location}</span>
+              </div>
+            )}
+            
+            <div className="flex gap-2 mt-4">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleEdit(item);
+                }}
+                className="flex-1"
+              >
+                Edit
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleViewDetails(item)}
+                className="flex-1"
+              >
+                Details
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
+
+  const emptyState = (
+    <div className="text-center py-12">
+      <Package className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+      <h3 className="text-lg font-medium text-gray-900 mb-2">No items found</h3>
+      <p className="text-gray-600 mb-4">
+        {searchTerm || selectedCategory !== "all" || selectedStatus !== "all"
+          ? "Try adjusting your filters"
+          : "Add your first inventory item to get started"}
+      </p>
+    </div>
+  );
 
   if (loading) {
     return (
@@ -198,88 +288,15 @@ const Inventory = () => {
           </Card>
         </div>
 
-        {/* Inventory Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredItems.map((item) => {
-            const stockStatus = getStockStatus(item);
-            
-            return (
-              <Card key={item.id} className="cursor-pointer hover:shadow-lg transition-shadow">
-                <CardHeader 
-                  onClick={() => handleViewDetails(item)}
-                  className="pb-3"
-                >
-                  <div className="flex items-start justify-between">
-                    <CardTitle className="text-lg line-clamp-2">{item.name}</CardTitle>
-                    <Badge className={getCategoryColor(item.category)}>
-                      {item.category}
-                    </Badge>
-                  </div>
-                </CardHeader>
-                
-                <CardContent>
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-600">Quantity:</span>
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">{item.current_stock} {item.unit}</span>
-                        <Badge className={stockStatus.color}>
-                          {stockStatus.label}
-                        </Badge>
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-600">Min. Quantity:</span>
-                      <span className="font-medium">10 {item.unit}</span>
-                    </div>
-                    
-                    {item.location && (
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-gray-600">Location:</span>
-                        <span className="font-medium">{item.location}</span>
-                      </div>
-                    )}
-                    
-                    <div className="flex gap-2 mt-4">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleEdit(item);
-                        }}
-                        className="flex-1"
-                      >
-                        Edit
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleViewDetails(item)}
-                        className="flex-1"
-                      >
-                        Details
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
-
-        {filteredItems.length === 0 && (
-          <div className="text-center py-12">
-            <Package className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No items found</h3>
-            <p className="text-gray-600 mb-4">
-              {searchTerm || selectedCategory !== "all" || selectedStatus !== "all"
-                ? "Try adjusting your filters"
-                : "Add your first inventory item to get started"}
-            </p>
-          </div>
-        )}
+        {/* Inventory Grid with Pagination and Drag & Drop */}
+        <PaginatedDraggableGrid
+          items={filteredItems}
+          onReorder={handleReorder}
+          renderItem={renderInventoryCard}
+          droppableId="inventory-items"
+          itemsPerPage={8}
+          emptyState={emptyState}
+        />
 
         <AddInventoryItemDialog 
           open={addDialogOpen}

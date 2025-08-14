@@ -18,6 +18,7 @@ export interface InventoryItem {
   last_ordered: string | null;
   cost: string;
   url: string;
+  display_order: number;
   created_at: string;
   updated_at: string;
 }
@@ -35,7 +36,7 @@ export const useInventoryItems = () => {
       const { data, error } = await supabase
         .from('inventory_items')
         .select('*')
-        .order('created_at', { ascending: false });
+        .order('display_order', { ascending: true });
 
       if (error) throw error;
       setItems(data || []);
@@ -51,10 +52,21 @@ export const useInventoryItems = () => {
     }
   };
 
-  const addItem = async (item: Omit<InventoryItem, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => {
+  const addItem = async (item: Omit<InventoryItem, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'display_order'>) => {
     if (!user) return;
 
     try {
+      // Get the next display order
+      const { data: maxOrderData } = await supabase
+        .from('inventory_items')
+        .select('display_order')
+        .order('display_order', { ascending: false })
+        .limit(1);
+
+      const nextOrder = maxOrderData && maxOrderData.length > 0 
+        ? (maxOrderData[0].display_order || 0) + 1 
+        : 1;
+
       // Prepare the data for insertion, ensuring proper null handling
       const insertData = {
         name: item.name,
@@ -68,7 +80,8 @@ export const useInventoryItems = () => {
         last_ordered: item.last_ordered,
         cost: item.cost || null,
         url: item.url || null,
-        user_id: user.id
+        user_id: user.id,
+        display_order: nextOrder
       };
 
       console.log('Inserting item data:', insertData);
@@ -84,7 +97,7 @@ export const useInventoryItems = () => {
         throw error;
       }
       
-      setItems(prev => [data, ...prev]);
+      setItems(prev => [...prev, data].sort((a, b) => (a.display_order || 0) - (b.display_order || 0)));
       return data;
     } catch (error) {
       console.error('Error adding inventory item:', error);
@@ -116,6 +129,41 @@ export const useInventoryItems = () => {
         description: "Failed to update inventory item",
         variant: "destructive",
       });
+    }
+  };
+
+  const updateItemOrder = async (updates: Array<{ id: string; display_order: number }>) => {
+    try {
+      const { error } = await supabase.rpc('update_inventory_display_order', {
+        updates: updates
+      });
+
+      if (error) throw error;
+
+      // Update local state
+      setItems(prev => {
+        const updatedItems = [...prev];
+        updates.forEach(update => {
+          const itemIndex = updatedItems.findIndex(item => item.id === update.id);
+          if (itemIndex !== -1) {
+            updatedItems[itemIndex] = { ...updatedItems[itemIndex], display_order: update.display_order };
+          }
+        });
+        return updatedItems.sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
+      });
+
+      toast({
+        title: "Success",
+        description: "Item order updated successfully",
+      });
+    } catch (error) {
+      console.error('Error updating item order:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update item order",
+        variant: "destructive",
+      });
+      throw error;
     }
   };
 
@@ -151,6 +199,7 @@ export const useInventoryItems = () => {
     loading,
     addItem,
     updateItem,
+    updateItemOrder,
     deleteItem,
     refetch: fetchItems
   };
