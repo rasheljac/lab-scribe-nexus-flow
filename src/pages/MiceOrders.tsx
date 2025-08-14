@@ -68,6 +68,11 @@ const MiceOrders = () => {
     setSelectedOrder(null);
   };
 
+  const handleAddOrder = async (order: any) => {
+    await addOrder(order);
+    setAddOrderOpen(false);
+  };
+
   if (loading) {
     return (
       <div className="p-6">
@@ -247,7 +252,11 @@ const MiceOrders = () => {
           </div>
         )}
 
-        <AddMiceOrderDialog />
+        <AddMiceOrderDialog 
+          open={addOrderOpen}
+          onOpenChange={setAddOrderOpen}
+          onAddOrder={handleAddOrder}
+        />
         
         {selectedOrder && (
           <EditMiceOrderDialog 

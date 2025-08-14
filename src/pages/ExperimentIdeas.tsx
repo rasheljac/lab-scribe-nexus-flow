@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,7 +14,7 @@ import DraggableGrid from "@/components/DraggableGrid";
 import { format } from "date-fns";
 
 const ExperimentIdeas = () => {
-  const { ideas, loading, addIdea, updateIdea, deleteIdea, reorderIdeas } = useExperimentIdeas();
+  const { ideas, isLoading, createIdea, updateIdea, deleteIdea, updateIdeaOrder } = useExperimentIdeas();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedPriority, setSelectedPriority] = useState<string>("all");
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
@@ -46,13 +47,15 @@ const ExperimentIdeas = () => {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'pending':
+      case 'brainstorming':
+        return 'bg-purple-100 text-purple-800';
+      case 'researching':
         return 'bg-yellow-100 text-yellow-800';
-      case 'in_progress':
+      case 'planning':
         return 'bg-blue-100 text-blue-800';
-      case 'completed':
+      case 'ready':
         return 'bg-green-100 text-green-800';
-      case 'rejected':
+      case 'archived':
         return 'bg-red-100 text-red-800';
       default:
         return 'bg-gray-100 text-gray-800';
@@ -70,18 +73,22 @@ const ExperimentIdeas = () => {
   };
 
   const handleUpdateIdea = async (id: string, updates: any) => {
-    await updateIdea(id, updates);
+    await updateIdea.mutateAsync({ id, ...updates });
   };
 
   const handleAddIdea = async (idea: any) => {
-    await addIdea(idea);
+    await createIdea.mutateAsync(idea);
   };
 
   const handleReorder = async (reorderedIdeas: any[]) => {
-    await reorderIdeas(reorderedIdeas);
+    const updates = reorderedIdeas.map((idea, index) => ({
+      id: idea.id,
+      display_order: index + 1
+    }));
+    await updateIdeaOrder.mutateAsync(updates);
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="p-6">
         <div className="max-w-7xl mx-auto">
@@ -215,10 +222,11 @@ const ExperimentIdeas = () => {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Statuses</SelectItem>
-              <SelectItem value="pending">Pending</SelectItem>
-              <SelectItem value="in_progress">In Progress</SelectItem>
-              <SelectItem value="completed">Completed</SelectItem>
-              <SelectItem value="rejected">Rejected</SelectItem>
+              <SelectItem value="brainstorming">Brainstorming</SelectItem>
+              <SelectItem value="researching">Researching</SelectItem>
+              <SelectItem value="planning">Planning</SelectItem>
+              <SelectItem value="ready">Ready</SelectItem>
+              <SelectItem value="archived">Archived</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -242,9 +250,9 @@ const ExperimentIdeas = () => {
               <div className="flex items-center gap-2">
                 <Calendar className="h-5 w-5 text-green-600" />
                 <div>
-                  <p className="text-sm text-gray-600">Pending</p>
+                  <p className="text-sm text-gray-600">Brainstorming</p>
                   <p className="text-2xl font-bold">
-                    {ideas.filter(idea => idea.status === 'pending').length}
+                    {ideas.filter(idea => idea.status === 'brainstorming').length}
                   </p>
                 </div>
               </div>
@@ -256,9 +264,9 @@ const ExperimentIdeas = () => {
               <div className="flex items-center gap-2">
                 <User className="h-5 w-5 text-yellow-600" />
                 <div>
-                  <p className="text-sm text-gray-600">In Progress</p>
+                  <p className="text-sm text-gray-600">Researching</p>
                   <p className="text-2xl font-bold">
-                    {ideas.filter(idea => idea.status === 'in_progress').length}
+                    {ideas.filter(idea => idea.status === 'researching').length}
                   </p>
                 </div>
               </div>
@@ -270,9 +278,9 @@ const ExperimentIdeas = () => {
               <div className="flex items-center gap-2">
                 <Hash className="h-5 w-5 text-purple-600" />
                 <div>
-                  <p className="text-sm text-gray-600">Completed</p>
+                  <p className="text-sm text-gray-600">Ready</p>
                   <p className="text-2xl font-bold">
-                    {ideas.filter(idea => idea.status === 'completed').length}
+                    {ideas.filter(idea => idea.status === 'ready').length}
                   </p>
                 </div>
               </div>
@@ -312,18 +320,8 @@ const ExperimentIdeas = () => {
         
         {selectedIdea && (
           <>
-            <EditIdeaDialog 
-              open={editDialogOpen} 
-              onOpenChange={setEditDialogOpen}
-              idea={selectedIdea}
-              onUpdateIdea={handleUpdateIdea}
-            />
-            
-            <IdeaReportDialog 
-              open={reportDialogOpen} 
-              onOpenChange={setReportDialogOpen}
-              idea={selectedIdea}
-            />
+            <EditIdeaDialog idea={selectedIdea} />
+            <IdeaReportDialog ideaId={selectedIdea.id} ideaTitle={selectedIdea.title} />
           </>
         )}
       </div>
