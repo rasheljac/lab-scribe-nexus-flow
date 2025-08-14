@@ -15,8 +15,6 @@ const MiceOrders = () => {
   const { orders, loading, addOrder, updateOrder, deleteOrder } = useMiceOrders();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
-  const [addOrderOpen, setAddOrderOpen] = useState(false);
-  const [editOrderOpen, setEditOrderOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
 
   const filteredOrders = orders.filter(order => {
@@ -59,18 +57,15 @@ const MiceOrders = () => {
 
   const handleEditOrder = (order: any) => {
     setSelectedOrder(order);
-    setEditOrderOpen(true);
   };
 
   const handleUpdateOrder = async (id: string, updates: any) => {
     await updateOrder(id, updates);
-    setEditOrderOpen(false);
     setSelectedOrder(null);
   };
 
   const handleAddOrder = async (order: any) => {
     await addOrder(order);
-    setAddOrderOpen(false);
   };
 
   if (loading) {
@@ -99,10 +94,7 @@ const MiceOrders = () => {
             <h1 className="text-3xl font-bold">Mice Orders</h1>
             <p className="text-gray-600 mt-1">Track and manage your mice orders</p>
           </div>
-          <Button onClick={() => setAddOrderOpen(true)} className="gap-2">
-            <Plus className="h-4 w-4" />
-            New Order
-          </Button>
+          <AddMiceOrderDialog onAddOrder={handleAddOrder} />
         </div>
 
         {/* Filters */}
@@ -245,23 +237,13 @@ const MiceOrders = () => {
                 : "Create your first mice order to get started"}
             </p>
             {!(searchTerm || selectedStatus !== "all") && (
-              <Button onClick={() => setAddOrderOpen(true)}>
-                Create Mice Order
-              </Button>
+              <AddMiceOrderDialog onAddOrder={handleAddOrder} />
             )}
           </div>
         )}
-
-        <AddMiceOrderDialog 
-          open={addOrderOpen}
-          onOpenChange={setAddOrderOpen}
-          onAddOrder={handleAddOrder}
-        />
         
         {selectedOrder && (
           <EditMiceOrderDialog 
-            open={editOrderOpen} 
-            onOpenChange={setEditOrderOpen}
             order={selectedOrder}
             onUpdateOrder={handleUpdateOrder}
           />

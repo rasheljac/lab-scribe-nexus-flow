@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,7 +12,7 @@ import EnhancedReportDialog from "@/components/EnhancedReportDialog";
 import { format } from "date-fns";
 
 const Reports = () => {
-  const { reports, loading, createReport, updateReport, deleteReport } = useReports();
+  const { reports, isLoading, createReport, updateReport, deleteReport } = useReports();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedType, setSelectedType] = useState<string>("all");
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
@@ -63,11 +64,11 @@ const Reports = () => {
 
   const handleDeleteReport = async (reportId: string) => {
     if (window.confirm('Are you sure you want to delete this report?')) {
-      await deleteReport(reportId);
+      await deleteReport.mutateAsync(reportId);
     }
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="p-6">
         <div className="max-w-7xl mx-auto">
