@@ -9,6 +9,7 @@ import { Calendar, Search, Plus, FolderOpen, Clock, User, CheckCircle } from "lu
 import { useNavigate } from "react-router-dom";
 import { useProjects } from "@/hooks/useProjects";
 import CreateProjectDialog from "@/components/CreateProjectDialog";
+import RichTextDisplay from "@/components/RichTextDisplay";
 import { format } from "date-fns";
 
 const Projects = () => {
@@ -170,9 +171,13 @@ const Projects = () => {
                     {project.status.replace('_', ' ')}
                   </Badge>
                 </div>
-                <CardDescription className="line-clamp-2">
-                  {project.description}
-                </CardDescription>
+                {project.description && (
+                  <RichTextDisplay 
+                    content={project.description}
+                    maxLength={100}
+                    className="text-sm text-muted-foreground"
+                  />
+                )}
               </CardHeader>
               
               <CardContent>
