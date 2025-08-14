@@ -6,14 +6,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Search, Plus, Users, Calendar, Activity, BarChart3 } from "lucide-react";
-import { useDietCohorts } from "@/hooks/useDietCohorts";
-import CreateDietCohortDialog from "@/components/CreateDietCohortDialog";
-import EditDietCohortDialog from "@/components/EditDietCohortDialog";
+import { useDietCohorts, useUpdateDietCohort } from "@/hooks/useDietCohorts";
+import { CreateDietCohortDialog } from "@/components/CreateDietCohortDialog";
+import { EditDietCohortDialog } from "@/components/EditDietCohortDialog";
 import PaginatedDraggableGrid from "@/components/PaginatedDraggableGrid";
 import { format } from "date-fns";
 
 const DietCohorts = () => {
   const { data: cohorts = [], isLoading } = useDietCohorts();
+  const updateMutation = useUpdateDietCohort();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -49,8 +50,18 @@ const DietCohorts = () => {
   };
 
   const handleReorder = async (reorderedCohorts: any[]) => {
-    // This would need to be implemented in the useDietCohorts hook
     console.log("Reordering cohorts:", reorderedCohorts);
+    
+    // Update display_order for each cohort
+    for (let i = 0; i < reorderedCohorts.length; i++) {
+      const cohort = reorderedCohorts[i];
+      if (cohort.display_order !== i + 1) {
+        await updateMutation.mutateAsync({
+          id: cohort.id,
+          display_order: i + 1
+        });
+      }
+    }
   };
 
   const renderCohortCard = (cohort: any) => (
