@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,7 +30,7 @@ const Projects = () => {
     switch (status) {
       case 'completed':
         return 'bg-green-100 text-green-800';
-      case 'in_progress':
+      case 'active':
         return 'bg-blue-100 text-blue-800';
       case 'planning':
         return 'bg-yellow-100 text-yellow-800';
@@ -91,7 +92,7 @@ const Projects = () => {
             <SelectContent>
               <SelectItem value="all">All Statuses</SelectItem>
               <SelectItem value="planning">Planning</SelectItem>
-              <SelectItem value="in_progress">In Progress</SelectItem>
+              <SelectItem value="active">Active</SelectItem>
               <SelectItem value="completed">Completed</SelectItem>
               <SelectItem value="on_hold">On Hold</SelectItem>
             </SelectContent>
@@ -160,7 +161,7 @@ const Projects = () => {
           {filteredProjects.map((project) => (
             <Card key={project.id} className="cursor-pointer hover:shadow-lg transition-shadow">
               <CardHeader 
-                onClick={() => navigate(`/projects/${project.id}`)}
+                onClick={() => navigate(`/projects/${project.id}/experiments`)}
                 className="pb-3"
               >
                 <div className="flex items-start justify-between">
