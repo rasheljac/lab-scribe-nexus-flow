@@ -41,7 +41,7 @@ export const useInventoryItems = () => {
       if (error) throw error;
       
       // Ensure all items have display_order, fallback to 0 if missing
-      const itemsWithOrder = (data || []).map(item => ({
+      const itemsWithOrder = (data || []).map((item: any) => ({
         ...item,
         display_order: item.display_order ?? 0
       })) as InventoryItem[];
@@ -71,7 +71,7 @@ export const useInventoryItems = () => {
         .limit(1);
 
       const nextOrder = maxOrderData && maxOrderData.length > 0 
-        ? (maxOrderData[0].display_order || 0) + 1 
+        ? ((maxOrderData[0] as any).display_order || 0) + 1 
         : 1;
 
       // Prepare the data for insertion, ensuring proper null handling
@@ -107,7 +107,7 @@ export const useInventoryItems = () => {
       // Ensure the returned data has display_order
       const newItem = {
         ...data,
-        display_order: data.display_order ?? nextOrder
+        display_order: (data as any).display_order ?? nextOrder
       } as InventoryItem;
       
       setItems(prev => [...prev, newItem].sort((a, b) => (a.display_order || 0) - (b.display_order || 0)));
@@ -137,7 +137,7 @@ export const useInventoryItems = () => {
       // Ensure the returned data has display_order
       const updatedItem = {
         ...data,
-        display_order: data.display_order ?? 0
+        display_order: (data as any).display_order ?? 0
       } as InventoryItem;
       
       setItems(prev => prev.map(item => item.id === id ? updatedItem : item));
