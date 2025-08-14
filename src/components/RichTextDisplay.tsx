@@ -11,10 +11,16 @@ interface RichTextDisplayProps {
 const RichTextDisplay = ({ content, className = "", maxLength }: RichTextDisplayProps) => {
   if (!content) return null;
 
+  // Helper function to strip HTML tags
+  const stripHtmlTags = (html: string): string => {
+    const temp = document.createElement('div');
+    temp.innerHTML = html;
+    return temp.textContent || temp.innerText || '';
+  };
+
   // If maxLength is specified, convert to plain text for length calculation and truncation
   if (maxLength) {
-    const structuredText = convertHtmlToStructuredText(content);
-    const plainText = convertStructuredTextToPlain(structuredText);
+    const plainText = stripHtmlTags(content);
     
     if (plainText.length > maxLength) {
       const truncatedText = plainText.substring(0, maxLength) + '...';
