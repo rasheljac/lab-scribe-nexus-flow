@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,7 +11,7 @@ import EditInventoryItemDialog from "@/components/EditInventoryItemDialog";
 import InventoryItemDetailsDialog from "@/components/InventoryItemDetailsDialog";
 
 const Inventory = () => {
-  const { items, isLoading, addItem, updateItem } = useInventoryItems();
+  const { items, loading, addItem, updateItem } = useInventoryItems();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
@@ -71,7 +70,7 @@ const Inventory = () => {
     await addItem(item);
   };
 
-  if (isLoading) {
+  if (loading) {
     return (
       <div className="p-6">
         <div className="max-w-7xl mx-auto">
