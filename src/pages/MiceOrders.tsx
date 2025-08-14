@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,6 +15,7 @@ const MiceOrders = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
 
   const filteredOrders = orders.filter(order => {
     const matchesSearch = order.strain_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -57,11 +57,13 @@ const MiceOrders = () => {
 
   const handleEditOrder = (order: any) => {
     setSelectedOrder(order);
+    setEditDialogOpen(true);
   };
 
   const handleUpdateOrder = async (id: string, updates: any) => {
     await updateOrder(id, updates);
     setSelectedOrder(null);
+    setEditDialogOpen(false);
   };
 
   const handleAddOrder = async (order: any) => {
@@ -244,6 +246,8 @@ const MiceOrders = () => {
         
         {selectedOrder && (
           <EditMiceOrderDialog 
+            open={editDialogOpen}
+            onOpenChange={setEditDialogOpen}
             order={selectedOrder}
             onUpdateOrder={handleUpdateOrder}
           />
