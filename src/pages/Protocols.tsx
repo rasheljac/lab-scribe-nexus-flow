@@ -32,6 +32,7 @@ import Header from "@/components/Header";
 import CreateProtocolDialog from "@/components/CreateProtocolDialog";
 import EditProtocolDialog from "@/components/EditProtocolDialog";
 import DraggableGrid from "@/components/DraggableGrid";
+import RichTextDisplay from "@/components/RichTextDisplay";
 import { useProtocols, Protocol } from "@/hooks/useProtocols";
 import { useToast } from "@/hooks/use-toast";
 
@@ -144,12 +145,16 @@ const Protocols = () => {
             </AlertDialog>
           </div>
         </div>
-        <p 
+        <div 
           className="text-sm text-gray-600 mt-2 cursor-pointer"
           onClick={() => handleProtocolClick(protocol.id)}
         >
-          {protocol.description ? stripHtmlTags(protocol.description) : "No description"}
-        </p>
+          <RichTextDisplay 
+            content={protocol.description || "No description"} 
+            maxLength={100}
+            className="text-sm"
+          />
+        </div>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-2 text-sm">

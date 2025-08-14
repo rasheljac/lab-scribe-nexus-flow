@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +10,9 @@ import CreateIdeaDialog from "@/components/CreateIdeaDialog";
 import EditIdeaDialog from "@/components/EditIdeaDialog";
 import IdeaReportDialog from "@/components/IdeaReportDialog";
 import DraggableGrid from "@/components/DraggableGrid";
+import RichTextDisplay from "@/components/RichTextDisplay";
+import Sidebar from "@/components/Sidebar";
+import Header from "@/components/Header";
 import { format } from "date-fns";
 
 const ExperimentIdeas = () => {
@@ -90,16 +92,22 @@ const ExperimentIdeas = () => {
 
   if (isLoading) {
     return (
-      <div className="p-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="animate-pulse space-y-4">
-            <div className="h-8 bg-gray-200 rounded w-1/4"></div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {[...Array(6)].map((_, i) => (
-                <div key={i} className="h-48 bg-gray-200 rounded"></div>
-              ))}
+      <div className="min-h-screen bg-gray-50 flex">
+        <Sidebar />
+        <div className="flex-1 flex flex-col">
+          <Header />
+          <main className="flex-1 p-6 overflow-auto">
+            <div className="max-w-7xl mx-auto">
+              <div className="animate-pulse space-y-4">
+                <div className="h-8 bg-gray-200 rounded w-1/4"></div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {[...Array(6)].map((_, i) => (
+                    <div key={i} className="h-48 bg-gray-200 rounded"></div>
+                  ))}
+                </div>
+              </div>
             </div>
-          </div>
+          </main>
         </div>
       </div>
     );
@@ -123,7 +131,7 @@ const ExperimentIdeas = () => {
           </div>
         </div>
         <CardDescription className="line-clamp-2">
-          {idea.description}
+          <RichTextDisplay content={idea.description} maxLength={100} />
         </CardDescription>
       </CardHeader>
       
@@ -178,152 +186,158 @@ const ExperimentIdeas = () => {
   );
 
   return (
-    <div className="p-6">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-3xl font-bold">Experiment Ideas</h1>
-            <p className="text-gray-600 mt-1">Capture and organize your research ideas</p>
-          </div>
-          <Button onClick={() => setCreateDialogOpen(true)} className="gap-2">
-            <Plus className="h-4 w-4" />
-            New Idea
-          </Button>
-        </div>
-
-        {/* Filters */}
-        <div className="flex flex-col sm:flex-row gap-4 mb-6">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-            <Input
-              placeholder="Search ideas..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
-          </div>
-          
-          <Select value={selectedPriority} onValueChange={setSelectedPriority}>
-            <SelectTrigger className="w-full sm:w-[200px]">
-              <SelectValue placeholder="Filter by priority" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Priorities</SelectItem>
-              <SelectItem value="high">High</SelectItem>
-              <SelectItem value="medium">Medium</SelectItem>
-              <SelectItem value="low">Low</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-            <SelectTrigger className="w-full sm:w-[200px]">
-              <SelectValue placeholder="Filter by status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Statuses</SelectItem>
-              <SelectItem value="brainstorming">Brainstorming</SelectItem>
-              <SelectItem value="researching">Researching</SelectItem>
-              <SelectItem value="planning">Planning</SelectItem>
-              <SelectItem value="ready">Ready</SelectItem>
-              <SelectItem value="archived">Archived</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Statistics */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2">
-                <Lightbulb className="h-5 w-5 text-blue-600" />
-                <div>
-                  <p className="text-sm text-gray-600">Total Ideas</p>
-                  <p className="text-2xl font-bold">{ideas.length}</p>
-                </div>
+    <div className="min-h-screen bg-gray-50 flex">
+      <Sidebar />
+      <div className="flex-1 flex flex-col">
+        <Header />
+        <main className="flex-1 p-6 overflow-auto">
+          <div className="max-w-7xl mx-auto">
+            {/* Header */}
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h1 className="text-3xl font-bold">Experiment Ideas</h1>
+                <p className="text-gray-600 mt-1">Capture and organize your research ideas</p>
               </div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2">
-                <Calendar className="h-5 w-5 text-green-600" />
-                <div>
-                  <p className="text-sm text-gray-600">Brainstorming</p>
-                  <p className="text-2xl font-bold">
-                    {ideas.filter(idea => idea.status === 'brainstorming').length}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2">
-                <User className="h-5 w-5 text-yellow-600" />
-                <div>
-                  <p className="text-sm text-gray-600">Researching</p>
-                  <p className="text-2xl font-bold">
-                    {ideas.filter(idea => idea.status === 'researching').length}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2">
-                <Hash className="h-5 w-5 text-purple-600" />
-                <div>
-                  <p className="text-sm text-gray-600">Ready</p>
-                  <p className="text-2xl font-bold">
-                    {ideas.filter(idea => idea.status === 'ready').length}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Ideas Grid */}
-        <DraggableGrid
-          items={filteredIdeas}
-          onReorder={handleReorder}
-          renderItem={renderIdeaCard}
-          droppableId="experiment-ideas"
-        />
-
-        {filteredIdeas.length === 0 && (
-          <div className="text-center py-12">
-            <Lightbulb className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No ideas found</h3>
-            <p className="text-gray-600 mb-4">
-              {searchTerm || selectedPriority !== "all" || selectedStatus !== "all"
-                ? "Try adjusting your filters"
-                : "Create your first experiment idea to get started"}
-            </p>
-            {!(searchTerm || selectedPriority !== "all" || selectedStatus !== "all") && (
-              <Button onClick={() => setCreateDialogOpen(true)}>
-                Create Idea
+              <Button onClick={() => setCreateDialogOpen(true)} className="gap-2">
+                <Plus className="h-4 w-4" />
+                New Idea
               </Button>
+            </div>
+
+            {/* Filters */}
+            <div className="flex flex-col sm:flex-row gap-4 mb-6">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <Input
+                  placeholder="Search ideas..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+              
+              <Select value={selectedPriority} onValueChange={setSelectedPriority}>
+                <SelectTrigger className="w-full sm:w-[200px]">
+                  <SelectValue placeholder="Filter by priority" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Priorities</SelectItem>
+                  <SelectItem value="high">High</SelectItem>
+                  <SelectItem value="medium">Medium</SelectItem>
+                  <SelectItem value="low">Low</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+                <SelectTrigger className="w-full sm:w-[200px]">
+                  <SelectValue placeholder="Filter by status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Statuses</SelectItem>
+                  <SelectItem value="brainstorming">Brainstorming</SelectItem>
+                  <SelectItem value="researching">Researching</SelectItem>
+                  <SelectItem value="planning">Planning</SelectItem>
+                  <SelectItem value="ready">Ready</SelectItem>
+                  <SelectItem value="archived">Archived</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Statistics */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+              <Card>
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-2">
+                    <Lightbulb className="h-5 w-5 text-blue-600" />
+                    <div>
+                      <p className="text-sm text-gray-600">Total Ideas</p>
+                      <p className="text-2xl font-bold">{ideas.length}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-2">
+                    <Calendar className="h-5 w-5 text-green-600" />
+                    <div>
+                      <p className="text-sm text-gray-600">Brainstorming</p>
+                      <p className="text-2xl font-bold">
+                        {ideas.filter(idea => idea.status === 'brainstorming').length}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-2">
+                    <User className="h-5 w-5 text-yellow-600" />
+                    <div>
+                      <p className="text-sm text-gray-600">Researching</p>
+                      <p className="text-2xl font-bold">
+                        {ideas.filter(idea => idea.status === 'researching').length}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-2">
+                    <Hash className="h-5 w-5 text-purple-600" />
+                    <div>
+                      <p className="text-sm text-gray-600">Ready</p>
+                      <p className="text-2xl font-bold">
+                        {ideas.filter(idea => idea.status === 'ready').length}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Ideas Grid */}
+            <DraggableGrid
+              items={filteredIdeas}
+              onReorder={handleReorder}
+              renderItem={renderIdeaCard}
+              droppableId="experiment-ideas"
+            />
+
+            {filteredIdeas.length === 0 && (
+              <div className="text-center py-12">
+                <Lightbulb className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No ideas found</h3>
+                <p className="text-gray-600 mb-4">
+                  {searchTerm || selectedPriority !== "all" || selectedStatus !== "all"
+                    ? "Try adjusting your filters"
+                    : "Create your first experiment idea to get started"}
+                </p>
+                {!(searchTerm || selectedPriority !== "all" || selectedStatus !== "all") && (
+                  <Button onClick={() => setCreateDialogOpen(true)}>
+                    Create Idea
+                  </Button>
+                )}
+              </div>
+            )}
+
+            <CreateIdeaDialog 
+              open={createDialogOpen} 
+              onOpenChange={setCreateDialogOpen}
+            />
+            
+            {selectedIdea && (
+              <>
+                <EditIdeaDialog idea={selectedIdea} />
+                <IdeaReportDialog ideaId={selectedIdea.id} ideaTitle={selectedIdea.title} />
+              </>
             )}
           </div>
-        )}
-
-        <CreateIdeaDialog 
-          open={createDialogOpen} 
-          onOpenChange={setCreateDialogOpen}
-        />
-        
-        {selectedIdea && (
-          <>
-            <EditIdeaDialog idea={selectedIdea} />
-            <IdeaReportDialog ideaId={selectedIdea.id} ideaTitle={selectedIdea.title} />
-          </>
-        )}
+        </main>
       </div>
     </div>
   );
