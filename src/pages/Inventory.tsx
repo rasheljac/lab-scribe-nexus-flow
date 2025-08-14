@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,7 +12,7 @@ import EditInventoryItemDialog from "@/components/EditInventoryItemDialog";
 import InventoryItemDetailsDialog from "@/components/InventoryItemDetailsDialog";
 
 const Inventory = () => {
-  const { items, loading, addItem, updateItem } = useInventoryItems();
+  const { items, isLoading, addItem, updateItem } = useInventoryItems();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
@@ -66,7 +67,11 @@ const Inventory = () => {
     window.location.reload();
   };
 
-  if (loading) {
+  const handleAddItem = async (item: any) => {
+    await addItem(item);
+  };
+
+  if (isLoading) {
     return (
       <div className="p-6">
         <div className="max-w-7xl mx-auto">
@@ -283,7 +288,7 @@ const Inventory = () => {
         )}
 
         <AddInventoryItemDialog 
-          onAddItem={addItem}
+          onAddItem={handleAddItem}
         />
         
         {selectedItem && (
