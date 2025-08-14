@@ -1,4 +1,3 @@
-
 import { useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import jsPDF from 'jspdf';
@@ -32,14 +31,14 @@ export const useAnalyticsPDFExport = () => {
       return;
     }
     
-    const chartPadding = 15;
+    const chartPadding = 20;
     const chartWidth = width - (chartPadding * 2);
-    const chartHeight = height - 40; // More space for labels
+    const chartHeight = height - 35;
     const chartX = x + chartPadding;
     const chartY = y + 10;
     const barGroupWidth = chartWidth / data.length;
-    const barWidth = Math.max(barGroupWidth * 0.2, 3); // Minimum bar width
-    const barGap = barWidth * 0.3;
+    const barWidth = Math.max(barGroupWidth * 0.25, 4);
+    const barGap = barWidth * 0.2;
     
     // Draw grid lines
     pdf.setDrawColor(240, 240, 240);
@@ -64,7 +63,7 @@ export const useAnalyticsPDFExport = () => {
     for (let i = 0; i <= 4; i++) {
       const value = Math.round((maxValue / 4) * (4 - i));
       const labelY = chartY + (i * chartHeight / 4) + 2;
-      pdf.text(value.toString(), chartX - 8, labelY);
+      pdf.text(value.toString(), chartX - 12, labelY);
     }
     
     data.forEach((item, index) => {
@@ -95,27 +94,27 @@ export const useAnalyticsPDFExport = () => {
       pdf.setFontSize(8);
       pdf.setFont('helvetica', 'normal');
       pdf.setTextColor(0, 0, 0);
-      const labelX = chartX + (index * barGroupWidth) + (barGroupWidth / 2) - 8;
+      const labelX = chartX + (index * barGroupWidth) + (barGroupWidth / 2) - 5;
       pdf.text(item.month, labelX, chartY + chartHeight + 12);
     });
     
-    // Draw legend with better positioning
+    // Draw legend - positioned to avoid overlap
     pdf.setFontSize(8);
     pdf.setTextColor(0, 0, 0);
-    const legendX = x + width - 90;
+    const legendX = x + width - 80;
     const legendY = y + 15;
     
     pdf.setFillColor(59, 130, 246);
-    pdf.rect(legendX, legendY, 8, 4, 'F');
-    pdf.text('Experiments', legendX + 12, legendY + 3);
+    pdf.rect(legendX, legendY, 6, 4, 'F');
+    pdf.text('Experiments', legendX + 10, legendY + 3);
     
     pdf.setFillColor(16, 185, 129);
-    pdf.rect(legendX, legendY + 8, 8, 4, 'F');
-    pdf.text('Reports', legendX + 12, legendY + 11);
+    pdf.rect(legendX, legendY + 8, 6, 4, 'F');
+    pdf.text('Reports', legendX + 10, legendY + 11);
     
     pdf.setFillColor(245, 158, 11);
-    pdf.rect(legendX, legendY + 16, 8, 4, 'F');
-    pdf.text('Tasks', legendX + 12, legendY + 19);
+    pdf.rect(legendX, legendY + 16, 6, 4, 'F');
+    pdf.text('Tasks', legendX + 10, legendY + 19);
   };
 
   const drawPieChart = (pdf: jsPDF, data: any[], x: number, y: number, radius: number, title: string) => {
@@ -123,7 +122,7 @@ export const useAnalyticsPDFExport = () => {
     pdf.setFontSize(12);
     pdf.setFont('helvetica', 'bold');
     pdf.setTextColor(0, 0, 0);
-    pdf.text(title, x - 40, y - radius - 15);
+    pdf.text(title, x - radius, y - radius - 15);
     
     if (!data || data.length === 0) {
       pdf.setFontSize(10);
@@ -132,12 +131,11 @@ export const useAnalyticsPDFExport = () => {
       return;
     }
     
-    // Define colors array at the function scope
     const colors = [
-      [34, 197, 94],   // green
-      [59, 130, 246],  // blue
-      [245, 158, 11],  // yellow
-      [239, 68, 68]    // red
+      [0, 136, 254],   // blue
+      [0, 196, 159],   // green  
+      [255, 187, 40],  // yellow
+      [255, 128, 66]   // orange
     ];
     
     const total = data.reduce((sum, item) => sum + item.value, 0);
@@ -148,54 +146,46 @@ export const useAnalyticsPDFExport = () => {
       return;
     }
     
-    let currentAngle = -Math.PI / 2; // Start from top
+    let currentAngle = -Math.PI / 2;
     
     data.forEach((item, index) => {
       const sliceAngle = (item.value / total) * 2 * Math.PI;
       
-      // Set color based on item color or default colors
       const color = colors[index % colors.length];
       pdf.setFillColor(color[0], color[1], color[2]);
       
-      // Draw pie slice using arc approximation
-      const steps = Math.max(8, Math.floor(sliceAngle * 20)); // More steps for smoother arcs
+      // Draw pie slice using triangular segments
+      const steps = Math.max(12, Math.floor(sliceAngle * 25));
       const stepAngle = sliceAngle / steps;
       
-      // Create path for pie slice
-      const points = [[x, y]]; // Center point
-      
-      for (let i = 0; i <= steps; i++) {
-        const angle = currentAngle + (i * stepAngle);
-        const pointX = x + Math.cos(angle) * radius;
-        const pointY = y + Math.sin(angle) * radius;
-        points.push([pointX, pointY]);
-      }
-      
-      // Draw the slice
-      pdf.setDrawColor(255, 255, 255);
-      pdf.setLineWidth(1);
-      
-      // Draw triangles to fill the slice
-      for (let i = 1; i < points.length - 1; i++) {
-        pdf.triangle(points[0][0], points[0][1], points[i][0], points[i][1], points[i+1][0], points[i+1][1], 'FD');
+      for (let i = 0; i < steps; i++) {
+        const angle1 = currentAngle + (i * stepAngle);
+        const angle2 = currentAngle + ((i + 1) * stepAngle);
+        
+        const x1 = x + Math.cos(angle1) * radius;
+        const y1 = y + Math.sin(angle1) * radius;
+        const x2 = x + Math.cos(angle2) * radius;
+        const y2 = y + Math.sin(angle2) * radius;
+        
+        pdf.triangle(x, y, x1, y1, x2, y2, 'F');
       }
       
       currentAngle += sliceAngle;
     });
     
-    // Draw legend with better spacing
+    // Draw legend below pie chart to avoid overlap
     pdf.setFontSize(8);
     pdf.setFont('helvetica', 'normal');
     pdf.setTextColor(0, 0, 0);
     
     data.forEach((item, index) => {
-      const legendY = y + radius + 20 + (index * 10);
+      const legendY = y + radius + 25 + (index * 8);
       const color = colors[index % colors.length];
       pdf.setFillColor(color[0], color[1], color[2]);
-      pdf.rect(x - 50, legendY - 3, 8, 6, 'F');
+      pdf.rect(x - radius, legendY - 3, 6, 4, 'F');
       
       const percentage = ((item.value / total) * 100).toFixed(1);
-      pdf.text(`${item.name}: ${item.value} (${percentage}%)`, x - 38, legendY + 2);
+      pdf.text(`${item.name}: ${item.value} (${percentage}%)`, x - radius + 10, legendY);
     });
   };
 
@@ -221,12 +211,12 @@ export const useAnalyticsPDFExport = () => {
     const minValue = Math.min(...data.map(d => d.productivity || 0));
     const valueRange = maxValue - minValue || 1;
     
-    const chartPadding = 15;
+    const chartPadding = 20;
     const chartWidth = width - (chartPadding * 2);
-    const chartHeight = height - 40;
+    const chartHeight = height - 35;
     const chartX = x + chartPadding;
     const chartY = y + 10;
-    const stepWidth = chartWidth / (data.length - 1);
+    const stepWidth = chartWidth / Math.max(data.length - 1, 1);
     
     // Draw grid lines
     pdf.setDrawColor(240, 240, 240);
@@ -239,8 +229,8 @@ export const useAnalyticsPDFExport = () => {
     // Draw axes
     pdf.setDrawColor(200, 200, 200);
     pdf.setLineWidth(1);
-    pdf.line(chartX, chartY, chartX, chartY + chartHeight); // Y-axis
-    pdf.line(chartX, chartY + chartHeight, chartX + chartWidth, chartY + chartHeight); // X-axis
+    pdf.line(chartX, chartY, chartX, chartY + chartHeight);
+    pdf.line(chartX, chartY + chartHeight, chartX + chartWidth, chartY + chartHeight);
     
     // Draw Y-axis labels
     pdf.setFontSize(8);
@@ -249,7 +239,7 @@ export const useAnalyticsPDFExport = () => {
     for (let i = 0; i <= 4; i++) {
       const value = minValue + (valueRange / 4) * (4 - i);
       const labelY = chartY + (i * chartHeight / 4) + 2;
-      pdf.text(Math.round(value).toString(), chartX - 12, labelY);
+      pdf.text(Math.round(value).toString(), chartX - 15, labelY);
     }
     
     // Draw line and points
@@ -269,7 +259,7 @@ export const useAnalyticsPDFExport = () => {
     // Draw data points
     pdf.setFillColor(139, 92, 246);
     points.forEach(point => {
-      pdf.circle(point.x, point.y, 2, 'F');
+      pdf.circle(point.x, point.y, 1.5, 'F');
     });
     
     // Draw x-axis labels
@@ -277,11 +267,9 @@ export const useAnalyticsPDFExport = () => {
     pdf.setFont('helvetica', 'normal');
     pdf.setTextColor(0, 0, 0);
     data.forEach((item, index) => {
-      const labelX = chartX + (index * stepWidth) - 10;
+      const labelX = chartX + (index * stepWidth) - 5;
       pdf.text(item.week, labelX, chartY + chartHeight + 12);
     });
-    
-    pdf.setLineWidth(0.5);
   };
 
   const exportAnalyticsToPDF = useMutation({
@@ -357,34 +345,37 @@ export const useAnalyticsPDFExport = () => {
 
       yPosition += 15;
 
-      // Add Monthly Activity Chart
-      checkPageBreak(80);
+      // Add Charts section
+      checkPageBreak(100);
       pdf.setFontSize(16);
       pdf.setFont('helvetica', 'bold');
       pdf.text('Charts & Visualizations', margin, yPosition);
       yPosition += 15;
 
+      // Monthly Activity Chart - give it proper spacing
       if (data.monthlyData && data.monthlyData.length > 0) {
-        drawBarChart(pdf, data.monthlyData, margin, yPosition, contentWidth, 60, 'Monthly Activity');
-        yPosition += 80;
+        checkPageBreak(90);
+        drawBarChart(pdf, data.monthlyData, margin, yPosition, contentWidth, 70, 'Monthly Activity');
+        yPosition += 90;
       }
 
-      // Add Experiment Status Distribution Chart
-      checkPageBreak(80);
+      // Experiment Status Distribution Chart - ensure no overlap
       if (data.experimentStatusData && data.experimentStatusData.length > 0) {
-        drawPieChart(pdf, data.experimentStatusData, margin + 60, yPosition + 40, 30, 'Experiment Status Distribution');
-        yPosition += 100;
+        checkPageBreak(120);
+        const pieChartX = pageWidth / 2;
+        const pieChartY = yPosition + 40;
+        drawPieChart(pdf, data.experimentStatusData, pieChartX, pieChartY, 25, 'Experiment Status Distribution');
+        yPosition += 120;
       }
 
-      // Add Productivity Trend Chart
-      checkPageBreak(80);
+      // Weekly Productivity Trend Chart
       if (data.productivityData && data.productivityData.length > 0) {
-        drawLineChart(pdf, data.productivityData, margin, yPosition, contentWidth, 60, 'Weekly Productivity Trend');
-        yPosition += 80;
+        checkPageBreak(90);
+        drawLineChart(pdf, data.productivityData, margin, yPosition, contentWidth, 70, 'Weekly Productivity Trend');
+        yPosition += 90;
       }
 
-      // Add Experiment Status Distribution (text summary)
-      checkPageBreak(40);
+      // Experiment status distribution
       pdf.setFontSize(16);
       pdf.setFont('helvetica', 'bold');
       pdf.text('Experiment Status Distribution', margin, yPosition);
