@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,15 +12,17 @@ import EditMiceOrderDialog from "@/components/EditMiceOrderDialog";
 import { format } from "date-fns";
 
 const MiceOrders = () => {
-  const { orders, isLoading, createOrder, updateOrder, deleteOrder } = useMiceOrders();
+  const { orders, loading, addOrder, updateOrder, deleteOrder } = useMiceOrders();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
   const [addOrderOpen, setAddOrderOpen] = useState(false);
+  const [editOrderOpen, setEditOrderOpen] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState<any>(null);
 
   const filteredOrders = orders.filter(order => {
-    const matchesSearch = order.strain.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          order.order_number.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = selectedStatus === "all" || order.status === selectedStatus;
+    const matchesSearch = order.strain_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          order.order_reference?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = selectedStatus === "all" || order.order_status === selectedStatus;
     
     return matchesSearch && matchesStatus;
   });
@@ -54,7 +57,18 @@ const MiceOrders = () => {
     }
   };
 
-  if (isLoading) {
+  const handleEditOrder = (order: any) => {
+    setSelectedOrder(order);
+    setEditOrderOpen(true);
+  };
+
+  const handleUpdateOrder = async (id: string, updates: any) => {
+    await updateOrder(id, updates);
+    setEditOrderOpen(false);
+    setSelectedOrder(null);
+  };
+
+  if (loading) {
     return (
       <div className="p-6">
         <div className="max-w-7xl mx-auto">
@@ -133,7 +147,7 @@ const MiceOrders = () => {
                 <div>
                   <p className="text-sm text-gray-600">Pending</p>
                   <p className="text-2xl font-bold">
-                    {orders.filter(o => o.status === 'pending').length}
+                    {orders.filter(o => o.order_status === 'pending').length}
                   </p>
                 </div>
               </div>
@@ -147,7 +161,7 @@ const MiceOrders = () => {
                 <div>
                   <p className="text-sm text-gray-600">Shipped</p>
                   <p className="text-2xl font-bold">
-                    {orders.filter(o => o.status === 'shipped').length}
+                    {orders.filter(o => o.order_status === 'shipped').length}
                   </p>
                 </div>
               </div>
@@ -161,7 +175,7 @@ const MiceOrders = () => {
                 <div>
                   <p className="text-sm text-gray-600">Received</p>
                   <p className="text-2xl font-bold">
-                    {orders.filter(o => o.status === 'received').length}
+                    {orders.filter(o => o.order_status === 'received').length}
                   </p>
                 </div>
               </div>
@@ -175,21 +189,21 @@ const MiceOrders = () => {
             <Card key={order.id} className="cursor-pointer hover:shadow-lg transition-shadow">
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">
-                  <CardTitle className="text-lg line-clamp-2">{order.strain}</CardTitle>
-                  <Badge className={getStatusColor(order.status)}>
-                    {order.status}
+                  <CardTitle className="text-lg line-clamp-2">{order.strain_name}</CardTitle>
+                  <Badge className={getStatusColor(order.order_status)}>
+                    {order.order_status}
                   </Badge>
                 </div>
                 <CardDescription className="line-clamp-2">
-                  Order Number: {order.order_number}
+                  Order Reference: {order.order_reference || 'N/A'}
                 </CardDescription>
               </CardHeader>
               
               <CardContent>
                 <div className="space-y-2">
                   <div className="flex items-center gap-2 text-sm text-gray-600">
-                    {getStatusIcon(order.status)}
-                    <span>Status: {order.status}</span>
+                    {getStatusIcon(order.order_status)}
+                    <span>Status: {order.order_status}</span>
                   </div>
                   
                   <div className="flex items-center gap-2 text-sm text-gray-600">
@@ -199,11 +213,17 @@ const MiceOrders = () => {
                   
                   <div className="flex items-center gap-2 text-sm text-gray-600">
                     <Package className="h-4 w-4" />
-                    <span>Quantity: {order.quantity}</span>
+                    <span>Quantity: {order.quantity_ordered}</span>
                   </div>
                 </div>
                 <div className="flex justify-end mt-4">
-                  <EditMiceOrderDialog order={order} />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleEditOrder(order)}
+                  >
+                    Edit
+                  </Button>
                 </div>
               </CardContent>
             </Card>
@@ -227,10 +247,16 @@ const MiceOrders = () => {
           </div>
         )}
 
-        <AddMiceOrderDialog 
-          open={addOrderOpen} 
-          onOpenChange={setAddOrderOpen} 
-        />
+        <AddMiceOrderDialog />
+        
+        {selectedOrder && (
+          <EditMiceOrderDialog 
+            open={editOrderOpen} 
+            onOpenChange={setEditOrderOpen}
+            order={selectedOrder}
+            onUpdateOrder={handleUpdateOrder}
+          />
+        )}
       </div>
     </div>
   );

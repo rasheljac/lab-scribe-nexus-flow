@@ -4,48 +4,32 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Plus, Lightbulb, Calendar, User, Target, Clock, Tag } from "lucide-react";
+import { Search, Plus, Lightbulb, Calendar, User, Hash, GripVertical } from "lucide-react";
 import { useExperimentIdeas } from "@/hooks/useExperimentIdeas";
 import CreateIdeaDialog from "@/components/CreateIdeaDialog";
 import EditIdeaDialog from "@/components/EditIdeaDialog";
+import IdeaReportDialog from "@/components/IdeaReportDialog";
 import DraggableGrid from "@/components/DraggableGrid";
 import { format } from "date-fns";
-import { useToast } from "@/hooks/use-toast";
 
 const ExperimentIdeas = () => {
-  const { ideas, isLoading, convertToExperiment } = useExperimentIdeas();
+  const { ideas, loading, addIdea, updateIdea, deleteIdea, reorderIdeas } = useExperimentIdeas();
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedStatus, setSelectedStatus] = useState<string>("all");
   const [selectedPriority, setSelectedPriority] = useState<string>("all");
+  const [selectedStatus, setSelectedStatus] = useState<string>("all");
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
-  const { toast } = useToast();
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [reportDialogOpen, setReportDialogOpen] = useState(false);
+  const [selectedIdea, setSelectedIdea] = useState<any>(null);
 
   const filteredIdeas = ideas.filter(idea => {
     const matchesSearch = idea.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         idea.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         idea.hypothesis?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = selectedStatus === "all" || idea.status === selectedStatus;
+                         idea.description?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesPriority = selectedPriority === "all" || idea.priority === selectedPriority;
+    const matchesStatus = selectedStatus === "all" || idea.status === selectedStatus;
     
-    return matchesSearch && matchesStatus && matchesPriority;
+    return matchesSearch && matchesPriority && matchesStatus;
   });
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'ready':
-        return 'bg-green-100 text-green-800';
-      case 'planning':
-        return 'bg-blue-100 text-blue-800';
-      case 'researching':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'brainstorming':
-        return 'bg-purple-100 text-purple-800';
-      case 'archived':
-        return 'bg-gray-100 text-gray-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
-  };
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
@@ -60,58 +44,125 @@ const ExperimentIdeas = () => {
     }
   };
 
-  const handleConvertToExperiment = async (id: string) => {
-    try {
-      await convertToExperiment.mutateAsync(id);
-      toast({
-        title: "Success",
-        description: "Experiment idea converted to experiment!",
-      });
-    } catch (error) {
-      console.error("Error converting idea to experiment:", error);
-      toast({
-        title: "Error",
-        description: "Failed to convert idea to experiment",
-        variant: "destructive",
-      });
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'pending':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'in_progress':
+        return 'bg-blue-100 text-blue-800';
+      case 'completed':
+        return 'bg-green-100 text-green-800';
+      case 'rejected':
+        return 'bg-red-100 text-red-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
     }
   };
 
+  const handleEdit = (idea: any) => {
+    setSelectedIdea(idea);
+    setEditDialogOpen(true);
+  };
+
+  const handleReport = (idea: any) => {
+    setSelectedIdea(idea);
+    setReportDialogOpen(true);
+  };
+
+  const handleUpdateIdea = async (id: string, updates: any) => {
+    await updateIdea(id, updates);
+  };
+
+  const handleAddIdea = async (idea: any) => {
+    await addIdea(idea);
+  };
+
+  const handleReorder = async (reorderedIdeas: any[]) => {
+    await reorderIdeas(reorderedIdeas);
+  };
+
+  if (loading) {
+    return (
+      <div className="p-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="animate-pulse space-y-4">
+            <div className="h-8 bg-gray-200 rounded w-1/4"></div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {[...Array(6)].map((_, i) => (
+                <div key={i} className="h-48 bg-gray-200 rounded"></div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const renderIdeaCard = (idea: any) => (
-    <Card key={idea.id} className="hover:shadow-md transition-shadow">
+    <Card key={idea.id} className="cursor-pointer hover:shadow-lg transition-shadow group relative">
+      <div className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity">
+        <GripVertical className="h-4 w-4 text-gray-400" />
+      </div>
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <CardTitle className="text-lg line-clamp-2">{idea.title}</CardTitle>
-          <Badge className={getStatusColor(idea.status)}>
-            {idea.status.replace('_', ' ')}
-          </Badge>
-        </div>
-        <CardDescription className="line-clamp-2">{idea.description}</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="space-y-2 text-sm">
-          <div className="flex items-center gap-2">
-            <Lightbulb className="h-4 w-4 text-gray-400" />
-            <span>{idea.hypothesis}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Target className="h-4 w-4 text-gray-400" />
-            <span>{idea.methodology}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Calendar className="h-4 w-4 text-gray-400" />
-            <span>{format(new Date(idea.created_at), 'MMM d, yyyy')}</span>
-          </div>
-        </div>
-
-        <div className="flex justify-between">
-          <Badge className={getPriorityColor(idea.priority)}>
-            {idea.priority}
-          </Badge>
           <div className="flex gap-2">
-            <EditIdeaDialog idea={idea} />
-            <Button size="sm" onClick={() => handleConvertToExperiment(idea.id)}>
-              Convert to Experiment
+            <Badge className={getPriorityColor(idea.priority)}>
+              {idea.priority}
+            </Badge>
+            <Badge className={getStatusColor(idea.status)}>
+              {idea.status}
+            </Badge>
+          </div>
+        </div>
+        <CardDescription className="line-clamp-2">
+          {idea.description}
+        </CardDescription>
+      </CardHeader>
+      
+      <CardContent>
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 text-sm text-gray-600">
+            <Calendar className="h-4 w-4" />
+            <span>Created {format(new Date(idea.created_at), 'MMM d, yyyy')}</span>
+          </div>
+          
+          {idea.researcher && (
+            <div className="flex items-center gap-2 text-sm text-gray-600">
+              <User className="h-4 w-4" />
+              <span>{idea.researcher}</span>
+            </div>
+          )}
+          
+          {idea.experiment_number && (
+            <div className="flex items-center gap-2 text-sm text-gray-600">
+              <Hash className="h-4 w-4" />
+              <span>Exp #{idea.experiment_number}</span>
+            </div>
+          )}
+          
+          <div className="flex gap-2 mt-4">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleEdit(idea);
+              }}
+              className="flex-1"
+            >
+              Edit
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleReport(idea);
+              }}
+              className="flex-1"
+            >
+              Report
             </Button>
           </div>
         </div>
@@ -126,7 +177,7 @@ const ExperimentIdeas = () => {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-3xl font-bold">Experiment Ideas</h1>
-            <p className="text-gray-600 mt-1">Brainstorm and plan your next experiments</p>
+            <p className="text-gray-600 mt-1">Capture and organize your research ideas</p>
           </div>
           <Button onClick={() => setCreateDialogOpen(true)} className="gap-2">
             <Plus className="h-4 w-4" />
@@ -146,20 +197,6 @@ const ExperimentIdeas = () => {
             />
           </div>
           
-          <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-            <SelectTrigger className="w-full sm:w-[200px]">
-              <SelectValue placeholder="Filter by status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Statuses</SelectItem>
-              <SelectItem value="brainstorming">Brainstorming</SelectItem>
-              <SelectItem value="researching">Researching</SelectItem>
-              <SelectItem value="planning">Planning</SelectItem>
-              <SelectItem value="ready">Ready</SelectItem>
-              <SelectItem value="archived">Archived</SelectItem>
-            </SelectContent>
-          </Select>
-
           <Select value={selectedPriority} onValueChange={setSelectedPriority}>
             <SelectTrigger className="w-full sm:w-[200px]">
               <SelectValue placeholder="Filter by priority" />
@@ -169,6 +206,19 @@ const ExperimentIdeas = () => {
               <SelectItem value="high">High</SelectItem>
               <SelectItem value="medium">Medium</SelectItem>
               <SelectItem value="low">Low</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+            <SelectTrigger className="w-full sm:w-[200px]">
+              <SelectValue placeholder="Filter by status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Statuses</SelectItem>
+              <SelectItem value="pending">Pending</SelectItem>
+              <SelectItem value="in_progress">In Progress</SelectItem>
+              <SelectItem value="completed">Completed</SelectItem>
+              <SelectItem value="rejected">Rejected</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -190,25 +240,11 @@ const ExperimentIdeas = () => {
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center gap-2">
-                <Clock className="h-5 w-5 text-yellow-600" />
-                <div>
-                  <p className="text-sm text-gray-600">Researching</p>
-                  <p className="text-2xl font-bold">
-                    {ideas.filter(e => e.status === 'researching').length}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2">
                 <Calendar className="h-5 w-5 text-green-600" />
                 <div>
-                  <p className="text-sm text-gray-600">Ready</p>
+                  <p className="text-sm text-gray-600">Pending</p>
                   <p className="text-2xl font-bold">
-                    {ideas.filter(e => e.status === 'ready').length}
+                    {ideas.filter(idea => idea.status === 'pending').length}
                   </p>
                 </div>
               </div>
@@ -218,11 +254,25 @@ const ExperimentIdeas = () => {
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center gap-2">
-                <User className="h-5 w-5 text-purple-600" />
+                <User className="h-5 w-5 text-yellow-600" />
                 <div>
-                  <p className="text-sm text-gray-600">Brainstorming</p>
+                  <p className="text-sm text-gray-600">In Progress</p>
                   <p className="text-2xl font-bold">
-                    {ideas.filter(e => e.status === 'brainstorming').length}
+                    {ideas.filter(idea => idea.status === 'in_progress').length}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2">
+                <Hash className="h-5 w-5 text-purple-600" />
+                <div>
+                  <p className="text-sm text-gray-600">Completed</p>
+                  <p className="text-2xl font-bold">
+                    {ideas.filter(idea => idea.status === 'completed').length}
                   </p>
                 </div>
               </div>
@@ -231,35 +281,51 @@ const ExperimentIdeas = () => {
         </div>
 
         {/* Ideas Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredIdeas.length > 0 ? (
-            <DraggableGrid
-              items={filteredIdeas}
-              renderItem={renderIdeaCard}
-              droppableId="experiment-ideas"
-            />
-          ) : (
-            <div className="text-center py-12">
-              <Lightbulb className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No ideas found</h3>
-              <p className="text-gray-600 mb-4">
-                {searchTerm || selectedStatus !== "all" || selectedPriority !== "all"
-                  ? "Try adjusting your filters"
-                  : "Start brainstorming your next big idea"}
-              </p>
-              {!(searchTerm || selectedStatus !== "all" || selectedPriority !== "all") && (
-                <Button onClick={() => setCreateDialogOpen(true)}>
-                  Create Idea
-                </Button>
-              )}
-            </div>
-          )}
-        </div>
+        <DraggableGrid
+          items={filteredIdeas}
+          onReorder={handleReorder}
+          renderItem={renderIdeaCard}
+          droppableId="experiment-ideas"
+        />
+
+        {filteredIdeas.length === 0 && (
+          <div className="text-center py-12">
+            <Lightbulb className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No ideas found</h3>
+            <p className="text-gray-600 mb-4">
+              {searchTerm || selectedPriority !== "all" || selectedStatus !== "all"
+                ? "Try adjusting your filters"
+                : "Create your first experiment idea to get started"}
+            </p>
+            {!(searchTerm || selectedPriority !== "all" || selectedStatus !== "all") && (
+              <Button onClick={() => setCreateDialogOpen(true)}>
+                Create Idea
+              </Button>
+            )}
+          </div>
+        )}
 
         <CreateIdeaDialog 
           open={createDialogOpen} 
-          onOpenChange={setCreateDialogOpen} 
+          onOpenChange={setCreateDialogOpen}
         />
+        
+        {selectedIdea && (
+          <>
+            <EditIdeaDialog 
+              open={editDialogOpen} 
+              onOpenChange={setEditDialogOpen}
+              idea={selectedIdea}
+              onUpdateIdea={handleUpdateIdea}
+            />
+            
+            <IdeaReportDialog 
+              open={reportDialogOpen} 
+              onOpenChange={setReportDialogOpen}
+              idea={selectedIdea}
+            />
+          </>
+        )}
       </div>
     </div>
   );

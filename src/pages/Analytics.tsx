@@ -15,7 +15,7 @@ import { format, subMonths, eachMonthOfInterval } from "date-fns";
 const Analytics = () => {
   const [timeRange, setTimeRange] = useState<"3m" | "6m" | "12m">("6m");
   const [selectedCategory, setSelectedCategory] = useState("All");
-  const { generatePdf } = useAnalyticsPDFExport();
+  const { exportAnalyticsToPDF } = useAnalyticsPDFExport();
   const { experiments } = useExperiments();
   const { projects } = useProjects();
   const { tasks } = useTasks();
@@ -46,8 +46,8 @@ const Analytics = () => {
     };
   });
 
-  // Task completion rate
-  const completedTasks = tasks.filter(task => task.completed);
+  // Task completion rate - check for status property instead of completed
+  const completedTasks = tasks.filter(task => task.status === 'completed');
   const taskCompletionRate = tasks.length > 0 ? (completedTasks.length / tasks.length) * 100 : 0;
 
   // Protocol usage
@@ -69,6 +69,19 @@ const Analytics = () => {
 
   const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042"];
 
+  const handleExportPDF = () => {
+    const analyticsData = {
+      experiments: filteredExperiments,
+      tasks,
+      projects,
+      protocols,
+      monthlyExperiments,
+      statusDistribution,
+      taskCompletionRate
+    };
+    exportAnalyticsToPDF.mutate({ data: analyticsData, reportTitle: "Lab Analytics Report" });
+  };
+
   return (
     <div className="p-6">
       <div className="max-w-7xl mx-auto">
@@ -78,7 +91,7 @@ const Analytics = () => {
             <h1 className="text-3xl font-bold">Analytics</h1>
             <p className="text-gray-600 mt-1">Insights into your research experiments</p>
           </div>
-          <Button onClick={() => generatePdf()} className="gap-2">
+          <Button onClick={handleExportPDF} className="gap-2">
             <Download className="h-4 w-4" />
             Export to PDF
           </Button>

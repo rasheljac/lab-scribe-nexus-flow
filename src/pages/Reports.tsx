@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,7 +24,7 @@ const Reports = () => {
   const filteredReports = reports.filter(report => {
     const matchesSearch = report.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          report.description?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesProject = selectedProject === "all" || report.project_id === selectedProject;
+    const matchesProject = selectedProject === "all"; // Removed project filtering since Report interface doesn't have project_id
     const matchesStatus = selectedStatus === "all" || report.status === selectedStatus;
     
     return matchesSearch && matchesProject && matchesStatus;
@@ -31,22 +32,15 @@ const Reports = () => {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'completed':
+      case 'published':
         return 'bg-green-100 text-green-800';
-      case 'in_progress':
+      case 'draft':
         return 'bg-blue-100 text-blue-800';
-      case 'planning':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'on_hold':
-        return 'bg-red-100 text-red-800';
+      case 'archived':
+        return 'bg-gray-100 text-gray-800';
       default:
         return 'bg-gray-100 text-gray-800';
     }
-  };
-
-  const getProjectName = (projectId: string) => {
-    const project = projects.find(p => p.id === projectId);
-    return project?.title || 'Unknown Project';
   };
 
   if (isLoading) {
@@ -113,10 +107,9 @@ const Reports = () => {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Statuses</SelectItem>
-              <SelectItem value="planning">Planning</SelectItem>
-              <SelectItem value="in_progress">In Progress</SelectItem>
-              <SelectItem value="completed">Completed</SelectItem>
-              <SelectItem value="on_hold">On Hold</SelectItem>
+              <SelectItem value="draft">Draft</SelectItem>
+              <SelectItem value="published">Published</SelectItem>
+              <SelectItem value="archived">Archived</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -139,12 +132,10 @@ const Reports = () => {
               
               <CardContent>
                 <div className="space-y-2">
-                  {report.project_id && (
-                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                      <FileText className="h-4 w-4" />
-                      <span>{getProjectName(report.project_id)}</span>
-                    </div>
-                  )}
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <FileText className="h-4 w-4" />
+                    <span>Type: {report.type}</span>
+                  </div>
                   
                   <div className="flex items-center gap-2 text-sm text-gray-600">
                     <Calendar className="h-4 w-4" />
@@ -153,9 +144,7 @@ const Reports = () => {
                   
                   <div className="flex items-center gap-2 text-sm text-gray-600">
                     <Download className="h-4 w-4" />
-                    <a href={report.file_url} target="_blank" rel="noopener noreferrer" className="underline">
-                      Download Report
-                    </a>
+                    <span>Downloads: {report.downloads}</span>
                   </div>
 
                   <Button variant="secondary" size="sm" onClick={() => setEnhancedReport(report)}>
@@ -191,8 +180,9 @@ const Reports = () => {
         />
 
         <EnhancedReportDialog 
-          report={enhancedReport} 
-          onClose={() => setEnhancedReport(null)} 
+          open={!!enhancedReport}
+          onOpenChange={() => setEnhancedReport(null)}
+          reportData={enhancedReport}
         />
       </div>
     </div>
