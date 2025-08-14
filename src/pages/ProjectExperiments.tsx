@@ -1,344 +1,224 @@
 
-import { useState, useEffect } from "react";
-import { useParams, useNavigate, useSearchParams } from "react-router-dom";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
+import { useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { 
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import { 
-  Search, 
-  ArrowLeft, 
-  Beaker, 
-  Calendar, 
-  User, 
-  FileText,
-  Clock,
-  CheckCircle,
-  AlertCircle,
-  Loader2,
-  Plus,
-  Trash2
-} from "lucide-react";
-import Sidebar from "@/components/Sidebar";
-import Header from "@/components/Header";
-import EditExperimentDialog from "@/components/EditExperimentDialog";
-import CreateExperimentDialog from "@/components/CreateExperimentDialog";
-import DraggableGrid from "@/components/DraggableGrid";
-import { useExperiments, Experiment } from "@/hooks/useExperiments";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Search, Plus, ArrowLeft, Calendar, User, Beaker } from "lucide-react";
 import { useProjects } from "@/hooks/useProjects";
-import { useToast } from "@/hooks/use-toast";
+import { useExperiments } from "@/hooks/useExperiments";
+import CreateExperimentDialog from "@/components/CreateExperimentDialog";
+import PaginatedDraggableGrid from "@/components/PaginatedDraggableGrid";
+import RichTextDisplay from "@/components/RichTextDisplay";
+import { format } from "date-fns";
 
 const ProjectExperiments = () => {
-  const { projectId } = useParams<{ projectId: string }>();
+  const { projectId } = useParams();
   const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
-  const [searchTerm, setSearchTerm] = useState(searchParams.get('search') || "");
-  const [createExperimentOpen, setCreateExperimentOpen] = useState(false);
-  const { toast } = useToast();
-  
-  const { experiments, isLoading, error, deleteExperiment, updateExperimentOrder } = useExperiments();
   const { projects } = useProjects();
+  const { experiments, updateExperimentOrder } = useExperiments();
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedStatus, setSelectedStatus] = useState<string>("all");
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
 
   const project = projects.find(p => p.id === projectId);
   const projectExperiments = experiments.filter(exp => exp.project_id === projectId);
 
-  // Update search params when search term changes
-  useEffect(() => {
-    if (searchTerm) {
-      setSearchParams({ search: searchTerm });
-    } else {
-      setSearchParams({});
-    }
-  }, [searchTerm, setSearchParams]);
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case "completed":
-        return <CheckCircle className="h-4 w-4 text-green-600" />;
-      case "in_progress":
-        return <Clock className="h-4 w-4 text-blue-600" />;
-      case "planning":
-        return <AlertCircle className="h-4 w-4 text-yellow-600" />;
-      default:
-        return <Beaker className="h-4 w-4 text-gray-600" />;
-    }
-  };
+  const filteredExperiments = projectExperiments.filter(experiment => {
+    const matchesSearch = experiment.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         experiment.description?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = selectedStatus === "all" || experiment.status === selectedStatus;
+    
+    return matchesSearch && matchesStatus;
+  });
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "completed":
-        return "bg-green-100 text-green-800";
-      case "in_progress":
-        return "bg-blue-100 text-blue-800";
-      case "planning":
-        return "bg-yellow-100 text-yellow-800";
+      case 'completed':
+        return 'bg-green-100 text-green-800';
+      case 'active':
+        return 'bg-blue-100 text-blue-800';
+      case 'planning':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'on_hold':
+        return 'bg-red-100 text-red-800';
       default:
-        return "bg-gray-100 text-gray-800";
+        return 'bg-gray-100 text-gray-800';
     }
   };
 
-  const stripHtmlTags = (html: string) => {
-    const tmp = document.createElement("div");
-    tmp.innerHTML = html;
-    return tmp.textContent || tmp.innerText || "";
+  const getCategoryColor = (category: string) => {
+    const colors = {
+      'biochemistry': 'bg-purple-100 text-purple-800',
+      'molecular-biology': 'bg-blue-100 text-blue-800',
+      'cell-biology': 'bg-green-100 text-green-800',
+      'genetics': 'bg-red-100 text-red-800',
+      'microbiology': 'bg-yellow-100 text-yellow-800',
+      'immunology': 'bg-indigo-100 text-indigo-800',
+      'neuroscience': 'bg-pink-100 text-pink-800',
+      'pharmacology': 'bg-orange-100 text-orange-800',
+    };
+    return colors[category as keyof typeof colors] || 'bg-gray-100 text-gray-800';
   };
 
-  const filteredExperiments = projectExperiments.filter(exp => {
-    const matchesSearch = exp.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (exp.description && stripHtmlTags(exp.description).toLowerCase().includes(searchTerm.toLowerCase()));
-    return matchesSearch;
-  });
-
-  const handleExperimentClick = (experimentId: string) => {
-    navigate(`/experiments/${experimentId}/notes`);
+  const handleReorder = async (reorderedExperiments: any[]) => {
+    const updates = reorderedExperiments.map((experiment, index) => ({
+      id: experiment.id,
+      display_order: index + 1
+    }));
+    await updateExperimentOrder.mutateAsync(updates);
   };
 
-  const handleDeleteExperiment = async (experimentId: string) => {
-    try {
-      await deleteExperiment.mutateAsync(experimentId);
-      toast({
-        title: "Success",
-        description: "Experiment deleted successfully!",
-      });
-    } catch (error) {
-      console.error("Error deleting experiment:", error);
-      toast({
-        title: "Error",
-        description: "Failed to delete experiment",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleCreateExperiment = () => {
-    setCreateExperimentOpen(true);
-  };
-
-  const handleReorder = async (reorderedExperiments: Experiment[]) => {
-    try {
-      // Update display_order for all experiments
-      const updates = reorderedExperiments.map((exp, index) => ({
-        id: exp.id,
-        display_order: index + 1
-      }));
-
-      await updateExperimentOrder.mutateAsync(updates);
-    } catch (error) {
-      console.error("Error updating experiment order:", error);
-      toast({
-        title: "Error",
-        description: "Failed to update experiment order",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const renderExperimentCard = (experiment: Experiment) => (
-    <Card key={experiment.id} className="hover:shadow-md transition-shadow">
+  const renderExperimentCard = (experiment: any) => (
+    <Card 
+      key={experiment.id} 
+      className="cursor-pointer hover:shadow-lg transition-shadow"
+      onClick={() => navigate(`/experiments/${experiment.id}`)}
+    >
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
-          <div className="flex items-center gap-2 flex-1">
-            {getStatusIcon(experiment.status)}
-            <CardTitle 
-              className="text-lg cursor-pointer hover:text-blue-600"
-              onClick={() => handleExperimentClick(experiment.id)}
-            >
-              {experiment.title}
-            </CardTitle>
-          </div>
-          <div className="flex gap-1 items-center">
-            <Badge className={getStatusColor(experiment.status)}>
-              {experiment.status.replace('_', ' ')}
-            </Badge>
-            <EditExperimentDialog experiment={experiment} />
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button size="sm" variant="outline" className="text-red-600 hover:text-red-700 p-1 h-6 w-6">
-                  <Trash2 className="h-3 w-3" />
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Delete Experiment</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Are you sure you want to delete "{experiment.title}"? This action cannot be undone and will also delete all associated notes.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={() => handleDeleteExperiment(experiment.id)}
-                    className="bg-red-600 hover:bg-red-700"
-                  >
-                    Delete
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          </div>
+          <CardTitle className="text-lg line-clamp-2">{experiment.title}</CardTitle>
+          <Badge className={getStatusColor(experiment.status)}>
+            {experiment.status.replace('_', ' ')}
+          </Badge>
         </div>
-        <p 
-          className="text-sm text-gray-600 mt-2 cursor-pointer"
-          onClick={() => handleExperimentClick(experiment.id)}
-        >
-          {experiment.description ? stripHtmlTags(experiment.description) : ""}
-        </p>
+        <CardDescription className="line-clamp-2">
+          <RichTextDisplay 
+            content={experiment.description || ""} 
+            maxLength={150}
+            className="text-sm"
+          />
+        </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
-        {/* Progress Bar */}
-        <div>
-          <div className="flex justify-between text-sm mb-1">
-            <span>Progress</span>
-            <span>{experiment.progress}%</span>
-          </div>
-          <div className="w-full bg-gray-200 rounded-full h-2">
-            <div 
-              className="bg-blue-600 h-2 rounded-full transition-all"
-              style={{ width: `${experiment.progress}%` }}
-            />
-          </div>
-        </div>
-
-        {/* Experiment Details */}
-        <div className="space-y-2 text-sm">
+      
+      <CardContent>
+        <div className="space-y-2">
           <div className="flex items-center gap-2">
-            <User className="h-4 w-4 text-gray-400" />
+            <Badge className={getCategoryColor(experiment.category)}>
+              {experiment.category.replace('-', ' ')}
+            </Badge>
+          </div>
+          
+          <div className="flex items-center gap-2 text-sm text-gray-600">
+            <User className="h-4 w-4" />
             <span>{experiment.researcher}</span>
           </div>
-          <div className="flex items-center gap-2">
-            <Calendar className="h-4 w-4 text-gray-400" />
-            <span>{experiment.start_date} - {experiment.end_date || "Ongoing"}</span>
+          
+          {experiment.start_date && (
+            <div className="flex items-center gap-2 text-sm text-gray-600">
+              <Calendar className="h-4 w-4" />
+              <span>Started {format(new Date(experiment.start_date), 'MMM d, yyyy')}</span>
+            </div>
+          )}
+          
+          <div className="flex items-center gap-2 text-sm text-gray-600">
+            <Beaker className="h-4 w-4" />
+            <span>{experiment.protocols} protocols • {experiment.samples} samples</span>
           </div>
-          <div className="flex items-center gap-2">
-            <FileText className="h-4 w-4 text-gray-400" />
-            <span>{experiment.protocols} protocols, {experiment.samples} samples</span>
-          </div>
-        </div>
-
-        {/* Category Badge */}
-        <div className="pt-2">
-          <Badge variant="outline">{experiment.category}</Badge>
         </div>
       </CardContent>
     </Card>
   );
 
-  if (error) {
+  const emptyState = (
+    <div className="text-center py-12">
+      <Beaker className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+      <h3 className="text-lg font-medium text-gray-900 mb-2">No experiments found</h3>
+      <p className="text-gray-600 mb-4">
+        {searchTerm || selectedStatus !== "all"
+          ? "Try adjusting your filters"
+          : "Create your first experiment for this project"}
+      </p>
+      {!(searchTerm || selectedStatus !== "all") && (
+        <Button onClick={() => setCreateDialogOpen(true)}>
+          Add Experiment
+        </Button>
+      )}
+    </div>
+  );
+
+  if (!project) {
     return (
-      <div className="min-h-screen bg-gray-50 flex">
-        <Sidebar />
-        <div className="flex-1 flex flex-col">
-          <Header />
-          <main className="flex-1 p-6 overflow-auto">
-            <div className="max-w-7xl mx-auto">
-              <div className="text-center py-12">
-                <p className="text-red-600">Error loading experiments: {error.message}</p>
-              </div>
-            </div>
-          </main>
+      <div className="p-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center py-12">
+            <h2 className="text-2xl font-bold text-gray-900">Project not found</h2>
+            <Button onClick={() => navigate('/projects')} className="mt-4">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Projects
+            </Button>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
-      <Sidebar />
-      <div className="flex-1 flex flex-col">
-        <Header />
-        <main className="flex-1 p-6 overflow-auto">
-          <div className="max-w-7xl mx-auto space-y-6">
-            {/* Header */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => navigate("/projects")}
-                  className="gap-2"
-                >
-                  <ArrowLeft className="h-4 w-4" />
-                  Back to Projects
-                </Button>
-                <div>
-                  <h1 className="text-3xl font-bold text-gray-900">
-                    {project?.title || "Project"} - Experiments
-                  </h1>
-                  <p className="text-gray-600 mt-1">
-                    {projectExperiments.length} experiments in this project
-                  </p>
-                </div>
-              </div>
-              <Button onClick={handleCreateExperiment} className="gap-2">
-                <Plus className="h-4 w-4" />
-                Add Experiment
-              </Button>
+    <div className="p-6">
+      <div className="max-w-7xl mx-auto">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-4">
+            <Button 
+              variant="ghost" 
+              onClick={() => navigate('/projects')}
+              className="gap-2"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back to Projects
+            </Button>
+            <div>
+              <h1 className="text-3xl font-bold">{project.title} - Experiments</h1>
+              <p className="text-gray-600 mt-1">{filteredExperiments.length} experiments in this project</p>
             </div>
-
-            {/* Search */}
-            <div className="flex items-center gap-4">
-              <div className="flex-1 relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                <Input
-                  placeholder="Search experiments..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-            </div>
-
-            {/* Experiments Grid */}
-            {isLoading ? (
-              <div className="flex justify-center py-12">
-                <Loader2 className="h-8 w-8 animate-spin" />
-              </div>
-            ) : (
-              <>
-                {filteredExperiments.length > 0 ? (
-                  <DraggableGrid
-                    items={filteredExperiments}
-                    onReorder={handleReorder}
-                    renderItem={renderExperimentCard}
-                    droppableId="project-experiments"
-                  />
-                ) : (
-                  <div className="text-center py-12">
-                    <Beaker className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                    <p className="text-gray-600">
-                      {searchTerm ? "No experiments found matching your criteria." : "No experiments found in this project."}
-                    </p>
-                    <Button 
-                      className="mt-4 gap-2" 
-                      onClick={handleCreateExperiment}
-                    >
-                      <Plus className="h-4 w-4" />
-                      Create New Experiment
-                    </Button>
-                  </div>
-                )}
-              </>
-            )}
           </div>
-        </main>
+          <Button onClick={() => setCreateDialogOpen(true)} className="gap-2">
+            <Plus className="h-4 w-4" />
+            Add Experiment
+          </Button>
+        </div>
+
+        <div className="flex flex-col sm:flex-row gap-4 mb-6">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+            <Input
+              placeholder="Search experiments..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+          
+          <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+            <SelectTrigger className="w-full sm:w-[200px]">
+              <SelectValue placeholder="Filter by status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Statuses</SelectItem>
+              <SelectItem value="planning">Planning</SelectItem>
+              <SelectItem value="active">Active</SelectItem>
+              <SelectItem value="completed">Completed</SelectItem>
+              <SelectItem value="on_hold">On Hold</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <PaginatedDraggableGrid
+          items={filteredExperiments}
+          onReorder={handleReorder}
+          renderItem={renderExperimentCard}
+          droppableId="project-experiments"
+          itemsPerPage={6}
+          emptyState={emptyState}
+        />
+
+        <CreateExperimentDialog 
+          open={createDialogOpen} 
+          onOpenChange={setCreateDialogOpen}
+          projectId={projectId}
+        />
       </div>
-      
-      <CreateExperimentDialog 
-        open={createExperimentOpen} 
-        onOpenChange={setCreateExperimentOpen}
-        projectId={projectId}
-      />
     </div>
   );
 };
