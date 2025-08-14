@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,10 +9,11 @@ import { Calendar, Search, Plus, Package, Truck, CheckCircle, Clock, AlertCircle
 import { useMiceOrders } from "@/hooks/useMiceOrders";
 import AddMiceOrderDialog from "@/components/AddMiceOrderDialog";
 import EditMiceOrderDialog from "@/components/EditMiceOrderDialog";
+import PaginatedDraggableGrid from "@/components/PaginatedDraggableGrid";
 import { format } from "date-fns";
 
 const MiceOrders = () => {
-  const { orders, loading, addOrder, updateOrder, deleteOrder } = useMiceOrders();
+  const { orders, loading, addOrder, updateOrder, deleteOrder, reorderOrders } = useMiceOrders();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
@@ -69,6 +71,72 @@ const MiceOrders = () => {
   const handleAddOrder = async (order: any) => {
     await addOrder(order);
   };
+
+  const handleReorder = async (reorderedOrders: any[]) => {
+    await reorderOrders(reorderedOrders);
+  };
+
+  const renderOrderCard = (order: any) => (
+    <Card key={order.id} className="cursor-pointer hover:shadow-lg transition-shadow">
+      <CardHeader className="pb-3">
+        <div className="flex items-start justify-between">
+          <CardTitle className="text-lg line-clamp-2">{order.strain_name}</CardTitle>
+          <Badge className={getStatusColor(order.order_status)}>
+            {order.order_status}
+          </Badge>
+        </div>
+        <CardDescription className="line-clamp-2">
+          Order Reference: {order.order_reference || 'N/A'}
+        </CardDescription>
+      </CardHeader>
+      
+      <CardContent>
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 text-sm text-gray-600">
+            {getStatusIcon(order.order_status)}
+            <span>Status: {order.order_status}</span>
+          </div>
+          
+          <div className="flex items-center gap-2 text-sm text-gray-600">
+            <Calendar className="h-4 w-4" />
+            <span>Ordered on {format(new Date(order.order_date), 'MMM d, yyyy')}</span>
+          </div>
+          
+          <div className="flex items-center gap-2 text-sm text-gray-600">
+            <Package className="h-4 w-4" />
+            <span>Quantity: {order.quantity_ordered}</span>
+          </div>
+        </div>
+        <div className="flex justify-end mt-4">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleEditOrder(order);
+            }}
+          >
+            Edit
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+
+  const emptyState = (
+    <div className="text-center py-12">
+      <Package className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+      <h3 className="text-lg font-medium text-gray-900 mb-2">No mice orders found</h3>
+      <p className="text-gray-600 mb-4">
+        {searchTerm || selectedStatus !== "all"
+          ? "Try adjusting your filters"
+          : "Create your first mice order to get started"}
+      </p>
+      {!(searchTerm || selectedStatus !== "all") && (
+        <AddMiceOrderDialog onAddOrder={handleAddOrder} />
+      )}
+    </div>
+  );
 
   if (loading) {
     return (
@@ -183,66 +251,14 @@ const MiceOrders = () => {
         </div>
 
         {/* Orders Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredOrders.map((order) => (
-            <Card key={order.id} className="cursor-pointer hover:shadow-lg transition-shadow">
-              <CardHeader className="pb-3">
-                <div className="flex items-start justify-between">
-                  <CardTitle className="text-lg line-clamp-2">{order.strain_name}</CardTitle>
-                  <Badge className={getStatusColor(order.order_status)}>
-                    {order.order_status}
-                  </Badge>
-                </div>
-                <CardDescription className="line-clamp-2">
-                  Order Reference: {order.order_reference || 'N/A'}
-                </CardDescription>
-              </CardHeader>
-              
-              <CardContent>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
-                    {getStatusIcon(order.order_status)}
-                    <span>Status: {order.order_status}</span>
-                  </div>
-                  
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <Calendar className="h-4 w-4" />
-                    <span>Ordered on {format(new Date(order.order_date), 'MMM d, yyyy')}</span>
-                  </div>
-                  
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <Package className="h-4 w-4" />
-                    <span>Quantity: {order.quantity_ordered}</span>
-                  </div>
-                </div>
-                <div className="flex justify-end mt-4">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleEditOrder(order)}
-                  >
-                    Edit
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-
-        {filteredOrders.length === 0 && (
-          <div className="text-center py-12">
-            <Package className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No mice orders found</h3>
-            <p className="text-gray-600 mb-4">
-              {searchTerm || selectedStatus !== "all"
-                ? "Try adjusting your filters"
-                : "Create your first mice order to get started"}
-            </p>
-            {!(searchTerm || selectedStatus !== "all") && (
-              <AddMiceOrderDialog onAddOrder={handleAddOrder} />
-            )}
-          </div>
-        )}
+        <PaginatedDraggableGrid
+          items={filteredOrders}
+          onReorder={handleReorder}
+          renderItem={renderOrderCard}
+          droppableId="mice-orders"
+          itemsPerPage={6}
+          emptyState={emptyState}
+        />
         
         {selectedOrder && (
           <EditMiceOrderDialog 

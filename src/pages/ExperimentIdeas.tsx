@@ -11,13 +11,13 @@ import { useExperimentIdeas } from "@/hooks/useExperimentIdeas";
 import CreateIdeaDialog from "@/components/CreateIdeaDialog";
 import EditIdeaDialog from "@/components/EditIdeaDialog";
 import IdeaReportDialog from "@/components/IdeaReportDialog";
-import DraggableGrid from "@/components/DraggableGrid";
+import PaginatedDraggableGrid from "@/components/PaginatedDraggableGrid";
 import RichTextDisplay from "@/components/RichTextDisplay";
 import { format } from "date-fns";
 
 const ExperimentIdeas = () => {
   const navigate = useNavigate();
-  const { ideas, isLoading, createIdea, updateIdea, deleteIdea, updateIdeaOrder } = useExperimentIdeas();
+  const { ideas, isLoading, updateIdeaOrder } = useExperimentIdeas();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedPriority, setSelectedPriority] = useState<string>("all");
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
@@ -79,14 +79,6 @@ const ExperimentIdeas = () => {
     navigate(`/experiment-ideas/${ideaId}/notes`);
   };
 
-  const handleUpdateIdea = async (id: string, updates: any) => {
-    await updateIdea.mutateAsync({ id, ...updates });
-  };
-
-  const handleAddIdea = async (idea: any) => {
-    await createIdea.mutateAsync(idea);
-  };
-
   const handleReorder = async (reorderedIdeas: any[]) => {
     const updates = reorderedIdeas.map((idea, index) => ({
       id: idea.id,
@@ -94,23 +86,6 @@ const ExperimentIdeas = () => {
     }));
     await updateIdeaOrder.mutateAsync(updates);
   };
-
-  if (isLoading) {
-    return (
-      <main className="flex-1 p-6 overflow-auto">
-        <div className="max-w-7xl mx-auto">
-          <div className="animate-pulse space-y-4">
-            <div className="h-8 bg-gray-200 rounded w-1/4"></div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {[...Array(6)].map((_, i) => (
-                <div key={i} className="h-48 bg-gray-200 rounded"></div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </main>
-    );
-  }
 
   const renderIdeaCard = (idea: any) => (
     <Card 
@@ -145,20 +120,6 @@ const ExperimentIdeas = () => {
             <span>Created {format(new Date(idea.created_at), 'MMM d, yyyy')}</span>
           </div>
           
-          {idea.researcher && (
-            <div className="flex items-center gap-2 text-sm text-gray-600">
-              <User className="h-4 w-4" />
-              <span>{idea.researcher}</span>
-            </div>
-          )}
-          
-          {idea.experiment_number && (
-            <div className="flex items-center gap-2 text-sm text-gray-600">
-              <Hash className="h-4 w-4" />
-              <span>Exp #{idea.experiment_number}</span>
-            </div>
-          )}
-          
           <div className="flex gap-2 mt-4">
             <Button
               variant="outline"
@@ -187,6 +148,40 @@ const ExperimentIdeas = () => {
       </CardContent>
     </Card>
   );
+
+  const emptyState = (
+    <div className="text-center py-12">
+      <Lightbulb className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+      <h3 className="text-lg font-medium text-gray-900 mb-2">No ideas found</h3>
+      <p className="text-gray-600 mb-4">
+        {searchTerm || selectedPriority !== "all" || selectedStatus !== "all"
+          ? "Try adjusting your filters"
+          : "Create your first experiment idea to get started"}
+      </p>
+      {!(searchTerm || selectedPriority !== "all" || selectedStatus !== "all") && (
+        <Button onClick={() => setCreateDialogOpen(true)}>
+          Create Idea
+        </Button>
+      )}
+    </div>
+  );
+
+  if (isLoading) {
+    return (
+      <main className="flex-1 p-6 overflow-auto">
+        <div className="max-w-7xl mx-auto">
+          <div className="animate-pulse space-y-4">
+            <div className="h-8 bg-gray-200 rounded w-1/4"></div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {[...Array(6)].map((_, i) => (
+                <div key={i} className="h-48 bg-gray-200 rounded"></div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="flex-1 p-6 overflow-auto">
@@ -300,29 +295,14 @@ const ExperimentIdeas = () => {
         </div>
 
         {/* Ideas Grid */}
-        <DraggableGrid
+        <PaginatedDraggableGrid
           items={filteredIdeas}
           onReorder={handleReorder}
           renderItem={renderIdeaCard}
           droppableId="experiment-ideas"
+          itemsPerPage={6}
+          emptyState={emptyState}
         />
-
-        {filteredIdeas.length === 0 && (
-          <div className="text-center py-12">
-            <Lightbulb className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No ideas found</h3>
-            <p className="text-gray-600 mb-4">
-              {searchTerm || selectedPriority !== "all" || selectedStatus !== "all"
-                ? "Try adjusting your filters"
-                : "Create your first experiment idea to get started"}
-            </p>
-            {!(searchTerm || selectedPriority !== "all" || selectedStatus !== "all") && (
-              <Button onClick={() => setCreateDialogOpen(true)}>
-                Create Idea
-              </Button>
-            )}
-          </div>
-        )}
 
         <CreateIdeaDialog 
           open={createDialogOpen} 

@@ -1,21 +1,22 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calendar, Search, Filter, Plus, Beaker, Clock, User, FileText } from "lucide-react";
+import { Calendar, Search, Plus, Beaker, Clock, User, FileText } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useExperiments } from "@/hooks/useExperiments";
 import { useProjects } from "@/hooks/useProjects";
 import CreateExperimentDialog from "@/components/CreateExperimentDialog";
+import PaginatedDraggableGrid from "@/components/PaginatedDraggableGrid";
 import RichTextDisplay from "@/components/RichTextDisplay";
 import { format } from "date-fns";
 
 const Experiments = () => {
   const navigate = useNavigate();
-  const { experiments, isLoading } = useExperiments();
+  const { experiments, isLoading, updateExperimentOrder } = useExperiments();
   const { projects } = useProjects();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedProject, setSelectedProject] = useState<string>("all");
@@ -57,6 +58,77 @@ const Experiments = () => {
     const project = projects.find(p => p.id === projectId);
     return project?.title || 'Unknown Project';
   };
+
+  const handleReorder = async (reorderedExperiments: any[]) => {
+    const updates = reorderedExperiments.map((experiment, index) => ({
+      id: experiment.id,
+      display_order: index + 1
+    }));
+    await updateExperimentOrder.mutateAsync(updates);
+  };
+
+  const renderExperimentCard = (experiment: any) => (
+    <Card key={experiment.id} className="cursor-pointer hover:shadow-lg transition-shadow">
+      <CardHeader 
+        onClick={() => navigate(`/experiments/${experiment.id}`)}
+        className="pb-3"
+      >
+        <div className="flex items-start justify-between">
+          <CardTitle className="text-lg line-clamp-2">{experiment.title}</CardTitle>
+          <Badge className={getStatusColor(experiment.status)}>
+            {experiment.status.replace('_', ' ')}
+          </Badge>
+        </div>
+        <CardDescription className="line-clamp-2">
+          <RichTextDisplay 
+            content={experiment.description || ""} 
+            maxLength={150}
+            className="text-sm"
+          />
+        </CardDescription>
+      </CardHeader>
+      
+      <CardContent>
+        <div className="space-y-2">
+          {experiment.project_id && (
+            <div className="flex items-center gap-2 text-sm text-gray-600">
+              <FileText className="h-4 w-4" />
+              <span>{getProjectName(experiment.project_id)}</span>
+            </div>
+          )}
+          
+          <div className="flex items-center gap-2 text-sm text-gray-600">
+            <Calendar className="h-4 w-4" />
+            <span>Created {format(new Date(experiment.created_at), 'MMM d, yyyy')}</span>
+          </div>
+          
+          {experiment.start_date && (
+            <div className="flex items-center gap-2 text-sm text-gray-600">
+              <Clock className="h-4 w-4" />
+              <span>Started {format(new Date(experiment.start_date), 'MMM d, yyyy')}</span>
+            </div>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+
+  const emptyState = (
+    <div className="text-center py-12">
+      <Beaker className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+      <h3 className="text-lg font-medium text-gray-900 mb-2">No experiments found</h3>
+      <p className="text-gray-600 mb-4">
+        {searchTerm || selectedProject !== "all" || selectedStatus !== "all"
+          ? "Try adjusting your filters"
+          : "Create your first experiment to get started"}
+      </p>
+      {!(searchTerm || selectedProject !== "all" || selectedStatus !== "all") && (
+        <Button onClick={() => setCreateDialogOpen(true)}>
+          Create Experiment
+        </Button>
+      )}
+    </div>
+  );
 
   if (isLoading) {
     return (
@@ -188,70 +260,14 @@ const Experiments = () => {
         </div>
 
         {/* Experiments Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredExperiments.map((experiment) => (
-            <Card key={experiment.id} className="cursor-pointer hover:shadow-lg transition-shadow">
-              <CardHeader 
-                onClick={() => navigate(`/experiments/${experiment.id}`)}
-                className="pb-3"
-              >
-                <div className="flex items-start justify-between">
-                  <CardTitle className="text-lg line-clamp-2">{experiment.title}</CardTitle>
-                  <Badge className={getStatusColor(experiment.status)}>
-                    {experiment.status.replace('_', ' ')}
-                  </Badge>
-                </div>
-                <CardDescription className="line-clamp-2">
-                  <RichTextDisplay 
-                    content={experiment.description || ""} 
-                    maxLength={150}
-                    className="text-sm"
-                  />
-                </CardDescription>
-              </CardHeader>
-              
-              <CardContent>
-                <div className="space-y-2">
-                  {experiment.project_id && (
-                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                      <FileText className="h-4 w-4" />
-                      <span>{getProjectName(experiment.project_id)}</span>
-                    </div>
-                  )}
-                  
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <Calendar className="h-4 w-4" />
-                    <span>Created {format(new Date(experiment.created_at), 'MMM d, yyyy')}</span>
-                  </div>
-                  
-                  {experiment.start_date && (
-                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                      <Clock className="h-4 w-4" />
-                      <span>Started {format(new Date(experiment.start_date), 'MMM d, yyyy')}</span>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-
-        {filteredExperiments.length === 0 && (
-          <div className="text-center py-12">
-            <Beaker className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No experiments found</h3>
-            <p className="text-gray-600 mb-4">
-              {searchTerm || selectedProject !== "all" || selectedStatus !== "all"
-                ? "Try adjusting your filters"
-                : "Create your first experiment to get started"}
-            </p>
-            {!(searchTerm || selectedProject !== "all" || selectedStatus !== "all") && (
-              <Button onClick={() => setCreateDialogOpen(true)}>
-                Create Experiment
-              </Button>
-            )}
-          </div>
-        )}
+        <PaginatedDraggableGrid
+          items={filteredExperiments}
+          onReorder={handleReorder}
+          renderItem={renderExperimentCard}
+          droppableId="experiments"
+          itemsPerPage={6}
+          emptyState={emptyState}
+        />
 
         <CreateExperimentDialog 
           open={createDialogOpen} 
