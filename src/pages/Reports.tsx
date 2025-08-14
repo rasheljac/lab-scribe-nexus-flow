@@ -1,526 +1,199 @@
-
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { 
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import { Search, Download, FileText, Eye, Calendar, User, Loader2, Trash2 } from "lucide-react";
-import Sidebar from "@/components/Sidebar";
-import Header from "@/components/Header";
+import { Badge } from "@/components/ui/badge";
+import { Calendar, Search, Filter, Plus, FileText, Download, Eye } from "lucide-react";
+import { useReports } from "@/hooks/useReports";
+import { useProjects } from "@/hooks/useProjects";
 import CreateReportDialog from "@/components/CreateReportDialog";
 import EnhancedReportDialog from "@/components/EnhancedReportDialog";
-import { useReports } from "@/hooks/useReports";
-import { useToast } from "@/hooks/use-toast";
-import jsPDF from 'jspdf';
+import { format } from "date-fns";
 
 const Reports = () => {
+  const { reports, isLoading, error } = useReports();
+  const { projects } = useProjects();
   const [searchTerm, setSearchTerm] = useState("");
-  const [filterType, setFilterType] = useState("all");
-  const [filterStatus, setFilterStatus] = useState("all");
-  const [isDownloading, setIsDownloading] = useState<string | null>(null);
-
-  const { reports, isLoading, error, updateReport, deleteReport } = useReports();
-  const { toast } = useToast();
-
-  const getTypeColor = (type: string) => {
-    switch (type) {
-      case "experiment":
-        return "bg-blue-100 text-blue-800";
-      case "activity":
-        return "bg-green-100 text-green-800";
-      case "maintenance":
-        return "bg-orange-100 text-orange-800";
-      case "inventory":
-        return "bg-purple-100 text-purple-800";
-      default:
-        return "bg-gray-100 text-gray-800";
-    }
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "published":
-        return "bg-green-100 text-green-800";
-      case "draft":
-        return "bg-yellow-100 text-yellow-800";
-      case "archived":
-        return "bg-gray-100 text-gray-800";
-      default:
-        return "bg-gray-100 text-gray-800";
-    }
-  };
+  const [selectedProject, setSelectedProject] = useState<string>("all");
+  const [selectedStatus, setSelectedStatus] = useState<string>("all");
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [enhancedReport, setEnhancedReport] = useState<any>(null);
 
   const filteredReports = reports.filter(report => {
     const matchesSearch = report.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (report.description && report.description.toLowerCase().includes(searchTerm.toLowerCase()));
-    const matchesType = filterType === "all" || report.type === filterType;
-    const matchesStatus = filterStatus === "all" || report.status === filterStatus;
-    return matchesSearch && matchesType && matchesStatus;
+                         report.description?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesProject = selectedProject === "all" || report.project_id === selectedProject;
+    const matchesStatus = selectedStatus === "all" || report.status === selectedStatus;
+    
+    return matchesSearch && matchesProject && matchesStatus;
   });
 
-  const generateReportPDF = async (report: any) => {
-    const pdf = new jsPDF();
-    const pageHeight = pdf.internal.pageSize.height;
-    const pageWidth = pdf.internal.pageSize.width;
-    const margin = 20;
-    let yPosition = margin;
-
-    // Add Kapelczak logo if available
-    try {
-      const logo = new Image();
-      logo.crossOrigin = 'anonymous';
-      
-      await new Promise((resolve, reject) => {
-        logo.onload = resolve;
-        logo.onerror = reject;
-        logo.src = '/lovable-uploads/305ae0c2-f9ba-42cc-817b-eda518f05406.png';
-      });
-
-      const logoAspectRatio = logo.width / logo.height;
-      const logoWidth = 40;
-      const logoHeight = logoWidth / logoAspectRatio;
-      
-      pdf.addImage(logo, 'PNG', pageWidth - margin - logoWidth, margin, logoWidth, logoHeight);
-      yPosition = Math.max(yPosition, margin + logoHeight + 10);
-    } catch (error) {
-      console.warn('Could not load logo for PDF:', error);
-    }
-
-    // Header
-    pdf.setFontSize(16);
-    pdf.setFont('helvetica', 'bold');
-    pdf.text('KAPELCZAK LABORATORY', margin, yPosition);
-    yPosition += 20;
-
-    // Report title
-    pdf.setFontSize(18);
-    pdf.setFont('helvetica', 'bold');
-    pdf.text(report.title, margin, yPosition);
-    yPosition += 15;
-
-    // Generation info
-    pdf.setFontSize(10);
-    pdf.setFont('helvetica', 'normal');
-    pdf.text(`Generated on: ${new Date().toLocaleDateString()}`, margin, yPosition);
-    yPosition += 6;
-    pdf.text(`Generated by: ${report.author}`, margin, yPosition);
-    yPosition += 20;
-
-    // Report details
-    pdf.setFontSize(12);
-    pdf.setFont('helvetica', 'bold');
-    pdf.text('Report Details:', margin, yPosition);
-    yPosition += 10;
-
-    pdf.setFontSize(10);
-    pdf.setFont('helvetica', 'normal');
-    pdf.text(`Type: ${report.type.charAt(0).toUpperCase() + report.type.slice(1)}`, margin, yPosition);
-    yPosition += 6;
-    pdf.text(`Status: ${report.status.charAt(0).toUpperCase() + report.status.slice(1)}`, margin, yPosition);
-    yPosition += 6;
-    pdf.text(`Author: ${report.author}`, margin, yPosition);
-    yPosition += 6;
-    pdf.text(`Format: ${report.format}`, margin, yPosition);
-    yPosition += 6;
-    pdf.text(`Created: ${new Date(report.created_at).toLocaleDateString()}`, margin, yPosition);
-    yPosition += 6;
-    pdf.text(`Downloads: ${report.downloads}`, margin, yPosition);
-    yPosition += 15;
-
-    // Description
-    if (report.description) {
-      pdf.setFontSize(12);
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('Description:', margin, yPosition);
-      yPosition += 10;
-
-      pdf.setFontSize(10);
-      pdf.setFont('helvetica', 'normal');
-      const descriptionLines = pdf.splitTextToSize(report.description, pageWidth - 2 * margin);
-      pdf.text(descriptionLines, margin, yPosition);
-      yPosition += descriptionLines.length * 5 + 15;
-    }
-
-    // Content section
-    pdf.setFontSize(12);
-    pdf.setFont('helvetica', 'bold');
-    pdf.text('Report Content:', margin, yPosition);
-    yPosition += 10;
-
-    pdf.setFontSize(10);
-    pdf.setFont('helvetica', 'normal');
-    const contentText = `This is a ${report.type} report created in the Kapelczak Laboratory Management System. The report contains metadata and summary information as shown above. For comprehensive PDF reports with full experiment data, notes, and attachments, please use the "Generate Report" feature which creates detailed reports from your actual laboratory data.`;
-    
-    const contentLines = pdf.splitTextToSize(contentText, pageWidth - 2 * margin);
-    pdf.text(contentLines, margin, yPosition);
-    yPosition += contentLines.length * 5;
-
-    // Footer
-    pdf.setFontSize(8);
-    pdf.setFont('helvetica', 'normal');
-    pdf.text('Generated by Kapelczak Lab Management System', margin, pageHeight - 15);
-    pdf.text('Page 1 of 1', pageWidth - margin - 30, pageHeight - 15);
-
-    return pdf;
-  };
-
-  const handleViewReport = async (reportId: string, report: any) => {
-    try {
-      setIsDownloading(reportId);
-      
-      // Generate PDF
-      const pdf = await generateReportPDF(report);
-      
-      // Create blob and open in new window for viewing
-      const pdfBlob = pdf.output('blob');
-      const url = URL.createObjectURL(pdfBlob);
-      window.open(url, '_blank');
-      
-      // Clean up
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
-
-      // Increment downloads count
-      await updateReport.mutateAsync({
-        id: reportId,
-        downloads: report.downloads + 1
-      });
-
-      toast({
-        title: "Report Opened",
-        description: "The PDF report has been opened in a new tab.",
-      });
-    } catch (error) {
-      console.error("Error viewing report:", error);
-      toast({
-        title: "Error",
-        description: "Failed to generate PDF report.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsDownloading(null);
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'completed':
+        return 'bg-green-100 text-green-800';
+      case 'in_progress':
+        return 'bg-blue-100 text-blue-800';
+      case 'planning':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'on_hold':
+        return 'bg-red-100 text-red-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
     }
   };
 
-  const handleDownloadReport = async (reportId: string, report: any) => {
-    try {
-      setIsDownloading(reportId);
-      
-      // Generate PDF
-      const pdf = await generateReportPDF(report);
-      
-      // Download the PDF
-      const fileName = `${report.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_report.pdf`;
-      pdf.save(fileName);
-
-      // Increment downloads count
-      await updateReport.mutateAsync({
-        id: reportId,
-        downloads: report.downloads + 1
-      });
-
-      toast({
-        title: "Report Downloaded",
-        description: "The PDF report has been downloaded successfully.",
-      });
-    } catch (error) {
-      console.error("Error downloading report:", error);
-      toast({
-        title: "Error",
-        description: "Failed to download PDF report.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsDownloading(null);
-    }
+  const getProjectName = (projectId: string) => {
+    const project = projects.find(p => p.id === projectId);
+    return project?.title || 'Unknown Project';
   };
 
-  const handleDeleteReport = async (reportId: string) => {
-    try {
-      await deleteReport.mutateAsync(reportId);
-      toast({
-        title: "Success",
-        description: "Report deleted successfully!",
-      });
-    } catch (error) {
-      console.error("Error deleting report:", error);
-      toast({
-        title: "Error",
-        description: "Failed to delete report",
-        variant: "destructive",
-      });
-    }
-  };
-
-  if (error) {
+  if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex">
-        <Sidebar />
-        <div className="flex-1 flex flex-col">
-          <Header />
-          <main className="flex-1 p-6 overflow-auto">
-            <div className="max-w-7xl mx-auto">
-              <div className="text-center py-12">
-                <p className="text-red-600">Error loading reports: {error.message}</p>
-              </div>
+      <div className="p-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="animate-pulse space-y-4">
+            <div className="h-8 bg-gray-200 rounded w-1/4"></div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {[...Array(6)].map((_, i) => (
+                <div key={i} className="h-48 bg-gray-200 rounded"></div>
+              ))}
             </div>
-          </main>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
-      <Sidebar />
-      <div className="flex-1 flex flex-col">
-        <Header />
-        <main className="flex-1 p-6 overflow-auto">
-          <div className="max-w-7xl mx-auto space-y-6">
-            {/* Header */}
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900">Reports</h1>
-                <p className="text-gray-600 mt-1">Generate and manage laboratory reports</p>
-              </div>
-              <div className="flex gap-2">
-                <EnhancedReportDialog />
-                <CreateReportDialog />
-              </div>
-            </div>
+    <div className="p-6">
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-3xl font-bold">Reports</h1>
+            <p className="text-gray-600 mt-1">Track and manage your research reports</p>
+          </div>
+          <Button onClick={() => setCreateDialogOpen(true)} className="gap-2">
+            <Plus className="h-4 w-4" />
+            New Report
+          </Button>
+        </div>
 
-            {/* Info Banner */}
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <div className="flex items-start gap-3">
-                <FileText className="h-5 w-5 text-blue-600 mt-0.5" />
-                <div>
-                  <h3 className="font-medium text-blue-900">Report Types</h3>
-                  <p className="text-sm text-blue-700 mt-1">
-                    Basic reports show metadata and summaries as PDF files. For comprehensive PDF reports with full experiment data, notes, and attachments, use the "Generate Report" button above.
-                  </p>
+        {/* Filters */}
+        <div className="flex flex-col sm:flex-row gap-4 mb-6">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+            <Input
+              placeholder="Search reports..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+          
+          <Select value={selectedProject} onValueChange={setSelectedProject}>
+            <SelectTrigger className="w-full sm:w-[200px]">
+              <SelectValue placeholder="Filter by project" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Projects</SelectItem>
+              {projects.map((project) => (
+                <SelectItem key={project.id} value={project.id}>
+                  {project.title}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+            <SelectTrigger className="w-full sm:w-[200px]">
+              <SelectValue placeholder="Filter by status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Statuses</SelectItem>
+              <SelectItem value="planning">Planning</SelectItem>
+              <SelectItem value="in_progress">In Progress</SelectItem>
+              <SelectItem value="completed">Completed</SelectItem>
+              <SelectItem value="on_hold">On Hold</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Reports Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredReports.map((report) => (
+            <Card key={report.id} className="cursor-pointer hover:shadow-lg transition-shadow">
+              <CardHeader className="pb-3">
+                <div className="flex items-start justify-between">
+                  <CardTitle className="text-lg line-clamp-2">{report.title}</CardTitle>
+                  <Badge className={getStatusColor(report.status)}>
+                    {report.status.replace('_', ' ')}
+                  </Badge>
                 </div>
-              </div>
-            </div>
-
-            {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <Card>
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-3">
-                    <div className="bg-blue-50 p-2 rounded-lg">
-                      <FileText className="h-5 w-5 text-blue-600" />
+                <CardDescription className="line-clamp-2">
+                  {report.description}
+                </CardDescription>
+              </CardHeader>
+              
+              <CardContent>
+                <div className="space-y-2">
+                  {report.project_id && (
+                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                      <FileText className="h-4 w-4" />
+                      <span>{getProjectName(report.project_id)}</span>
                     </div>
-                    <div>
-                      <p className="text-sm font-medium text-gray-600">Total Reports</p>
-                      <p className="text-xl font-bold">{reports.length}</p>
-                    </div>
+                  )}
+                  
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <Calendar className="h-4 w-4" />
+                    <span>Created {format(new Date(report.created_at), 'MMM d, yyyy')}</span>
                   </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-3">
-                    <div className="bg-green-50 p-2 rounded-lg">
-                      <Eye className="h-5 w-5 text-green-600" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-gray-600">Published</p>
-                      <p className="text-xl font-bold">
-                        {reports.filter(r => r.status === "published").length}
-                      </p>
-                    </div>
+                  
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <Download className="h-4 w-4" />
+                    <a href={report.file_url} target="_blank" rel="noopener noreferrer" className="underline">
+                      Download Report
+                    </a>
                   </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-3">
-                    <div className="bg-yellow-50 p-2 rounded-lg">
-                      <FileText className="h-5 w-5 text-yellow-600" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-gray-600">Drafts</p>
-                      <p className="text-xl font-bold">
-                        {reports.filter(r => r.status === "draft").length}
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-3">
-                    <div className="bg-purple-50 p-2 rounded-lg">
-                      <Download className="h-5 w-5 text-purple-600" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-gray-600">Total Downloads</p>
-                      <p className="text-xl font-bold">
-                        {reports.reduce((sum, r) => sum + r.downloads, 0)}
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
 
-            {/* Filters */}
-            <div className="flex items-center gap-4">
-              <div className="flex-1 relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                <Input
-                  placeholder="Search reports..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-              <Select value={filterType} onValueChange={setFilterType}>
-                <SelectTrigger className="w-[150px]">
-                  <SelectValue placeholder="Type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Types</SelectItem>
-                  <SelectItem value="experiment">Experiment</SelectItem>
-                  <SelectItem value="activity">Activity</SelectItem>
-                  <SelectItem value="maintenance">Maintenance</SelectItem>
-                  <SelectItem value="inventory">Inventory</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select value={filterStatus} onValueChange={setFilterStatus}>
-                <SelectTrigger className="w-[150px]">
-                  <SelectValue placeholder="Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="draft">Draft</SelectItem>
-                  <SelectItem value="published">Published</SelectItem>
-                  <SelectItem value="archived">Archived</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+                  <Button variant="secondary" size="sm" onClick={() => setEnhancedReport(report)}>
+                    <Eye className="h-4 w-4 mr-2" />
+                    View Enhanced Report
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
 
-            {/* Reports Grid */}
-            {isLoading ? (
-              <div className="flex justify-center py-12">
-                <Loader2 className="h-8 w-8 animate-spin" />
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-                {filteredReports.map((report) => (
-                  <Card key={report.id} className="hover:shadow-md transition-shadow">
-                    <CardHeader className="pb-3">
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-center gap-2">
-                          <FileText className="h-5 w-5 text-blue-600" />
-                          <CardTitle className="text-lg">{report.title}</CardTitle>
-                        </div>
-                        <div className="flex gap-1 items-center">
-                          <Badge className={getStatusColor(report.status)}>
-                            {report.status}
-                          </Badge>
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button size="sm" variant="outline" className="text-red-600 hover:text-red-700 p-1 h-6 w-6">
-                                <Trash2 className="h-3 w-3" />
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Delete Report</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  Are you sure you want to delete "{report.title}"? This action cannot be undone.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction
-                                  onClick={() => handleDeleteReport(report.id)}
-                                  className="bg-red-600 hover:bg-red-700"
-                                >
-                                  Delete
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        </div>
-                      </div>
-                      <p className="text-sm text-gray-600 mt-2">{report.description}</p>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      {/* Report Details */}
-                      <div className="space-y-2 text-sm">
-                        <div className="flex items-center gap-2">
-                          <User className="h-4 w-4 text-gray-400" />
-                          <span>{report.author}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Calendar className="h-4 w-4 text-gray-400" />
-                          <span>{new Date(report.created_at).toLocaleDateString()}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Download className="h-4 w-4 text-gray-400" />
-                          <span>{report.downloads} downloads</span>
-                        </div>
-                      </div>
-
-                      {/* Type and Format */}
-                      <div className="flex justify-between items-center pt-2">
-                        <Badge className={getTypeColor(report.type)}>
-                          {report.type}
-                        </Badge>
-                        <div className="flex items-center gap-2 text-sm text-gray-500">
-                          <span>PDF</span>
-                        </div>
-                      </div>
-
-                      {/* Actions */}
-                      <div className="flex gap-2 pt-2">
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className="flex-1"
-                          onClick={() => handleViewReport(report.id, report)}
-                          disabled={isDownloading === report.id}
-                        >
-                          <Eye className="h-4 w-4 mr-1" />
-                          {isDownloading === report.id ? "Generating..." : "View"}
-                        </Button>
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className="flex-1"
-                          onClick={() => handleDownloadReport(report.id, report)}
-                          disabled={isDownloading === report.id}
-                        >
-                          <Download className="h-4 w-4 mr-1" />
-                          {isDownloading === report.id ? "Downloading..." : "Download"}
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-                {filteredReports.length === 0 && !isLoading && (
-                  <div className="col-span-full text-center py-12">
-                    <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                    <p className="text-gray-600">No reports found. Create your first report to get started.</p>
-                  </div>
-                )}
-              </div>
+        {filteredReports.length === 0 && (
+          <div className="text-center py-12">
+            <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No reports found</h3>
+            <p className="text-gray-600 mb-4">
+              {searchTerm || selectedProject !== "all" || selectedStatus !== "all"
+                ? "Try adjusting your filters"
+                : "Create your first report to get started"}
+            </p>
+            {!(searchTerm || selectedProject !== "all" || selectedStatus !== "all") && (
+              <Button onClick={() => setCreateDialogOpen(true)}>
+                Create Report
+              </Button>
             )}
           </div>
-        </main>
+        )}
+
+        <CreateReportDialog 
+          open={createDialogOpen} 
+          onOpenChange={setCreateDialogOpen} 
+        />
+
+        <EnhancedReportDialog 
+          report={enhancedReport} 
+          onClose={() => setEnhancedReport(null)} 
+        />
       </div>
     </div>
   );

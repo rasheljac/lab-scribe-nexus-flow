@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +10,7 @@ import { useNavigate } from "react-router-dom";
 import { useExperiments } from "@/hooks/useExperiments";
 import { useProjects } from "@/hooks/useProjects";
 import CreateExperimentDialog from "@/components/CreateExperimentDialog";
+import RichTextDisplay from "@/components/RichTextDisplay";
 import { format } from "date-fns";
 
 const Experiments = () => {
@@ -22,9 +22,16 @@ const Experiments = () => {
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
 
+  // Helper function to strip HTML tags for search
+  const stripHtmlTags = (html: string): string => {
+    const temp = document.createElement('div');
+    temp.innerHTML = html;
+    return temp.textContent || temp.innerText || '';
+  };
+
   const filteredExperiments = experiments.filter(experiment => {
     const matchesSearch = experiment.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         experiment.description?.toLowerCase().includes(searchTerm.toLowerCase());
+                         (experiment.description && stripHtmlTags(experiment.description).toLowerCase().includes(searchTerm.toLowerCase()));
     const matchesProject = selectedProject === "all" || experiment.project_id === selectedProject;
     const matchesStatus = selectedStatus === "all" || experiment.status === selectedStatus;
     
@@ -195,7 +202,11 @@ const Experiments = () => {
                   </Badge>
                 </div>
                 <CardDescription className="line-clamp-2">
-                  {experiment.description}
+                  <RichTextDisplay 
+                    content={experiment.description || ""} 
+                    maxLength={150}
+                    className="text-sm"
+                  />
                 </CardDescription>
               </CardHeader>
               

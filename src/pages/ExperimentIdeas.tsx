@@ -1,158 +1,74 @@
-
-import { useState, useEffect } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { 
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import { 
-  Search, 
-  Lightbulb, 
-  Clock, 
-  Target,
-  Trash2,
-  Loader2,
-  ArrowRight,
-  Calendar,
-  DollarSign,
-  Tag,
-  FileText,
-  ChevronLeft,
-  ChevronRight,
-  GripVertical
-} from "lucide-react";
-import Sidebar from "@/components/Sidebar";
-import Header from "@/components/Header";
+import { Search, Plus, Lightbulb, Calendar, User, Target, Clock, Tag } from "lucide-react";
+import { useExperimentIdeas } from "@/hooks/useExperimentIdeas";
 import CreateIdeaDialog from "@/components/CreateIdeaDialog";
 import EditIdeaDialog from "@/components/EditIdeaDialog";
-import IdeaReportDialog from "@/components/IdeaReportDialog";
-import RichTextDisplay from "@/components/RichTextDisplay";
 import DraggableGrid from "@/components/DraggableGrid";
-import { useExperimentIdeas } from "@/hooks/useExperimentIdeas";
+import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 
-const ITEMS_PER_PAGE = 8;
-
 const ExperimentIdeas = () => {
-  const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
-  const [searchTerm, setSearchTerm] = useState(searchParams.get('search') || "");
-  const [filterStatus, setFilterStatus] = useState("all");
-  const [filterPriority, setFilterPriority] = useState("all");
-  const [filterCategory, setFilterCategory] = useState("all");
-  const [currentPage, setCurrentPage] = useState(1);
+  const { ideas, isLoading, convertToExperiment } = useExperimentIdeas();
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedStatus, setSelectedStatus] = useState<string>("all");
+  const [selectedPriority, setSelectedPriority] = useState<string>("all");
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const { toast } = useToast();
 
-  const { ideas, isLoading, error, deleteIdea, convertToExperiment, updateIdeaOrder } = useExperimentIdeas();
-
-  useEffect(() => {
-    if (searchTerm) {
-      setSearchParams({ search: searchTerm });
-    } else {
-      setSearchParams({});
-    }
-  }, [searchTerm, setSearchParams]);
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case "ready":
-        return <Target className="h-4 w-4 text-green-600" />;
-      case "planning":
-        return <Clock className="h-4 w-4 text-blue-600" />;
-      case "researching":
-        return <Search className="h-4 w-4 text-orange-600" />;
-      case "brainstorming":
-        return <Lightbulb className="h-4 w-4 text-yellow-600" />;
-      default:
-        return <Lightbulb className="h-4 w-4 text-gray-600" />;
-    }
-  };
+  const filteredIdeas = ideas.filter(idea => {
+    const matchesSearch = idea.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         idea.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         idea.hypothesis?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = selectedStatus === "all" || idea.status === selectedStatus;
+    const matchesPriority = selectedPriority === "all" || idea.priority === selectedPriority;
+    
+    return matchesSearch && matchesStatus && matchesPriority;
+  });
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "ready":
-        return "bg-green-100 text-green-800";
-      case "planning":
-        return "bg-blue-100 text-blue-800";
-      case "researching":
-        return "bg-orange-100 text-orange-800";
-      case "brainstorming":
-        return "bg-yellow-100 text-yellow-800";
-      case "archived":
-        return "bg-gray-100 text-gray-800";
+      case 'ready':
+        return 'bg-green-100 text-green-800';
+      case 'planning':
+        return 'bg-blue-100 text-blue-800';
+      case 'researching':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'brainstorming':
+        return 'bg-purple-100 text-purple-800';
+      case 'archived':
+        return 'bg-gray-100 text-gray-800';
       default:
-        return "bg-gray-100 text-gray-800";
+        return 'bg-gray-100 text-gray-800';
     }
   };
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case "high":
-        return "bg-red-100 text-red-800";
-      case "medium":
-        return "bg-orange-100 text-orange-800";
-      case "low":
-        return "bg-green-100 text-green-800";
+      case 'high':
+        return 'bg-red-100 text-red-800';
+      case 'medium':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'low':
+        return 'bg-green-100 text-green-800';
       default:
-        return "bg-gray-100 text-gray-800";
+        return 'bg-gray-100 text-gray-800';
     }
   };
 
-  const filteredIdeas = ideas.filter(idea => {
-    const matchesSearch = idea.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (idea.description && idea.description.toLowerCase().includes(searchTerm.toLowerCase())) ||
-                         (idea.hypothesis && idea.hypothesis.toLowerCase().includes(searchTerm.toLowerCase()));
-    const matchesStatus = filterStatus === "all" || idea.status === filterStatus;
-    const matchesPriority = filterPriority === "all" || idea.priority === filterPriority;
-    const matchesCategory = filterCategory === "all" || idea.category === filterCategory;
-    return matchesSearch && matchesStatus && matchesPriority && matchesCategory;
-  });
-
-  // Pagination logic
-  const totalPages = Math.ceil(filteredIdeas.length / ITEMS_PER_PAGE);
-  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-  const endIndex = startIndex + ITEMS_PER_PAGE;
-  const currentIdeas = filteredIdeas.slice(startIndex, endIndex);
-
-  const handleDeleteIdea = async (ideaId: string) => {
+  const handleConvertToExperiment = async (id: string) => {
     try {
-      await deleteIdea.mutateAsync(ideaId);
+      await convertToExperiment.mutateAsync(id);
       toast({
         title: "Success",
-        description: "Experiment idea deleted successfully!",
+        description: "Experiment idea converted to experiment!",
       });
     } catch (error) {
-      console.error("Error deleting idea:", error);
-      toast({
-        title: "Error",
-        description: "Failed to delete experiment idea",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleConvertToExperiment = async (ideaId: string, ideaTitle: string) => {
-    try {
-      await convertToExperiment.mutateAsync(ideaId);
-      toast({
-        title: "Success",
-        description: `"${ideaTitle}" converted to experiment successfully!`,
-      });
-    } catch (error) {
-      console.error("Error converting idea:", error);
+      console.error("Error converting idea to experiment:", error);
       toast({
         title: "Error",
         description: "Failed to convert idea to experiment",
@@ -161,424 +77,189 @@ const ExperimentIdeas = () => {
     }
   };
 
-  const handleReorder = async (reorderedItems: any[]) => {
-    // Update the order based on global position, not just current page
-    const reorderedWithGlobalOrder = reorderedItems.map((item, index) => ({
-      id: item.id,
-      display_order: startIndex + index + 1
-    }));
-
-    try {
-      await updateIdeaOrder.mutateAsync(reorderedWithGlobalOrder);
-    } catch (error) {
-      console.error("Error updating idea order:", error);
-      toast({
-        title: "Error",
-        description: "Failed to update idea order",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleMoveToPreviousPage = async (idea: any, currentIndex: number) => {
-    if (currentPage === 1) return;
-    
-    try {
-      // Calculate new position (end of previous page)
-      const previousPageEndIndex = (currentPage - 2) * ITEMS_PER_PAGE + ITEMS_PER_PAGE;
-      const newGlobalOrder = previousPageEndIndex;
-      
-      // Update this idea's order and shift others
-      const updatedOrders = [{
-        id: idea.id,
-        display_order: newGlobalOrder
-      }];
-      
-      await updateIdeaOrder.mutateAsync(updatedOrders);
-      setCurrentPage(currentPage - 1);
-      
-      toast({
-        title: "Success",
-        description: `Moved "${idea.title}" to page ${currentPage - 1}`,
-      });
-    } catch (error) {
-      console.error("Error moving idea:", error);
-      toast({
-        title: "Error",
-        description: "Failed to move idea",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleMoveToNextPage = async (idea: any, currentIndex: number) => {
-    if (currentPage === totalPages) return;
-    
-    try {
-      // Calculate new position (beginning of next page)
-      const nextPageStartIndex = currentPage * ITEMS_PER_PAGE + 1;
-      const newGlobalOrder = nextPageStartIndex;
-      
-      // Update this idea's order
-      const updatedOrders = [{
-        id: idea.id,
-        display_order: newGlobalOrder
-      }];
-      
-      await updateIdeaOrder.mutateAsync(updatedOrders);
-      setCurrentPage(currentPage + 1);
-      
-      toast({
-        title: "Success",
-        description: `Moved "${idea.title}" to page ${currentPage + 1}`,
-      });
-    } catch (error) {
-      console.error("Error moving idea:", error);
-      toast({
-        title: "Error",
-        description: "Failed to move idea",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const renderIdeaCard = (idea: any, index: number) => (
+  const renderIdeaCard = (idea: any) => (
     <Card key={idea.id} className="hover:shadow-md transition-shadow">
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
-          <div className="flex items-center gap-2 flex-1">
-            <TooltipProvider>
-              <div className="flex items-center gap-1">
-                <GripVertical className="h-4 w-4 text-gray-400 cursor-grab" />
-                <Tooltip>
-                  <TooltipTrigger>
-                    <ChevronLeft 
-                      className={`h-4 w-4 cursor-pointer transition-colors ${
-                        currentPage === 1 
-                          ? 'text-gray-300 cursor-not-allowed' 
-                          : 'text-blue-600 hover:text-blue-800'
-                      }`}
-                      onClick={() => currentPage > 1 && handleMoveToPreviousPage(idea, index)}
-                    />
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    {currentPage === 1 ? 'Already on first page' : 'Move to previous page'}
-                  </TooltipContent>
-                </Tooltip>
-                <Tooltip>
-                  <TooltipTrigger>
-                    <ChevronRight 
-                      className={`h-4 w-4 cursor-pointer transition-colors ${
-                        currentPage === totalPages 
-                          ? 'text-gray-300 cursor-not-allowed' 
-                          : 'text-blue-600 hover:text-blue-800'
-                      }`}
-                      onClick={() => currentPage < totalPages && handleMoveToNextPage(idea, index)}
-                    />
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    {currentPage === totalPages ? 'Already on last page' : 'Move to next page'}
-                  </TooltipContent>
-                </Tooltip>
-              </div>
-            </TooltipProvider>
-            {getStatusIcon(idea.status)}
-            <CardTitle className="text-lg">{idea.title}</CardTitle>
-          </div>
-          <div className="flex gap-1 items-center">
-            <Badge className={getStatusColor(idea.status)}>
-              {idea.status.replace('_', ' ')}
-            </Badge>
-            <Badge className={getPriorityColor(idea.priority)}>
-              {idea.priority}
-            </Badge>
-          </div>
+          <CardTitle className="text-lg line-clamp-2">{idea.title}</CardTitle>
+          <Badge className={getStatusColor(idea.status)}>
+            {idea.status.replace('_', ' ')}
+          </Badge>
         </div>
-        {idea.description && (
-          <RichTextDisplay 
-            content={idea.description}
-            className="text-sm text-gray-600 mt-2"
-            maxLength={150}
-          />
-        )}
+        <CardDescription className="line-clamp-2">{idea.description}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        {idea.hypothesis && (
-          <div>
-            <h4 className="font-medium text-sm text-gray-900 mb-1">Hypothesis</h4>
-            <RichTextDisplay 
-              content={idea.hypothesis}
-              className="text-sm text-gray-600"
-              maxLength={100}
-            />
-          </div>
-        )}
-
-        <div className="grid grid-cols-2 gap-4 text-sm">
-          {idea.estimated_duration && (
-            <div className="flex items-center gap-2">
-              <Clock className="h-4 w-4 text-gray-400" />
-              <span>{idea.estimated_duration}</span>
-            </div>
-          )}
-          {idea.budget_estimate && (
-            <div className="flex items-center gap-2">
-              <DollarSign className="h-4 w-4 text-gray-400" />
-              <span>{idea.budget_estimate}</span>
-            </div>
-          )}
-        </div>
-
-        <div className="space-y-2">
-          <Badge variant="outline">{idea.category}</Badge>
-          {idea.tags && idea.tags.length > 0 && (
-            <div className="flex flex-wrap gap-1">
-              {idea.tags.slice(0, 3).map((tag) => (
-                <Badge key={tag} variant="secondary" className="text-xs">
-                  <Tag className="h-3 w-3 mr-1" />
-                  {tag}
-                </Badge>
-              ))}
-              {idea.tags.length > 3 && (
-                <Badge variant="secondary" className="text-xs">
-                  +{idea.tags.length - 3} more
-                </Badge>
-              )}
-            </div>
-          )}
-        </div>
-
-        <div className="flex gap-2 pt-2">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => navigate(`/experiment-ideas/${idea.id}/notes`)}
-            className="gap-1"
-          >
-            <FileText className="h-3 w-3" />
-            Notes
-          </Button>
-          <EditIdeaDialog idea={idea} />
-          <IdeaReportDialog 
-            ideaId={idea.id} 
-            ideaTitle={idea.title}
-            variant="single" 
-          />
-          {idea.status === 'ready' && (
-            <Button
-              size="sm"
-              onClick={() => handleConvertToExperiment(idea.id, idea.title)}
-              disabled={convertToExperiment.isPending}
-              className="gap-1"
-            >
-              <ArrowRight className="h-3 w-3" />
-              Convert
-            </Button>
-          )}
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button size="sm" variant="outline" className="text-red-600 hover:text-red-700 p-1 h-6 w-6 ml-auto">
-                <Trash2 className="h-3 w-3" />
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Delete Experiment Idea</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Are you sure you want to delete "{idea.title}"? This action cannot be undone.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={() => handleDeleteIdea(idea.id)}
-                  className="bg-red-600 hover:bg-red-700"
-                >
-                  Delete
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        </div>
-
-        <div className="text-xs text-gray-500 pt-2 border-t">
+        <div className="space-y-2 text-sm">
           <div className="flex items-center gap-2">
-            <Calendar className="h-3 w-3" />
-            <span>Created {new Date(idea.created_at).toLocaleDateString()}</span>
+            <Lightbulb className="h-4 w-4 text-gray-400" />
+            <span>{idea.hypothesis}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Target className="h-4 w-4 text-gray-400" />
+            <span>{idea.methodology}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Calendar className="h-4 w-4 text-gray-400" />
+            <span>{format(new Date(idea.created_at), 'MMM d, yyyy')}</span>
+          </div>
+        </div>
+
+        <div className="flex justify-between">
+          <Badge className={getPriorityColor(idea.priority)}>
+            {idea.priority}
+          </Badge>
+          <div className="flex gap-2">
+            <EditIdeaDialog idea={idea} />
+            <Button size="sm" onClick={() => handleConvertToExperiment(idea.id)}>
+              Convert to Experiment
+            </Button>
           </div>
         </div>
       </CardContent>
     </Card>
   );
 
-  if (error) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex">
-        <Sidebar />
-        <div className="flex-1 flex flex-col">
-          <Header />
-          <main className="flex-1 p-6 overflow-auto">
-            <div className="max-w-7xl mx-auto">
-              <div className="text-center py-12">
-                <p className="text-red-600">Error loading experiment ideas: {error.message}</p>
-              </div>
-            </div>
-          </main>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-gray-50 flex">
-      <Sidebar />
-      <div className="flex-1 flex flex-col">
-        <Header />
-        <main className="flex-1 p-6 overflow-auto">
-          <div className="max-w-7xl mx-auto space-y-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900">Experiment Ideas</h1>
-                <p className="text-gray-600 mt-1">Document and develop your experimental concepts</p>
-              </div>
-              <div className="flex gap-2">
-                <IdeaReportDialog variant="all" />
-                <CreateIdeaDialog />
-              </div>
-            </div>
-
-            <div className="flex items-center gap-4">
-              <div className="flex-1 relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                <Input
-                  placeholder="Search ideas..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-              <Select value={filterStatus} onValueChange={setFilterStatus}>
-                <SelectTrigger className="w-[150px]">
-                  <SelectValue placeholder="Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="brainstorming">Brainstorming</SelectItem>
-                  <SelectItem value="researching">Researching</SelectItem>
-                  <SelectItem value="planning">Planning</SelectItem>
-                  <SelectItem value="ready">Ready</SelectItem>
-                  <SelectItem value="archived">Archived</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select value={filterPriority} onValueChange={setFilterPriority}>
-                <SelectTrigger className="w-[150px]">
-                  <SelectValue placeholder="Priority" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Priority</SelectItem>
-                  <SelectItem value="high">High</SelectItem>
-                  <SelectItem value="medium">Medium</SelectItem>
-                  <SelectItem value="low">Low</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select value={filterCategory} onValueChange={setFilterCategory}>
-                <SelectTrigger className="w-[150px]">
-                  <SelectValue placeholder="Category" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Categories</SelectItem>
-                  <SelectItem value="biochemistry">Biochemistry</SelectItem>
-                  <SelectItem value="molecular-biology">Molecular Biology</SelectItem>
-                  <SelectItem value="cell-biology">Cell Biology</SelectItem>
-                  <SelectItem value="genetics">Genetics</SelectItem>
-                  <SelectItem value="microbiology">Microbiology</SelectItem>
-                  <SelectItem value="immunology">Immunology</SelectItem>
-                  <SelectItem value="neuroscience">Neuroscience</SelectItem>
-                  <SelectItem value="pharmacology">Pharmacology</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {totalPages > 1 && (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <div className="flex items-center gap-2 text-blue-800">
-                  <GripVertical className="h-4 w-4" />
-                  <span className="text-sm">
-                    <strong>Drag and Drop:</strong> Use the grip handle to reorder ideas within this page, or use the arrow buttons to move ideas between pages.
-                  </span>
-                </div>
-              </div>
-            )}
-
-            {isLoading ? (
-              <div className="flex justify-center py-12">
-                <Loader2 className="h-8 w-8 animate-spin" />
-              </div>
-            ) : (
-              <>
-                {currentIdeas.length > 0 ? (
-                  <DraggableGrid
-                    items={currentIdeas}
-                    onReorder={handleReorder}
-                    renderItem={renderIdeaCard}
-                    droppableId="experiment-ideas"
-                  />
-                ) : (
-                  <div className="text-center py-12">
-                    <Lightbulb className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                    <p className="text-gray-600">
-                      {searchTerm ? "No experiment ideas found matching your search." : "No experiment ideas found. Create your first idea to get started."}
-                    </p>
-                  </div>
-                )}
-
-                {/* Pagination */}
-                {totalPages > 1 && (
-                  <div className="flex items-center justify-center gap-2 mt-6">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                      disabled={currentPage === 1}
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                      Previous
-                    </Button>
-                    
-                    <div className="flex items-center gap-1">
-                      {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                        <Button
-                          key={page}
-                          variant={currentPage === page ? "default" : "outline"}
-                          size="sm"
-                          onClick={() => setCurrentPage(page)}
-                          className="w-8 h-8 p-0"
-                        >
-                          {page}
-                        </Button>
-                      ))}
-                    </div>
-
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                      disabled={currentPage === totalPages}
-                    >
-                      Next
-                      <ChevronRight className="h-4 w-4" />
-                    </Button>
-                  </div>
-                )}
-
-                {/* Items count */}
-                <div className="text-center text-sm text-gray-500 mt-4">
-                  Showing {Math.min(startIndex + 1, filteredIdeas.length)} to {Math.min(endIndex, filteredIdeas.length)} of {filteredIdeas.length} ideas
-                </div>
-              </>
-            )}
+    <div className="p-6">
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-3xl font-bold">Experiment Ideas</h1>
+            <p className="text-gray-600 mt-1">Brainstorm and plan your next experiments</p>
           </div>
-        </main>
+          <Button onClick={() => setCreateDialogOpen(true)} className="gap-2">
+            <Plus className="h-4 w-4" />
+            New Idea
+          </Button>
+        </div>
+
+        {/* Filters */}
+        <div className="flex flex-col sm:flex-row gap-4 mb-6">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+            <Input
+              placeholder="Search ideas..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+          
+          <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+            <SelectTrigger className="w-full sm:w-[200px]">
+              <SelectValue placeholder="Filter by status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Statuses</SelectItem>
+              <SelectItem value="brainstorming">Brainstorming</SelectItem>
+              <SelectItem value="researching">Researching</SelectItem>
+              <SelectItem value="planning">Planning</SelectItem>
+              <SelectItem value="ready">Ready</SelectItem>
+              <SelectItem value="archived">Archived</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select value={selectedPriority} onValueChange={setSelectedPriority}>
+            <SelectTrigger className="w-full sm:w-[200px]">
+              <SelectValue placeholder="Filter by priority" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Priorities</SelectItem>
+              <SelectItem value="high">High</SelectItem>
+              <SelectItem value="medium">Medium</SelectItem>
+              <SelectItem value="low">Low</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Statistics */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2">
+                <Lightbulb className="h-5 w-5 text-blue-600" />
+                <div>
+                  <p className="text-sm text-gray-600">Total Ideas</p>
+                  <p className="text-2xl font-bold">{ideas.length}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2">
+                <Clock className="h-5 w-5 text-yellow-600" />
+                <div>
+                  <p className="text-sm text-gray-600">Researching</p>
+                  <p className="text-2xl font-bold">
+                    {ideas.filter(e => e.status === 'researching').length}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2">
+                <Calendar className="h-5 w-5 text-green-600" />
+                <div>
+                  <p className="text-sm text-gray-600">Ready</p>
+                  <p className="text-2xl font-bold">
+                    {ideas.filter(e => e.status === 'ready').length}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2">
+                <User className="h-5 w-5 text-purple-600" />
+                <div>
+                  <p className="text-sm text-gray-600">Brainstorming</p>
+                  <p className="text-2xl font-bold">
+                    {ideas.filter(e => e.status === 'brainstorming').length}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Ideas Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredIdeas.length > 0 ? (
+            <DraggableGrid
+              items={filteredIdeas}
+              renderItem={renderIdeaCard}
+              droppableId="experiment-ideas"
+            />
+          ) : (
+            <div className="text-center py-12">
+              <Lightbulb className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No ideas found</h3>
+              <p className="text-gray-600 mb-4">
+                {searchTerm || selectedStatus !== "all" || selectedPriority !== "all"
+                  ? "Try adjusting your filters"
+                  : "Start brainstorming your next big idea"}
+              </p>
+              {!(searchTerm || selectedStatus !== "all" || selectedPriority !== "all") && (
+                <Button onClick={() => setCreateDialogOpen(true)}>
+                  Create Idea
+                </Button>
+              )}
+            </div>
+          )}
+        </div>
+
+        <CreateIdeaDialog 
+          open={createDialogOpen} 
+          onOpenChange={setCreateDialogOpen} 
+        />
       </div>
     </div>
   );
