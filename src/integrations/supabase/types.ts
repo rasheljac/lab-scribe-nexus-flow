@@ -644,6 +644,7 @@ export type Database = {
           cost: string | null
           created_at: string
           current_stock: number
+          display_order: number | null
           expiry_date: string | null
           id: string
           last_ordered: string | null
@@ -663,6 +664,7 @@ export type Database = {
           cost?: string | null
           created_at?: string
           current_stock?: number
+          display_order?: number | null
           expiry_date?: string | null
           id?: string
           last_ordered?: string | null
@@ -682,6 +684,7 @@ export type Database = {
           cost?: string | null
           created_at?: string
           current_stock?: number
+          display_order?: number | null
           expiry_date?: string | null
           id?: string
           last_ordered?: string | null
