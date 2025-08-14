@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -32,8 +33,6 @@ import {
   Loader2,
   X
 } from "lucide-react";
-import Sidebar from "@/components/Sidebar";
-import Header from "@/components/Header";
 import EditNoteDialog from "@/components/EditNoteDialog";
 import RichTextEditor from "@/components/RichTextEditor";
 import RichTextDisplay from "@/components/RichTextDisplay";
@@ -205,7 +204,7 @@ const ExperimentNotes = () => {
         <CardContent>
           <RichTextDisplay 
             content={note.content} 
-            className="text-sm"
+            className="text-sm max-w-none"
           />
         </CardContent>
       )}
@@ -214,191 +213,173 @@ const ExperimentNotes = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex">
-        <Sidebar />
-        <div className="flex-1 flex flex-col">
-          <Header />
-          <main className="flex-1 p-6 overflow-auto">
-            <div className="max-w-7xl mx-auto">
-              <div className="flex justify-center py-12">
-                <Loader2 className="h-8 w-8 animate-spin" />
-              </div>
-            </div>
-          </main>
-        </div>
+      <div className="flex justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
-      <Sidebar />
-      <div className="flex-1 flex flex-col">
-        <Header />
-        <main className="flex-1 p-6 overflow-auto">
-          <div className="max-w-7xl mx-auto space-y-6">
-            {/* Header */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => navigate("/experiments")}
-                  className="gap-2"
-                >
-                  <ArrowLeft className="h-4 w-4" />
-                  Back to Experiments
-                </Button>
-                <div>
-                  <h1 className="text-3xl font-bold text-gray-900">
-                    {experiment?.title || "Experiment"} - Notes
-                  </h1>
-                  <p className="text-gray-600 mt-1">
-                    {totalNotes} notes for this experiment
-                  </p>
-                </div>
-              </div>
-              <div className="flex gap-2">
-                <ProtocolAttachmentDialog 
-                  experimentId={experimentId} 
-                  attachedProtocols={experimentProtocols.map(ep => ep.protocol_id)}
-                />
-                <Button onClick={() => setIsCreateOpen(true)} className="gap-2">
-                  <Plus className="h-4 w-4" />
-                  Add Note
-                </Button>
-              </div>
-            </div>
-
-            {/* Attached Protocols Section */}
-            {experimentProtocols.length > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <FileText className="h-5 w-5 text-blue-600" />
-                    Attached Protocols ({experimentProtocols.length})
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {experimentProtocols.map((ep) => (
-                      <div key={ep.id} className="border rounded-lg p-4 bg-gray-50">
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <h4 className="font-medium">{ep.protocol?.title}</h4>
-                            {ep.protocol?.description && (
-                              <div className="text-sm text-gray-600 mt-1">
-                                <RichTextDisplay 
-                                  content={ep.protocol.description} 
-                                  maxLength={100}
-                                />
-                              </div>
-                            )}
-                            {ep.notes && (
-                              <p className="text-sm text-gray-700 mt-2 italic">Note: {ep.notes}</p>
-                            )}
-                            <p className="text-xs text-gray-500 mt-2">
-                              Attached {new Date(ep.attached_at).toLocaleDateString()}
-                            </p>
-                          </div>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="text-red-600 hover:text-red-700"
-                            onClick={() => handleDetachProtocol(ep.id, ep.protocol?.title || "Protocol")}
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Search */}
-            <div className="flex items-center gap-4">
-              <div className="flex-1 relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                <Input
-                  placeholder="Search notes..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-            </div>
-
-            {/* Notes Grid */}
-            {displayNotes.length > 0 ? (
-              <>
-                <div className="space-y-4">
-                  {displayNotes.map(renderNoteCard)}
-                </div>
-                
-                {/* Pagination */}
-                {shouldShowPagination && (
-                  <div className="flex justify-center mt-8">
-                    <Pagination>
-                      <PaginationContent>
-                        <PaginationItem>
-                          <PaginationPrevious 
-                            href="#"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              if (currentPage > 1) setCurrentPage(currentPage - 1);
-                            }}
-                            className={currentPage <= 1 ? "pointer-events-none opacity-50" : ""}
-                          />
-                        </PaginationItem>
-                        {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                          <PaginationItem key={page}>
-                            <PaginationLink
-                              href="#"
-                              onClick={(e) => {
-                                e.preventDefault();
-                                setCurrentPage(page);
-                              }}
-                              isActive={currentPage === page}
-                            >
-                              {page}
-                            </PaginationLink>
-                          </PaginationItem>
-                        ))}
-                        <PaginationItem>
-                          <PaginationNext 
-                            href="#"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              if (currentPage < totalPages) setCurrentPage(currentPage + 1);
-                            }}
-                            className={currentPage >= totalPages ? "pointer-events-none opacity-50" : ""}
-                          />
-                        </PaginationItem>
-                      </PaginationContent>
-                    </Pagination>
-                  </div>
-                )}
-              </>
-            ) : (
-              <div className="text-center py-12">
-                <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-600">
-                  {searchTerm ? "No notes found matching your criteria." : "No notes found for this experiment."}
-                </p>
-                <Button 
-                  className="mt-4 gap-2" 
-                  onClick={() => setIsCreateOpen(true)}
-                >
-                  <Plus className="h-4 w-4" />
-                  Create First Note
-                </Button>
-              </div>
-            )}
+    <div className="max-w-7xl mx-auto space-y-6 p-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => navigate("/experiments")}
+            className="gap-2"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to Experiments
+          </Button>
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">
+              {experiment?.title || "Experiment"} - Notes
+            </h1>
+            <p className="text-gray-600 mt-1">
+              {totalNotes} notes for this experiment
+            </p>
           </div>
-        </main>
+        </div>
+        <div className="flex gap-2">
+          <ProtocolAttachmentDialog 
+            experimentId={experimentId} 
+            attachedProtocols={experimentProtocols.map(ep => ep.protocol_id)}
+          />
+          <Button onClick={() => setIsCreateOpen(true)} className="gap-2">
+            <Plus className="h-4 w-4" />
+            Add Note
+          </Button>
+        </div>
       </div>
+
+      {/* Attached Protocols Section */}
+      {experimentProtocols.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5 text-blue-600" />
+              Attached Protocols ({experimentProtocols.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {experimentProtocols.map((ep) => (
+                <div key={ep.id} className="border rounded-lg p-4 bg-gray-50">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <h4 className="font-medium">{ep.protocol?.title}</h4>
+                      {ep.protocol?.description && (
+                        <div className="text-sm text-gray-600 mt-1">
+                          <RichTextDisplay 
+                            content={ep.protocol.description} 
+                            maxLength={100}
+                          />
+                        </div>
+                      )}
+                      {ep.notes && (
+                        <p className="text-sm text-gray-700 mt-2 italic">Note: {ep.notes}</p>
+                      )}
+                      <p className="text-xs text-gray-500 mt-2">
+                        Attached {new Date(ep.attached_at).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="text-red-600 hover:text-red-700"
+                      onClick={() => handleDetachProtocol(ep.id, ep.protocol?.title || "Protocol")}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Search */}
+      <div className="flex items-center gap-4">
+        <div className="flex-1 relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+          <Input
+            placeholder="Search notes..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+      </div>
+
+      {/* Notes Grid */}
+      {displayNotes.length > 0 ? (
+        <>
+          <div className="space-y-4">
+            {displayNotes.map(renderNoteCard)}
+          </div>
+          
+          {/* Pagination */}
+          {shouldShowPagination && (
+            <div className="flex justify-center mt-8">
+              <Pagination>
+                <PaginationContent>
+                  <PaginationItem>
+                    <PaginationPrevious 
+                      href="#"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        if (currentPage > 1) setCurrentPage(currentPage - 1);
+                      }}
+                      className={currentPage <= 1 ? "pointer-events-none opacity-50" : ""}
+                    />
+                  </PaginationItem>
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                    <PaginationItem key={page}>
+                      <PaginationLink
+                        href="#"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          setCurrentPage(page);
+                        }}
+                        isActive={currentPage === page}
+                      >
+                        {page}
+                      </PaginationLink>
+                    </PaginationItem>
+                  ))}
+                  <PaginationItem>
+                    <PaginationNext 
+                      href="#"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        if (currentPage < totalPages) setCurrentPage(currentPage + 1);
+                      }}
+                      className={currentPage >= totalPages ? "pointer-events-none opacity-50" : ""}
+                    />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
+            </div>
+          )}
+        </>
+      ) : (
+        <div className="text-center py-12">
+          <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+          <p className="text-gray-600">
+            {searchTerm ? "No notes found matching your criteria." : "No notes found for this experiment."}
+          </p>
+          <Button 
+            className="mt-4 gap-2" 
+            onClick={() => setIsCreateOpen(true)}
+          >
+            <Plus className="h-4 w-4" />
+            Create First Note
+          </Button>
+        </div>
+      )}
 
       {/* Create Note Dialog */}
       {isCreateOpen && (

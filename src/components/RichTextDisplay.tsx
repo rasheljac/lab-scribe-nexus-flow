@@ -53,7 +53,7 @@ const RichTextDisplay = ({ content, className = "", maxLength }: RichTextDisplay
       );
     }
 
-    // If it's short enough, show the plain text version
+    // If it's short enough, show the plain text version for maxLength use case
     return (
       <div className={className}>
         {plainText}
