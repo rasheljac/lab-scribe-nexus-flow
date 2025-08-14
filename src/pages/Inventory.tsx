@@ -278,11 +278,6 @@ const Inventory = () => {
                 ? "Try adjusting your filters"
                 : "Add your first inventory item to get started"}
             </p>
-            {!(searchTerm || selectedCategory !== "all" || selectedStatus !== "all") && (
-              <Button onClick={() => setAddDialogOpen(true)}>
-                Add Item
-              </Button>
-            )}
           </div>
         )}
 
