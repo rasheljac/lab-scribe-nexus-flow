@@ -155,18 +155,16 @@ const Protocols = () => {
         <div className="space-y-2 text-sm">
           <div className="flex items-center gap-2">
             <User className="h-4 w-4 text-gray-400" />
-            <span>{protocol.author}</span>
+            <span>Version {protocol.version}</span>
           </div>
           <div className="flex items-center gap-2">
             <Calendar className="h-4 w-4 text-gray-400" />
             <span>Created {new Date(protocol.created_at).toLocaleDateString()}</span>
           </div>
-          {protocol.estimated_duration && (
-            <div className="flex items-center gap-2">
-              <Clock className="h-4 w-4 text-gray-400" />
-              <span>{protocol.estimated_duration}</span>
-            </div>
-          )}
+          <div className="flex items-center gap-2">
+            <Clock className="h-4 w-4 text-gray-400" />
+            <span>Updated {new Date(protocol.updated_at).toLocaleDateString()}</span>
+          </div>
         </div>
       </CardContent>
     </Card>
