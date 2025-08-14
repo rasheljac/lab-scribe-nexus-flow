@@ -71,11 +71,19 @@ const ExperimentNotes = () => {
   
   const experiment = experiments.find(exp => exp.id === experimentId);
 
+  // Helper function to strip HTML tags for search
+  const stripHtmlTags = (html: string): string => {
+    if (!html) return '';
+    const temp = document.createElement('div');
+    temp.innerHTML = html;
+    return temp.textContent || temp.innerText || '';
+  };
+
   // Filter notes based on search
   const filteredAllNotes = allNotes.filter(note => {
-    const matchesSearch = note.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (note.content && note.content.toLowerCase().includes(searchTerm.toLowerCase()));
-    return matchesSearch;
+    const titleMatch = note.title.toLowerCase().includes(searchTerm.toLowerCase());
+    const contentMatch = note.content && stripHtmlTags(note.content).toLowerCase().includes(searchTerm.toLowerCase());
+    return titleMatch || contentMatch;
   });
 
   // Use filtered notes for pagination when searching, otherwise use regular pagination
@@ -195,7 +203,10 @@ const ExperimentNotes = () => {
       </CardHeader>
       {note.content && (
         <CardContent>
-          <RichTextDisplay content={note.content} />
+          <RichTextDisplay 
+            content={note.content} 
+            className="text-sm"
+          />
         </CardContent>
       )}
     </Card>
@@ -276,7 +287,12 @@ const ExperimentNotes = () => {
                           <div className="flex-1">
                             <h4 className="font-medium">{ep.protocol?.title}</h4>
                             {ep.protocol?.description && (
-                              <p className="text-sm text-gray-600 mt-1">{ep.protocol.description}</p>
+                              <div className="text-sm text-gray-600 mt-1">
+                                <RichTextDisplay 
+                                  content={ep.protocol.description} 
+                                  maxLength={100}
+                                />
+                              </div>
                             )}
                             {ep.notes && (
                               <p className="text-sm text-gray-700 mt-2 italic">Note: {ep.notes}</p>

@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,59 +18,56 @@ import {
 } from "@/components/ui/alert-dialog";
 import { 
   Search, 
+  FileText, 
+  Calendar, 
+  User, 
+  Clock,
   Plus,
   Trash2,
-  Calendar,
-  Loader2,
-  BookOpen,
-  Tag,
-  ChevronLeft,
-  ChevronRight,
-  ArrowUpDown
+  Eye,
+  Loader2
 } from "lucide-react";
 import Sidebar from "@/components/Sidebar";
 import Header from "@/components/Header";
 import CreateProtocolDialog from "@/components/CreateProtocolDialog";
 import EditProtocolDialog from "@/components/EditProtocolDialog";
 import DraggableGrid from "@/components/DraggableGrid";
-import { useProtocols } from "@/hooks/useProtocols";
+import { useProtocols, Protocol } from "@/hooks/useProtocols";
 import { useToast } from "@/hooks/use-toast";
-
-const ITEMS_PER_PAGE = 8;
 
 const Protocols = () => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [createProtocolOpen, setCreateProtocolOpen] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
-  
   const { toast } = useToast();
+  
   const { protocols, isLoading, error, deleteProtocol, updateProtocolOrder } = useProtocols();
 
-  const categories = ["all", ...Array.from(new Set(protocols.map(p => p.category)))];
+  const stripHtmlTags = (html: string) => {
+    const tmp = document.createElement("div");
+    tmp.innerHTML = html;
+    return tmp.textContent || tmp.innerText || "";
+  };
 
   const filteredProtocols = protocols.filter(protocol => {
     const matchesSearch = protocol.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (protocol.description && protocol.description.toLowerCase().includes(searchTerm.toLowerCase()));
-    const matchesCategory = selectedCategory === "all" || protocol.category === selectedCategory;
-    return matchesSearch && matchesCategory;
+                         (protocol.description && stripHtmlTags(protocol.description).toLowerCase().includes(searchTerm.toLowerCase()));
+    return matchesSearch;
   });
 
-  // Pagination logic
-  const totalPages = Math.ceil(filteredProtocols.length / ITEMS_PER_PAGE);
-  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-  const endIndex = startIndex + ITEMS_PER_PAGE;
-  const currentProtocols = filteredProtocols.slice(startIndex, endIndex);
+  const handleProtocolClick = (protocolId: string) => {
+    navigate(`/protocols/${protocolId}`);
+  };
 
-  const handleDeleteProtocol = async (protocolId: string, protocolTitle: string) => {
+  const handleDeleteProtocol = async (protocolId: string) => {
     try {
       await deleteProtocol.mutateAsync(protocolId);
       toast({
         title: "Success",
-        description: `Protocol "${protocolTitle}" deleted successfully`,
+        description: "Protocol deleted successfully!",
       });
     } catch (error) {
+      console.error("Error deleting protocol:", error);
       toast({
         title: "Error",
         description: "Failed to delete protocol",
@@ -78,49 +76,14 @@ const Protocols = () => {
     }
   };
 
-  const handleProtocolClick = (protocolId: string) => {
-    navigate(`/protocols/${protocolId}`);
-  };
-
-  // Enhanced reorder function with better cross-page support
-  const handleReorder = async (reorderedItems: any[]) => {
+  const handleReorder = async (reorderedProtocols: Protocol[]) => {
     try {
-      // Calculate global positions for all reordered items
-      const updates = reorderedItems.map((protocol, localIndex) => {
-        const globalPosition = startIndex + localIndex + 1;
-        return {
-          id: protocol.id,
-          display_order: globalPosition
-        };
-      });
+      const updates = reorderedProtocols.map((protocol, index) => ({
+        id: protocol.id,
+        display_order: index + 1
+      }));
 
-      // Find items that were displaced and need their positions updated
-      const reorderedIds = new Set(reorderedItems.map(item => item.id));
-      const displacedUpdates: { id: string; display_order: number }[] = [];
-      
-      // Update positions for items that weren't in the reordered list
-      filteredProtocols.forEach((protocol, globalIndex) => {
-        if (!reorderedIds.has(protocol.id)) {
-          const newPosition = globalIndex + 1;
-          if (newPosition !== protocol.display_order) {
-            displacedUpdates.push({
-              id: protocol.id,
-              display_order: newPosition
-            });
-          }
-        }
-      });
-
-      // Combine all updates
-      const allUpdates = [...updates, ...displacedUpdates];
-      
-      if (allUpdates.length > 0) {
-        await updateProtocolOrder.mutateAsync(allUpdates);
-        toast({
-          title: "Success",
-          description: `Updated order for ${allUpdates.length} protocol(s)`,
-        });
-      }
+      await updateProtocolOrder.mutateAsync(updates);
     } catch (error) {
       console.error("Error updating protocol order:", error);
       toast({
@@ -131,96 +94,29 @@ const Protocols = () => {
     }
   };
 
-  // New function to move item to previous page
-  const handleMoveToPreviousPage = async (protocol: any) => {
-    if (currentPage === 1) return; // Can't move from first page
-    
-    try {
-      const targetPageStartIndex = (currentPage - 2) * ITEMS_PER_PAGE;
-      const targetPosition = targetPageStartIndex + ITEMS_PER_PAGE; // Place at end of previous page
-      
-      await updateProtocolOrder.mutateAsync([{
-        id: protocol.id,
-        display_order: targetPosition
-      }]);
-      
-      toast({
-        title: "Success",
-        description: `Moved "${protocol.title}" to page ${currentPage - 1}`,
-      });
-    } catch (error) {
-      console.error("Error moving protocol:", error);
-      toast({
-        title: "Error",
-        description: "Failed to move protocol",
-        variant: "destructive",
-      });
-    }
-  };
-
-  // New function to move item to next page
-  const handleMoveToNextPage = async (protocol: any) => {
-    if (currentPage === totalPages) return; // Can't move from last page
-    
-    try {
-      const targetPageStartIndex = currentPage * ITEMS_PER_PAGE;
-      const targetPosition = targetPageStartIndex + 1; // Place at beginning of next page
-      
-      await updateProtocolOrder.mutateAsync([{
-        id: protocol.id,
-        display_order: targetPosition
-      }]);
-      
-      toast({
-        title: "Success",
-        description: `Moved "${protocol.title}" to page ${currentPage + 1}`,
-      });
-    } catch (error) {
-      console.error("Error moving protocol:", error);
-      toast({
-        title: "Error",
-        description: "Failed to move protocol",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const renderProtocolCard = (protocol: any, index: number) => (
-    <Card key={protocol.id} className="hover:shadow-md transition-shadow relative">
-      <div className="absolute top-2 right-2 flex gap-1 opacity-30 hover:opacity-100 transition-opacity">
-        <button
-          onClick={() => handleMoveToPreviousPage(protocol)}
-          disabled={currentPage === 1}
-          className={`p-1 rounded hover:bg-gray-100 ${currentPage === 1 ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'}`}
-          title={`Move to page ${currentPage - 1}`}
-        >
-          <ChevronLeft className="h-3 w-3 text-gray-600" />
-        </button>
-        <ArrowUpDown className="h-4 w-4 text-gray-400" />
-        <button
-          onClick={() => handleMoveToNextPage(protocol)}
-          disabled={currentPage === totalPages}
-          className={`p-1 rounded hover:bg-gray-100 ${currentPage === totalPages ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'}`}
-          title={`Move to page ${currentPage + 1}`}
-        >
-          <ChevronRight className="h-3 w-3 text-gray-600" />
-        </button>
-      </div>
+  const renderProtocolCard = (protocol: Protocol) => (
+    <Card key={protocol.id} className="hover:shadow-md transition-shadow">
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-2 flex-1">
-            <BookOpen className="h-5 w-5 text-blue-600" />
+            <FileText className="h-5 w-5 text-blue-600" />
             <CardTitle 
-              className="text-lg cursor-pointer hover:text-blue-600 transition-colors"
+              className="text-lg cursor-pointer hover:text-blue-600"
               onClick={() => handleProtocolClick(protocol.id)}
             >
               {protocol.title}
             </CardTitle>
           </div>
           <div className="flex gap-1 items-center">
-            <Badge variant="outline" className="capitalize">
-              {protocol.category}
-            </Badge>
+            <Badge variant="outline">{protocol.category}</Badge>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => handleProtocolClick(protocol.id)}
+              className="p-1 h-6 w-6"
+            >
+              <Eye className="h-3 w-3" />
+            </Button>
             <EditProtocolDialog protocol={protocol} />
             <AlertDialog>
               <AlertDialogTrigger asChild>
@@ -232,13 +128,13 @@ const Protocols = () => {
                 <AlertDialogHeader>
                   <AlertDialogTitle>Delete Protocol</AlertDialogTitle>
                   <AlertDialogDescription>
-                    Are you sure you want to delete "{protocol.title}"? This action cannot be undone and will remove this protocol from all experiments and notes.
+                    Are you sure you want to delete "{protocol.title}"? This action cannot be undone.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                   <AlertDialogCancel>Cancel</AlertDialogCancel>
                   <AlertDialogAction
-                    onClick={() => handleDeleteProtocol(protocol.id, protocol.title)}
+                    onClick={() => handleDeleteProtocol(protocol.id)}
                     className="bg-red-600 hover:bg-red-700"
                   >
                     Delete
@@ -248,26 +144,29 @@ const Protocols = () => {
             </AlertDialog>
           </div>
         </div>
-        {protocol.description && (
-          <p className="text-sm text-gray-600 mt-2">
-            {protocol.description}
-          </p>
-        )}
+        <p 
+          className="text-sm text-gray-600 mt-2 cursor-pointer"
+          onClick={() => handleProtocolClick(protocol.id)}
+        >
+          {protocol.description ? stripHtmlTags(protocol.description) : "No description"}
+        </p>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Protocol Details */}
         <div className="space-y-2 text-sm">
+          <div className="flex items-center gap-2">
+            <User className="h-4 w-4 text-gray-400" />
+            <span>{protocol.author}</span>
+          </div>
           <div className="flex items-center gap-2">
             <Calendar className="h-4 w-4 text-gray-400" />
             <span>Created {new Date(protocol.created_at).toLocaleDateString()}</span>
           </div>
-          <div className="flex items-center gap-2">
-            <Tag className="h-4 w-4 text-gray-400" />
-            <span>Version {protocol.version}</span>
-            {protocol.is_template && (
-              <Badge variant="secondary" className="text-xs">Template</Badge>
-            )}
-          </div>
+          {protocol.estimated_duration && (
+            <div className="flex items-center gap-2">
+              <Clock className="h-4 w-4 text-gray-400" />
+              <span>{protocol.estimated_duration}</span>
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>
@@ -303,16 +202,16 @@ const Protocols = () => {
               <div>
                 <h1 className="text-3xl font-bold text-gray-900">Protocols</h1>
                 <p className="text-gray-600 mt-1">
-                  {protocols.length} protocols available for reuse
+                  Manage your research protocols and procedures
                 </p>
               </div>
               <Button onClick={() => setCreateProtocolOpen(true)} className="gap-2">
                 <Plus className="h-4 w-4" />
-                Create Protocol
+                New Protocol
               </Button>
             </div>
 
-            {/* Search and Filters */}
+            {/* Search */}
             <div className="flex items-center gap-4">
               <div className="flex-1 relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
@@ -323,34 +222,7 @@ const Protocols = () => {
                   className="pl-10"
                 />
               </div>
-              <div className="flex gap-2">
-                {categories.map((category) => (
-                  <Button
-                    key={category}
-                    variant={selectedCategory === category ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setSelectedCategory(category)}
-                    className="capitalize"
-                  >
-                    {category}
-                  </Button>
-                ))}
-              </div>
             </div>
-
-            {/* Enhanced Results Count with drag instructions */}
-            {!isLoading && (
-              <div className="flex items-center justify-between text-sm text-gray-600 bg-blue-50 p-3 rounded-lg">
-                <div>
-                  Showing {Math.min(startIndex + 1, filteredProtocols.length)} to {Math.min(endIndex, filteredProtocols.length)} of {filteredProtocols.length} protocols
-                  {currentPage > 1 && ` (Page ${currentPage} of ${totalPages})`}
-                </div>
-                <div className="flex items-center gap-2 text-xs text-blue-600">
-                  <ArrowUpDown className="h-4 w-4" />
-                  <span>💡 Drag protocols to reorder them. Changes apply globally across all pages!</span>
-                </div>
-              </div>
-            )}
 
             {/* Protocols Grid */}
             {isLoading ? (
@@ -359,64 +231,25 @@ const Protocols = () => {
               </div>
             ) : (
               <>
-                {currentProtocols.length > 0 ? (
+                {filteredProtocols.length > 0 ? (
                   <DraggableGrid
-                    items={currentProtocols}
+                    items={filteredProtocols}
                     onReorder={handleReorder}
                     renderItem={renderProtocolCard}
-                    droppableId={`protocols-page-${currentPage}`}
+                    droppableId="protocols"
                   />
                 ) : (
                   <div className="text-center py-12">
-                    <BookOpen className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                    <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                     <p className="text-gray-600">
-                      {searchTerm || selectedCategory !== "all" ? "No protocols found matching your criteria." : "No protocols found."}
+                      {searchTerm ? "No protocols found matching your criteria." : "No protocols found."}
                     </p>
                     <Button 
                       className="mt-4 gap-2" 
                       onClick={() => setCreateProtocolOpen(true)}
                     >
                       <Plus className="h-4 w-4" />
-                      Create First Protocol
-                    </Button>
-                  </div>
-                )}
-
-                {/* Pagination */}
-                {totalPages > 1 && (
-                  <div className="flex items-center justify-center gap-2 mt-6">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                      disabled={currentPage === 1}
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                      Previous
-                    </Button>
-                    
-                    <div className="flex items-center gap-1">
-                      {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                        <Button
-                          key={page}
-                          variant={currentPage === page ? "default" : "outline"}
-                          size="sm"
-                          onClick={() => setCurrentPage(page)}
-                          className="w-8 h-8 p-0"
-                        >
-                          {page}
-                        </Button>
-                      ))}
-                    </div>
-
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                      disabled={currentPage === totalPages}
-                    >
-                      Next
-                      <ChevronRight className="h-4 w-4" />
+                      Create Your First Protocol
                     </Button>
                   </div>
                 )}
