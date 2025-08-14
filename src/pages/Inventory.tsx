@@ -11,7 +11,7 @@ import EditInventoryItemDialog from "@/components/EditInventoryItemDialog";
 import InventoryItemDetailsDialog from "@/components/InventoryItemDetailsDialog";
 
 const Inventory = () => {
-  const { items, loading } = useInventoryItems();
+  const { items, loading, addItem, updateItem } = useInventoryItems();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
@@ -61,7 +61,8 @@ const Inventory = () => {
     setDetailsDialogOpen(true);
   };
 
-  const handleUpdateItem = async () => {
+  const handleUpdateItem = async (id: string, updates: any) => {
+    await updateItem(id, updates);
     window.location.reload();
   };
 
@@ -282,8 +283,7 @@ const Inventory = () => {
         )}
 
         <AddInventoryItemDialog 
-          isOpen={addDialogOpen} 
-          onClose={() => setAddDialogOpen(false)} 
+          onAddItem={addItem}
         />
         
         {selectedItem && (

@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -202,6 +203,9 @@ const Tasks = () => {
           <TabsContent value="kanban">
             <DraggableTaskList 
               tasks={filteredTasks}
+              searchTerm={searchTerm}
+              filterStatus={selectedStatus}
+              filterPriority={selectedPriority}
             />
           </TabsContent>
         </Tabs>
