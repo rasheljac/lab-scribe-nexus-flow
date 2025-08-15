@@ -28,10 +28,12 @@ import EditIdeaDialog from "@/components/EditIdeaDialog";
 import PaginatedDraggableGrid from "@/components/PaginatedDraggableGrid";
 import RichTextDisplay from "@/components/RichTextDisplay";
 import { format } from "date-fns";
+import { useNavigate } from "react-router-dom";
 
 const ExperimentIdeas = () => {
   const { ideas, isLoading, updateIdeaOrder, deleteIdea } = useExperimentIdeas();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedPriority, setSelectedPriority] = useState<string>("all");
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
@@ -107,15 +109,20 @@ const ExperimentIdeas = () => {
     }
   };
 
+  const handleIdeaClick = (ideaId: string) => {
+    navigate(`/idea-notes/${ideaId}`);
+  };
+
   const renderIdeaCard = (idea: any) => (
     <Card 
       key={idea.id} 
       className="cursor-pointer hover:shadow-lg transition-shadow relative"
+      onClick={() => handleIdeaClick(idea.id)}
     >
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <CardTitle className="text-lg line-clamp-2 pr-2">{idea.title}</CardTitle>
-          <div className="flex items-center gap-2" data-no-navigate>
+          <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
             <Badge className={getPriorityColor(idea.priority)}>
               {idea.priority}
             </Badge>
