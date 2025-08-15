@@ -1,4 +1,3 @@
-
 import jsPDF from 'jspdf';
 
 export interface ProtocolPDFData {
@@ -70,10 +69,10 @@ const normalizeSpecialCharacters = (text: string): string => {
     '•': '* ',
     '–': '-',
     '—': '--',
-    ''': "'",
-    ''': "'",
+    '‘': "'",
+    '’': "'",
     '"': '"',
-    '"': '"',
+    '“': '"',
     '…': '...',
     '‰': 'per mille',
     '‱': 'per ten thousand'
