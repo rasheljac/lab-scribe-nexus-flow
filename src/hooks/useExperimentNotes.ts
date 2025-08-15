@@ -56,14 +56,14 @@ export const useExperimentNotes = (experimentId: string, page: number = 1, pageS
         .order('display_order', { ascending: false })
         .limit(1);
 
-      const maxOrder = maxOrderData?.[0]?.display_order || 0;
+      const maxOrder = maxOrderData && maxOrderData.length > 0 ? maxOrderData[0].display_order : 0;
 
       const { data, error } = await supabase
         .from('experiment_notes')
         .insert([{ 
           ...note, 
           user_id: user.id,
-          display_order: maxOrder + 1
+          display_order: (maxOrder || 0) + 1
         }])
         .select()
         .single();
