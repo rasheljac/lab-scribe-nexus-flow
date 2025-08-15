@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -83,20 +84,22 @@ const EditExperimentDialog = ({ experiment, children }: EditExperimentDialogProp
     }));
   };
 
+  const triggerElement = children ? (
+    <div onClick={() => setIsOpen(true)} className="w-full">
+      {children}
+    </div>
+  ) : (
+    <Button size="sm" variant="outline" className="gap-1">
+      <Edit className="h-3 w-3" />
+      Edit
+    </Button>
+  );
+
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      {children ? (
-        <DialogTrigger asChild onClick={() => setIsOpen(true)}>
-          {children}
-        </DialogTrigger>
-      ) : (
-        <DialogTrigger asChild>
-          <Button size="sm" variant="outline" className="gap-1">
-            <Edit className="h-3 w-3" />
-            Edit
-          </Button>
-        </DialogTrigger>
-      )}
+      <DialogTrigger asChild>
+        {triggerElement}
+      </DialogTrigger>
       <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Edit Experiment</DialogTitle>
