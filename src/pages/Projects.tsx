@@ -132,7 +132,7 @@ const Projects = () => {
         <CardHeader className="pb-3">
           <div className="flex items-start justify-between">
             <CardTitle className="text-lg line-clamp-2 pr-2">{project.title}</CardTitle>
-            <div className="flex items-center gap-2" data-no-navigate>
+            <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
               <Badge className={getStatusColor(project.status)}>
                 {project.status.replace('_', ' ')}
               </Badge>
