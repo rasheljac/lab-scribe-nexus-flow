@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -55,6 +54,7 @@ const EditExperimentDialog = ({
   // Update form data when experiment changes
   useEffect(() => {
     console.log("Updating form data for experiment:", experiment.id);
+    console.log("Current experiment status:", experiment.status);
     setFormData({
       title: experiment.title,
       description: experiment.description || "",
@@ -73,6 +73,7 @@ const EditExperimentDialog = ({
     e.preventDefault();
     
     console.log("Form submitted for experiment:", experiment.id);
+    console.log("Form data status:", formData.status);
     
     if (!formData.title.trim()) {
       toast({
@@ -104,10 +105,16 @@ const EditExperimentDialog = ({
   };
 
   const handleInputChange = (field: string, value: string | number) => {
+    console.log(`Updating field ${field} to:`, value);
     setFormData(prev => ({
       ...prev,
       [field]: value
     }));
+  };
+
+  const handleStatusChange = (value: string) => {
+    console.log("Status changed to:", value);
+    handleInputChange("status", value);
   };
 
   return (
@@ -159,16 +166,16 @@ const EditExperimentDialog = ({
               <Label htmlFor="status">Status</Label>
               <Select
                 value={formData.status}
-                onValueChange={(value) => handleInputChange("status", value)}
+                onValueChange={handleStatusChange}
               >
-                <SelectTrigger>
-                  <SelectValue />
+                <SelectTrigger id="status" className="w-full">
+                  <SelectValue placeholder="Select status" />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="planning">Planning</SelectItem>
-                  <SelectItem value="in_progress">In Progress</SelectItem>
-                  <SelectItem value="completed">Completed</SelectItem>
-                  <SelectItem value="on_hold">On Hold</SelectItem>
+                <SelectContent className="z-[200] bg-background border shadow-lg">
+                  <SelectItem value="planning" className="cursor-pointer">Planning</SelectItem>
+                  <SelectItem value="in_progress" className="cursor-pointer">In Progress</SelectItem>
+                  <SelectItem value="completed" className="cursor-pointer">Completed</SelectItem>
+                  <SelectItem value="on_hold" className="cursor-pointer">On Hold</SelectItem>
                 </SelectContent>
               </Select>
             </div>
