@@ -110,7 +110,7 @@ const ExperimentIdeas = () => {
   };
 
   const handleIdeaClick = (ideaId: string) => {
-    navigate(`/idea-notes/${ideaId}`);
+    navigate(`/experiment-ideas/${ideaId}/notes`);
   };
 
   const renderIdeaCard = (idea: any) => (
