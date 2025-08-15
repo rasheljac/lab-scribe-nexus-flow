@@ -25,9 +25,10 @@ import RichTextEditor from "@/components/RichTextEditor";
 
 interface EditProjectDialogProps {
   project: Project;
+  children?: React.ReactNode;
 }
 
-const EditProjectDialog = ({ project }: EditProjectDialogProps) => {
+const EditProjectDialog = ({ project, children }: EditProjectDialogProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [formData, setFormData] = useState({
     title: project.title,
@@ -83,12 +84,18 @@ const EditProjectDialog = ({ project }: EditProjectDialogProps) => {
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger asChild>
-        <Button size="sm" variant="outline" className="gap-1">
-          <Settings className="h-3 w-3" />
-          Edit
-        </Button>
-      </DialogTrigger>
+      {children ? (
+        <DialogTrigger asChild onClick={() => setIsOpen(true)}>
+          {children}
+        </DialogTrigger>
+      ) : (
+        <DialogTrigger asChild>
+          <Button size="sm" variant="outline" className="gap-1">
+            <Settings className="h-3 w-3" />
+            Edit
+          </Button>
+        </DialogTrigger>
+      )}
       <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Edit Project</DialogTitle>
