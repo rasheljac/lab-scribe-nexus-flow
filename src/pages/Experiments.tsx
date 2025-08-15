@@ -1,14 +1,13 @@
 
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calendar, Search, Plus, Beaker, Clock, User, FileText } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { Search, Plus, Beaker, Calendar, User, Hash } from "lucide-react";
 import { useExperiments } from "@/hooks/useExperiments";
-import { useProjects } from "@/hooks/useProjects";
 import CreateExperimentDialog from "@/components/CreateExperimentDialog";
 import PaginatedDraggableGrid from "@/components/PaginatedDraggableGrid";
 import RichTextDisplay from "@/components/RichTextDisplay";
@@ -17,22 +16,14 @@ import { format } from "date-fns";
 const Experiments = () => {
   const navigate = useNavigate();
   const { experiments, isLoading, updateExperimentOrder } = useExperiments();
-  const { projects } = useProjects();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedProject, setSelectedProject] = useState<string>("all");
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
 
-  // Helper function to strip HTML tags for search
-  const stripHtmlTags = (html: string): string => {
-    const temp = document.createElement('div');
-    temp.innerHTML = html;
-    return temp.textContent || temp.innerText || '';
-  };
-
   const filteredExperiments = experiments.filter(experiment => {
     const matchesSearch = experiment.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (experiment.description && stripHtmlTags(experiment.description).toLowerCase().includes(searchTerm.toLowerCase()));
+                         experiment.description?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesProject = selectedProject === "all" || experiment.project_id === selectedProject;
     const matchesStatus = selectedStatus === "all" || experiment.status === selectedStatus;
     
@@ -54,9 +45,18 @@ const Experiments = () => {
     }
   };
 
-  const getProjectName = (projectId: string) => {
-    const project = projects.find(p => p.id === projectId);
-    return project?.title || 'Unknown Project';
+  const getCategoryColor = (category: string) => {
+    const colors = {
+      'biochemistry': 'bg-purple-100 text-purple-800',
+      'molecular-biology': 'bg-blue-100 text-blue-800',
+      'cell-biology': 'bg-green-100 text-green-800',
+      'genetics': 'bg-red-100 text-red-800',
+      'microbiology': 'bg-yellow-100 text-yellow-800',
+      'immunology': 'bg-indigo-100 text-indigo-800',
+      'neuroscience': 'bg-pink-100 text-pink-800',
+      'pharmacology': 'bg-orange-100 text-orange-800',
+    };
+    return colors[category as keyof typeof colors] || 'bg-gray-100 text-gray-800';
   };
 
   const handleReorder = async (reorderedExperiments: any[]) => {
@@ -68,11 +68,12 @@ const Experiments = () => {
   };
 
   const renderExperimentCard = (experiment: any) => (
-    <Card key={experiment.id} className="cursor-pointer hover:shadow-lg transition-shadow">
-      <CardHeader 
-        onClick={() => navigate(`/experiments/${experiment.id}`)}
-        className="pb-3"
-      >
+    <Card 
+      key={experiment.id} 
+      className="cursor-pointer hover:shadow-lg transition-shadow"
+      onClick={() => navigate(`/experiments/${experiment.id}`)}
+    >
+      <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <CardTitle className="text-lg line-clamp-2">{experiment.title}</CardTitle>
           <Badge className={getStatusColor(experiment.status)}>
@@ -90,24 +91,28 @@ const Experiments = () => {
       
       <CardContent>
         <div className="space-y-2">
-          {experiment.project_id && (
-            <div className="flex items-center gap-2 text-sm text-gray-600">
-              <FileText className="h-4 w-4" />
-              <span>{getProjectName(experiment.project_id)}</span>
-            </div>
-          )}
+          <div className="flex items-center gap-2">
+            <Badge className={getCategoryColor(experiment.category)}>
+              {experiment.category.replace('-', ' ')}
+            </Badge>
+          </div>
           
           <div className="flex items-center gap-2 text-sm text-gray-600">
-            <Calendar className="h-4 w-4" />
-            <span>Created {format(new Date(experiment.created_at), 'MMM d, yyyy')}</span>
+            <User className="h-4 w-4" />
+            <span>{experiment.researcher}</span>
           </div>
           
           {experiment.start_date && (
             <div className="flex items-center gap-2 text-sm text-gray-600">
-              <Clock className="h-4 w-4" />
+              <Calendar className="h-4 w-4" />
               <span>Started {format(new Date(experiment.start_date), 'MMM d, yyyy')}</span>
             </div>
           )}
+          
+          <div className="flex items-center gap-2 text-sm text-gray-600">
+            <Beaker className="h-4 w-4" />
+            <span>{experiment.protocols} protocols • {experiment.samples} samples</span>
+          </div>
         </div>
       </CardContent>
     </Card>
@@ -124,7 +129,7 @@ const Experiments = () => {
       </p>
       {!(searchTerm || selectedProject !== "all" || selectedStatus !== "all") && (
         <Button onClick={() => setCreateDialogOpen(true)}>
-          Create Experiment
+          New Experiment
         </Button>
       )}
     </div>
@@ -150,7 +155,6 @@ const Experiments = () => {
   return (
     <div className="p-6">
       <div className="max-w-7xl mx-auto">
-        {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-3xl font-bold">Experiments</h1>
@@ -162,7 +166,6 @@ const Experiments = () => {
           </Button>
         </div>
 
-        {/* Filters */}
         <div className="flex flex-col sm:flex-row gap-4 mb-6">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
@@ -176,21 +179,16 @@ const Experiments = () => {
           
           <Select value={selectedProject} onValueChange={setSelectedProject}>
             <SelectTrigger className="w-full sm:w-[200px]">
-              <SelectValue placeholder="Filter by project" />
+              <SelectValue placeholder="All Projects" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Projects</SelectItem>
-              {projects.map((project) => (
-                <SelectItem key={project.id} value={project.id}>
-                  {project.title}
-                </SelectItem>
-              ))}
             </SelectContent>
           </Select>
 
           <Select value={selectedStatus} onValueChange={setSelectedStatus}>
             <SelectTrigger className="w-full sm:w-[200px]">
-              <SelectValue placeholder="Filter by status" />
+              <SelectValue placeholder="All Statuses" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Statuses</SelectItem>
@@ -202,12 +200,11 @@ const Experiments = () => {
           </Select>
         </div>
 
-        {/* Statistics */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center gap-2">
-                <Beaker className="h-5 w-5 text-blue-600" />
+                <Hash className="h-5 w-5 text-blue-600" />
                 <div>
                   <p className="text-sm text-gray-600">Total</p>
                   <p className="text-2xl font-bold">{experiments.length}</p>
@@ -219,7 +216,7 @@ const Experiments = () => {
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center gap-2">
-                <Clock className="h-5 w-5 text-yellow-600" />
+                <Beaker className="h-5 w-5 text-orange-600" />
                 <div>
                   <p className="text-sm text-gray-600">In Progress</p>
                   <p className="text-2xl font-bold">
@@ -247,7 +244,7 @@ const Experiments = () => {
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center gap-2">
-                <User className="h-5 w-5 text-purple-600" />
+                <User className="h-5 w-5 text-yellow-600" />
                 <div>
                   <p className="text-sm text-gray-600">Planning</p>
                   <p className="text-2xl font-bold">
@@ -259,7 +256,6 @@ const Experiments = () => {
           </Card>
         </div>
 
-        {/* Experiments Grid */}
         <PaginatedDraggableGrid
           items={filteredExperiments}
           onReorder={handleReorder}
@@ -267,11 +263,12 @@ const Experiments = () => {
           droppableId="experiments"
           itemsPerPage={6}
           emptyState={emptyState}
+          layout="grid"
         />
 
         <CreateExperimentDialog 
           open={createDialogOpen} 
-          onOpenChange={setCreateDialogOpen} 
+          onOpenChange={setCreateDialogOpen}
         />
       </div>
     </div>

@@ -1,30 +1,23 @@
 
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Plus, Lightbulb, Calendar, User, Hash, GripVertical } from "lucide-react";
+import { Search, Plus, Lightbulb, Calendar, Hash, User } from "lucide-react";
 import { useExperimentIdeas } from "@/hooks/useExperimentIdeas";
 import CreateIdeaDialog from "@/components/CreateIdeaDialog";
-import EditIdeaDialog from "@/components/EditIdeaDialog";
-import IdeaReportDialog from "@/components/IdeaReportDialog";
 import PaginatedDraggableGrid from "@/components/PaginatedDraggableGrid";
 import RichTextDisplay from "@/components/RichTextDisplay";
 import { format } from "date-fns";
 
 const ExperimentIdeas = () => {
-  const navigate = useNavigate();
   const { ideas, isLoading, updateIdeaOrder } = useExperimentIdeas();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedPriority, setSelectedPriority] = useState<string>("all");
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
-  const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [reportDialogOpen, setReportDialogOpen] = useState(false);
-  const [selectedIdea, setSelectedIdea] = useState<any>(null);
 
   const filteredIdeas = ideas.filter(idea => {
     const matchesSearch = idea.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -50,33 +43,19 @@ const ExperimentIdeas = () => {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'brainstorming':
+      case 'ready':
         return 'bg-purple-100 text-purple-800';
-      case 'researching':
-        return 'bg-yellow-100 text-yellow-800';
       case 'planning':
         return 'bg-blue-100 text-blue-800';
-      case 'ready':
+      case 'researching':
+        return 'bg-orange-100 text-orange-800';
+      case 'brainstorming':
         return 'bg-green-100 text-green-800';
       case 'archived':
-        return 'bg-red-100 text-red-800';
+        return 'bg-gray-100 text-gray-800';
       default:
         return 'bg-gray-100 text-gray-800';
     }
-  };
-
-  const handleEdit = (idea: any) => {
-    setSelectedIdea(idea);
-    setEditDialogOpen(true);
-  };
-
-  const handleReport = (idea: any) => {
-    setSelectedIdea(idea);
-    setReportDialogOpen(true);
-  };
-
-  const handleIdeaClick = (ideaId: string) => {
-    navigate(`/experiment-ideas/${ideaId}/notes`);
   };
 
   const handleReorder = async (reorderedIdeas: any[]) => {
@@ -90,12 +69,8 @@ const ExperimentIdeas = () => {
   const renderIdeaCard = (idea: any) => (
     <Card 
       key={idea.id} 
-      className="cursor-pointer hover:shadow-lg transition-shadow group relative"
-      onClick={() => handleIdeaClick(idea.id)}
+      className="cursor-pointer hover:shadow-lg transition-shadow"
     >
-      <div className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity">
-        <GripVertical className="h-4 w-4 text-gray-400" />
-      </div>
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <CardTitle className="text-lg line-clamp-2">{idea.title}</CardTitle>
@@ -109,41 +84,32 @@ const ExperimentIdeas = () => {
           </div>
         </div>
         <CardDescription className="line-clamp-2">
-          <RichTextDisplay content={idea.description} maxLength={100} />
+          <RichTextDisplay 
+            content={idea.description || ""} 
+            maxLength={150}
+            className="text-sm"
+          />
         </CardDescription>
       </CardHeader>
       
       <CardContent>
-        <div className="space-y-3">
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 text-sm text-gray-600">
+            <Hash className="h-4 w-4" />
+            <span>{idea.category}</span>
+          </div>
+          
           <div className="flex items-center gap-2 text-sm text-gray-600">
             <Calendar className="h-4 w-4" />
             <span>Created {format(new Date(idea.created_at), 'MMM d, yyyy')}</span>
           </div>
           
-          <div className="flex gap-2 mt-4">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleEdit(idea);
-              }}
-              className="flex-1"
-            >
-              Edit
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleReport(idea);
-              }}
-              className="flex-1"
-            >
-              Report
-            </Button>
-          </div>
+          {idea.estimated_duration && (
+            <div className="flex items-center gap-2 text-sm text-gray-600">
+              <User className="h-4 w-4" />
+              <span>Duration: {idea.estimated_duration}</span>
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>
@@ -152,7 +118,7 @@ const ExperimentIdeas = () => {
   const emptyState = (
     <div className="text-center py-12">
       <Lightbulb className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-      <h3 className="text-lg font-medium text-gray-900 mb-2">No ideas found</h3>
+      <h3 className="text-lg font-medium text-gray-900 mb-2">No experiment ideas found</h3>
       <p className="text-gray-600 mb-4">
         {searchTerm || selectedPriority !== "all" || selectedStatus !== "all"
           ? "Try adjusting your filters"
@@ -160,7 +126,7 @@ const ExperimentIdeas = () => {
       </p>
       {!(searchTerm || selectedPriority !== "all" || selectedStatus !== "all") && (
         <Button onClick={() => setCreateDialogOpen(true)}>
-          Create Idea
+          New Idea
         </Button>
       )}
     </div>
@@ -168,7 +134,7 @@ const ExperimentIdeas = () => {
 
   if (isLoading) {
     return (
-      <main className="flex-1 p-6 overflow-auto">
+      <div className="p-6">
         <div className="max-w-7xl mx-auto">
           <div className="animate-pulse space-y-4">
             <div className="h-8 bg-gray-200 rounded w-1/4"></div>
@@ -179,14 +145,13 @@ const ExperimentIdeas = () => {
             </div>
           </div>
         </div>
-      </main>
+      </div>
     );
   }
 
   return (
-    <main className="flex-1 p-6 overflow-auto">
+    <div className="p-6">
       <div className="max-w-7xl mx-auto">
-        {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-3xl font-bold">Experiment Ideas</h1>
@@ -198,7 +163,6 @@ const ExperimentIdeas = () => {
           </Button>
         </div>
 
-        {/* Filters */}
         <div className="flex flex-col sm:flex-row gap-4 mb-6">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
@@ -212,7 +176,7 @@ const ExperimentIdeas = () => {
           
           <Select value={selectedPriority} onValueChange={setSelectedPriority}>
             <SelectTrigger className="w-full sm:w-[200px]">
-              <SelectValue placeholder="Filter by priority" />
+              <SelectValue placeholder="All Priorities" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Priorities</SelectItem>
@@ -224,7 +188,7 @@ const ExperimentIdeas = () => {
 
           <Select value={selectedStatus} onValueChange={setSelectedStatus}>
             <SelectTrigger className="w-full sm:w-[200px]">
-              <SelectValue placeholder="Filter by status" />
+              <SelectValue placeholder="All Statuses" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Statuses</SelectItem>
@@ -237,7 +201,6 @@ const ExperimentIdeas = () => {
           </Select>
         </div>
 
-        {/* Statistics */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
           <Card>
             <CardContent className="p-4">
@@ -258,7 +221,7 @@ const ExperimentIdeas = () => {
                 <div>
                   <p className="text-sm text-gray-600">Brainstorming</p>
                   <p className="text-2xl font-bold">
-                    {ideas.filter(idea => idea.status === 'brainstorming').length}
+                    {ideas.filter(i => i.status === 'brainstorming').length}
                   </p>
                 </div>
               </div>
@@ -268,11 +231,11 @@ const ExperimentIdeas = () => {
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center gap-2">
-                <User className="h-5 w-5 text-yellow-600" />
+                <User className="h-5 w-5 text-orange-600" />
                 <div>
                   <p className="text-sm text-gray-600">Researching</p>
                   <p className="text-2xl font-bold">
-                    {ideas.filter(idea => idea.status === 'researching').length}
+                    {ideas.filter(i => i.status === 'researching').length}
                   </p>
                 </div>
               </div>
@@ -286,7 +249,7 @@ const ExperimentIdeas = () => {
                 <div>
                   <p className="text-sm text-gray-600">Ready</p>
                   <p className="text-2xl font-bold">
-                    {ideas.filter(idea => idea.status === 'ready').length}
+                    {ideas.filter(i => i.status === 'ready').length}
                   </p>
                 </div>
               </div>
@@ -294,7 +257,6 @@ const ExperimentIdeas = () => {
           </Card>
         </div>
 
-        {/* Ideas Grid */}
         <PaginatedDraggableGrid
           items={filteredIdeas}
           onReorder={handleReorder}
@@ -302,21 +264,15 @@ const ExperimentIdeas = () => {
           droppableId="experiment-ideas"
           itemsPerPage={6}
           emptyState={emptyState}
+          layout="grid"
         />
 
         <CreateIdeaDialog 
           open={createDialogOpen} 
           onOpenChange={setCreateDialogOpen}
         />
-        
-        {selectedIdea && (
-          <>
-            <EditIdeaDialog idea={selectedIdea} />
-            <IdeaReportDialog ideaId={selectedIdea.id} ideaTitle={selectedIdea.title} />
-          </>
-        )}
       </div>
-    </main>
+    </div>
   );
 };
 
