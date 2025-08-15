@@ -1,6 +1,7 @@
 
 import jsPDF from 'jspdf';
 import { FormattingSpan } from './htmlToText';
+import { processPDFText } from './pdfExportUtils';
 
 export interface PDFFormattingOptions {
   margin: number;
@@ -32,8 +33,11 @@ export class PDFFormatter {
     this.pdf.setFont('helvetica', 'bold');
     this.pdf.setTextColor(0, 0, 0);
     
+    // Process text for PDF compatibility
+    const processedText = processPDFText(text.trim());
+    
     // Split text and calculate required height
-    const lines = this.pdf.splitTextToSize(text.trim(), this.options.contentWidth);
+    const lines = this.pdf.splitTextToSize(processedText, this.options.contentWidth);
     const textHeight = lines.length * (fontSize * 0.35);
     const totalHeight = spaceAbove + textHeight + 4;
     
@@ -54,14 +58,14 @@ export class PDFFormatter {
     this.pdf.setFontSize(11);
     this.pdf.setTextColor(0, 0, 0);
     
-    // Clean the text
-    const cleanText = text.trim().replace(/\s+/g, ' ');
+    // Clean and process the text for PDF compatibility
+    const processedText = processPDFText(text.trim().replace(/\s+/g, ' '));
     
     if (formatting && formatting.length > 0) {
-      this.addFormattedText(cleanText, formatting);
+      this.addFormattedText(processedText, formatting);
     } else {
       this.pdf.setFont('helvetica', 'normal');
-      const lines = this.pdf.splitTextToSize(cleanText, this.options.contentWidth);
+      const lines = this.pdf.splitTextToSize(processedText, this.options.contentWidth);
       const textHeight = lines.length * this.lineHeight;
       const totalHeight = textHeight + 3;
       
@@ -157,7 +161,7 @@ export class PDFFormatter {
     this.pdf.setTextColor(0, 0, 0);
     
     items.forEach((item, index) => {
-      const trimmedItem = item.trim();
+      const trimmedItem = processPDFText(item.trim());
       if (!trimmedItem) return;
       
       const prefix = isOrdered ? `${index + 1}. ` : '• ';
@@ -183,13 +187,13 @@ export class PDFFormatter {
     this.pdf.setFontSize(11);
     this.pdf.setTextColor(0, 0, 0);
     
-    const cleanText = text.trim().replace(/\s+/g, ' ');
+    const processedText = processPDFText(text.trim().replace(/\s+/g, ' '));
     
     if (formatting && formatting.length > 0) {
-      this.addFormattedText(cleanText, formatting);
+      this.addFormattedText(processedText, formatting);
     } else {
       this.pdf.setFont('helvetica', 'normal');
-      const lines = this.pdf.splitTextToSize(cleanText, this.options.contentWidth);
+      const lines = this.pdf.splitTextToSize(processedText, this.options.contentWidth);
       const textHeight = lines.length * this.lineHeight;
       const totalHeight = textHeight + 2;
       

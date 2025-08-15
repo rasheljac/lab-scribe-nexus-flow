@@ -1,89 +1,51 @@
-export interface TextElement {
-  type: 'heading' | 'paragraph' | 'list' | 'text';
-  content: string;
-  level?: number; // for headings (1-6)
-  isOrdered?: boolean; // for lists
-  items?: string[]; // for lists
-  formatting?: FormattingSpan[]; // for styled text
-}
 
 export interface FormattingSpan {
-  text: string;
+  start: number;
+  end: number;
   bold?: boolean;
   italic?: boolean;
   superscript?: boolean;
   subscript?: boolean;
-  start: number;
-  end: number;
 }
 
-export const convertHtmlToStructuredText = (html: string): TextElement[] => {
+export interface StructuredTextElement {
+  type: 'heading' | 'paragraph' | 'list' | 'text';
+  content: string;
+  level?: number; // for headings
+  items?: string[]; // for lists
+  isOrdered?: boolean; // for lists
+  formatting?: FormattingSpan[]; // for formatted text
+}
+
+// Import the text processing function from pdfExportUtils
+import { processPDFText } from './pdfExportUtils';
+
+export function convertHtmlToStructuredText(html: string): StructuredTextElement[] {
   if (!html) return [];
 
   console.log('Converting HTML to structured text...');
   
   // Create a temporary DOM element to parse HTML
-  const temp = document.createElement('div');
-  temp.innerHTML = html;
+  const tempDiv = document.createElement('div');
+  tempDiv.innerHTML = html;
 
-  const elements: TextElement[] = [];
-
-  const extractFormattedText = (element: Element): { text: string; formatting: FormattingSpan[] } => {
-    const formatting: FormattingSpan[] = [];
-    let text = '';
-    let currentPos = 0;
-
-    const processNode = (node: Node): void => {
-      if (node.nodeType === Node.TEXT_NODE) {
-        const textContent = node.textContent || '';
-        text += textContent;
-        currentPos += textContent.length;
-      } else if (node.nodeType === Node.ELEMENT_NODE) {
-        const elem = node as Element;
-        const tagName = elem.tagName.toLowerCase();
-        const startPos = currentPos;
-        
-        // Process child nodes first to get the text
-        const childNodes = Array.from(elem.childNodes);
-        childNodes.forEach(child => processNode(child));
-        
-        const endPos = currentPos;
-        
-        // Add formatting span for this element
-        if (endPos > startPos) {
-          const span: FormattingSpan = {
-            text: text.substring(startPos, endPos),
-            start: startPos,
-            end: endPos
-          };
-          
-          if (tagName === 'strong' || tagName === 'b') {
-            span.bold = true;
-          }
-          if (tagName === 'em' || tagName === 'i') {
-            span.italic = true;
-          }
-          if (tagName === 'sup') {
-            span.superscript = true;
-          }
-          if (tagName === 'sub') {
-            span.subscript = true;
-          }
-          
-          if (span.bold || span.italic || span.superscript || span.subscript) {
-            formatting.push(span);
-          }
-        }
+  const elements: StructuredTextElement[] = [];
+  
+  function processNode(node: Node): void {
+    if (node.nodeType === Node.TEXT_NODE) {
+      const text = node.textContent?.trim();
+      if (text) {
+        elements.push({
+          type: 'text',
+          content: processPDFText(text) // Process special characters
+        });
       }
-    };
-
-    // Process all child nodes
-    Array.from(element.childNodes).forEach(child => processNode(child));
+      return;
+    }
     
-    return { text: text.trim(), formatting };
-  };
-
-  const processElement = (element: Element): void => {
+    if (node.nodeType !== Node.ELEMENT_NODE) return;
+    
+    const element = node as Element;
     const tagName = element.tagName.toLowerCase();
     
     switch (tagName) {
@@ -93,144 +55,134 @@ export const convertHtmlToStructuredText = (html: string): TextElement[] => {
       case 'h4':
       case 'h5':
       case 'h6':
-        const headingText = element.textContent?.trim();
-        if (headingText) {
+        const level = parseInt(tagName.charAt(1));
+        const headingText = processPDFText(element.textContent || '');
+        if (headingText.trim()) {
           elements.push({
             type: 'heading',
             content: headingText,
-            level: parseInt(tagName.charAt(1))
+            level
           });
         }
         break;
-
+        
       case 'p':
-        const { text: paragraphText, formatting: paragraphFormatting } = extractFormattedText(element);
-        if (paragraphText) {
+        const paragraphText = processPDFText(element.textContent || '');
+        if (paragraphText.trim()) {
+          const formatting = extractFormatting(element);
           elements.push({
             type: 'paragraph',
             content: paragraphText,
-            formatting: paragraphFormatting
+            formatting: formatting.length > 0 ? formatting : undefined
           });
         }
         break;
-
+        
       case 'ul':
       case 'ol':
-        const listItems = Array.from(element.querySelectorAll('li'))
-          .map(li => {
-            const { text, formatting } = extractFormattedText(li);
-            return { text: text.trim(), formatting };
-          })
-          .filter(item => item.text && item.text.length > 0);
-        
+        const listItems = Array.from(element.children)
+          .filter(child => child.tagName.toLowerCase() === 'li')
+          .map(li => processPDFText(li.textContent || ''))
+          .filter(text => text.trim());
+          
         if (listItems.length > 0) {
           elements.push({
             type: 'list',
             content: '',
-            isOrdered: tagName === 'ol',
-            items: listItems.map(item => item.text),
-            formatting: listItems.flatMap((item, index) => 
-              item.formatting.map(span => ({
-                ...span,
-                // Adjust positions to account for list item prefixes
-                start: span.start,
-                end: span.end
-              }))
-            )
+            items: listItems,
+            isOrdered: tagName === 'ol'
           });
         }
         break;
-
-      case 'div':
-        // Check if div has block-level children
-        const hasBlockChildren = Array.from(element.children).some(child => 
-          ['p', 'div', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li'].includes(child.tagName.toLowerCase())
-        );
         
-        if (hasBlockChildren) {
-          // Process children recursively
-          Array.from(element.children).forEach(child => processElement(child));
-        } else {
-          // Treat as paragraph if it has text content
-          const { text: divText, formatting: divFormatting } = extractFormattedText(element);
-          if (divText) {
-            elements.push({
-              type: 'paragraph',
-              content: divText,
-              formatting: divFormatting
-            });
-          }
-        }
+      case 'div':
+      case 'span':
+        // Process child nodes for div and span elements
+        Array.from(element.childNodes).forEach(processNode);
         break;
-
+        
       case 'br':
-        // Skip line breaks - they're handled by paragraph structure
+        // Add a small text element for line breaks
+        elements.push({
+          type: 'text',
+          content: ' '
+        });
         break;
-
-      case 'li':
-        // Skip - handled by ul/ol processing
-        break;
-
+        
       default:
-        // For other elements, check if they have children or text content
-        if (element.children.length > 0) {
-          Array.from(element.children).forEach(child => processElement(child));
-        } else {
-          const { text, formatting } = extractFormattedText(element);
-          if (text) {
-            elements.push({
-              type: 'text',
-              content: text,
-              formatting: formatting
-            });
-          }
+        // For other elements, process their text content
+        const textContent = processPDFText(element.textContent || '');
+        if (textContent.trim()) {
+          const formatting = extractFormatting(element);
+          elements.push({
+            type: 'text',
+            content: textContent,
+            formatting: formatting.length > 0 ? formatting : undefined
+          });
         }
         break;
-    }
-  };
-
-  // Process all direct children
-  Array.from(temp.children).forEach(element => processElement(element));
-  
-  // If no structured elements were found, fall back to extracting all text as paragraphs
-  if (elements.length === 0) {
-    const { text: allText, formatting } = extractFormattedText(temp);
-    if (allText) {
-      // Split by double line breaks to create paragraphs
-      const paragraphs = allText.split(/\n\s*\n/).filter(p => p.trim());
-      paragraphs.forEach(paragraph => {
-        elements.push({
-          type: 'paragraph',
-          content: paragraph.trim().replace(/\n/g, ' ').replace(/\s+/g, ' '),
-          formatting: formatting
-        });
-      });
     }
   }
-
-  console.log(`Extracted ${elements.length} text elements`);
+  
+  // Process all child nodes
+  Array.from(tempDiv.childNodes).forEach(processNode);
+  
+  console.log(`Converted to ${elements.length} structured elements`);
   return elements;
-};
+}
 
-export const convertStructuredTextToPlain = (elements: TextElement[]): string => {
-  return elements.map(element => {
-    switch (element.type) {
-      case 'heading':
-        return `\n${element.content}\n${'='.repeat(Math.min(element.content.length, 50))}\n`;
-      case 'paragraph':
-        return `${element.content}\n\n`;
-      case 'list':
-        if (element.items) {
-          return element.items.map((item, index) => {
-            const prefix = element.isOrdered ? `${index + 1}. ` : '• ';
-            return `${prefix}${item}`;
-          }).join('\n') + '\n\n';
+function extractFormatting(element: Element): FormattingSpan[] {
+  const text = element.textContent || '';
+  const spans: FormattingSpan[] = [];
+  
+  function processElement(el: Element, startOffset: number = 0): number {
+    let currentOffset = startOffset;
+    
+    for (const child of Array.from(el.childNodes)) {
+      if (child.nodeType === Node.TEXT_NODE) {
+        const textLength = child.textContent?.length || 0;
+        currentOffset += textLength;
+      } else if (child.nodeType === Node.ELEMENT_NODE) {
+        const childEl = child as Element;
+        const childStart = currentOffset;
+        currentOffset = processElement(childEl, currentOffset);
+        const childEnd = currentOffset;
+        
+        // Add formatting span based on element type
+        const tagName = childEl.tagName.toLowerCase();
+        if (childStart < childEnd) {
+          const span: FormattingSpan = {
+            start: childStart,
+            end: childEnd
+          };
+          
+          switch (tagName) {
+            case 'strong':
+            case 'b':
+              span.bold = true;
+              break;
+            case 'em':
+            case 'i':
+              span.italic = true;
+              break;
+            case 'sup':
+              span.superscript = true;
+              break;
+            case 'sub':
+              span.subscript = true;
+              break;
+          }
+          
+          if (span.bold || span.italic || span.superscript || span.subscript) {
+            spans.push(span);
+          }
         }
-        return '';
-      case 'text':
-        return `${element.content}\n`;
-      default:
-        return '';
+      }
     }
-  }).join('').trim();
-};
+    
+    return currentOffset;
+  }
+  
+  processElement(element);
+  return spans;
+}
