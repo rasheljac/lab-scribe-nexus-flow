@@ -1,23 +1,43 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Plus, Lightbulb, Calendar, Hash, User } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Search, Plus, Lightbulb, Calendar, Hash, User, MoreVertical, Edit, Trash2 } from "lucide-react";
 import { useExperimentIdeas } from "@/hooks/useExperimentIdeas";
+import { useToast } from "@/hooks/use-toast";
 import CreateIdeaDialog from "@/components/CreateIdeaDialog";
+import EditIdeaDialog from "@/components/EditIdeaDialog";
 import PaginatedDraggableGrid from "@/components/PaginatedDraggableGrid";
 import RichTextDisplay from "@/components/RichTextDisplay";
 import { format } from "date-fns";
 
 const ExperimentIdeas = () => {
-  const { ideas, isLoading, updateIdeaOrder } = useExperimentIdeas();
+  const { ideas, isLoading, updateIdeaOrder, deleteIdea } = useExperimentIdeas();
+  const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedPriority, setSelectedPriority] = useState<string>("all");
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [ideaToDelete, setIdeaToDelete] = useState<string | null>(null);
 
   const filteredIdeas = ideas.filter(idea => {
     const matchesSearch = idea.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -66,21 +86,67 @@ const ExperimentIdeas = () => {
     await updateIdeaOrder.mutateAsync(updates);
   };
 
+  const handleDeleteIdea = async () => {
+    if (!ideaToDelete) return;
+    
+    try {
+      await deleteIdea.mutateAsync(ideaToDelete);
+      toast({
+        title: "Success",
+        description: "Experiment idea deleted successfully",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete experiment idea",
+        variant: "destructive",
+      });
+    } finally {
+      setDeleteDialogOpen(false);
+      setIdeaToDelete(null);
+    }
+  };
+
   const renderIdeaCard = (idea: any) => (
     <Card 
       key={idea.id} 
-      className="cursor-pointer hover:shadow-lg transition-shadow"
+      className="cursor-pointer hover:shadow-lg transition-shadow relative"
     >
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
-          <CardTitle className="text-lg line-clamp-2">{idea.title}</CardTitle>
-          <div className="flex gap-2">
+          <CardTitle className="text-lg line-clamp-2 pr-2">{idea.title}</CardTitle>
+          <div className="flex items-center gap-2" data-no-navigate>
             <Badge className={getPriorityColor(idea.priority)}>
               {idea.priority}
             </Badge>
             <Badge className={getStatusColor(idea.status)}>
               {idea.status}
             </Badge>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <EditIdeaDialog idea={idea}>
+                  <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                    <Edit className="mr-2 h-4 w-4" />
+                    Edit
+                  </DropdownMenuItem>
+                </EditIdeaDialog>
+                <DropdownMenuItem
+                  className="text-red-600"
+                  onSelect={() => {
+                    setIdeaToDelete(idea.id);
+                    setDeleteDialogOpen(true);
+                  }}
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
         <CardDescription className="line-clamp-2">
@@ -271,6 +337,27 @@ const ExperimentIdeas = () => {
           open={createDialogOpen} 
           onOpenChange={setCreateDialogOpen}
         />
+
+        <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Experiment Idea</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete this experiment idea? This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleDeleteIdea}
+                className="bg-red-600 hover:bg-red-700"
+                disabled={deleteIdea.isPending}
+              >
+                {deleteIdea.isPending ? "Deleting..." : "Delete"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </div>
   );

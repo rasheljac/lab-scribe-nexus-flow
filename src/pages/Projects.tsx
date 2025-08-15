@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -118,7 +117,7 @@ const Projects = () => {
     if (target.closest('[data-no-navigate]')) {
       return;
     }
-    navigate(`/projects/${projectId}`);
+    navigate(`/projects/${projectId}/experiments`);
   };
 
   const renderProjectCard = (project: any) => {
