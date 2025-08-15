@@ -1,24 +1,48 @@
 
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Plus, FolderOpen, Calendar, User, DollarSign } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Search, Plus, FolderOpen, Calendar, Hash, MoreVertical, Edit, Trash2, Beaker } from "lucide-react";
 import { useProjects } from "@/hooks/useProjects";
+import { useExperiments } from "@/hooks/useExperiments";
+import { useToast } from "@/hooks/use-toast";
 import CreateProjectDialog from "@/components/CreateProjectDialog";
+import EditProjectDialog from "@/components/EditProjectDialog";
 import PaginatedDraggableGrid from "@/components/PaginatedDraggableGrid";
 import RichTextDisplay from "@/components/RichTextDisplay";
 import { format } from "date-fns";
 
 const Projects = () => {
   const navigate = useNavigate();
-  const { projects, isLoading, updateProjectOrder } = useProjects();
+  const { projects, isLoading, updateProject, updateProjectOrder, deleteProject } = useProjects();
+  const { experiments } = useExperiments();
+  const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [projectToDelete, setProjectToDelete] = useState<string | null>(null);
 
   const filteredProjects = projects.filter(project => {
     const matchesSearch = project.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -43,6 +67,22 @@ const Projects = () => {
     }
   };
 
+  const getCategoryColor = (category: string) => {
+    const colors = {
+      'research': 'bg-purple-100 text-purple-800',
+      'development': 'bg-blue-100 text-blue-800',
+      'collaboration': 'bg-green-100 text-green-800',
+      'analysis': 'bg-red-100 text-red-800',
+      'clinical': 'bg-yellow-100 text-yellow-800',
+      'regulatory': 'bg-indigo-100 text-indigo-800',
+    };
+    return colors[category as keyof typeof colors] || 'bg-gray-100 text-gray-800';
+  };
+
+  const getProjectExperimentCount = (projectId: string) => {
+    return experiments.filter(experiment => experiment.project_id === projectId).length;
+  };
+
   const handleReorder = async (reorderedProjects: any[]) => {
     const updates = reorderedProjects.map((project, index) => ({
       id: project.id,
@@ -51,57 +91,127 @@ const Projects = () => {
     await updateProjectOrder.mutateAsync(updates);
   };
 
-  const renderProjectCard = (project: any) => (
-    <Card 
-      key={project.id} 
-      className="cursor-pointer hover:shadow-lg transition-shadow"
-      onClick={() => navigate(`/projects/${project.id}/experiments`)}
-    >
-      <CardHeader className="pb-3">
-        <div className="flex items-start justify-between">
-          <CardTitle className="text-lg line-clamp-2">{project.title}</CardTitle>
-          <Badge className={getStatusColor(project.status)}>
-            {project.status.replace('_', ' ')}
-          </Badge>
-        </div>
-        <CardDescription className="line-clamp-2">
-          <RichTextDisplay 
-            content={project.description || ""} 
-            maxLength={150}
-            className="text-sm"
-          />
-        </CardDescription>
-      </CardHeader>
-      
-      <CardContent>
-        <div className="space-y-2">
-          <div className="flex items-center gap-2 text-sm text-gray-600">
-            <Calendar className="h-4 w-4" />
-            <span>Started {format(new Date(project.start_date), 'MMM d, yyyy')}</span>
-          </div>
-          
-          {project.end_date && (
-            <div className="flex items-center gap-2 text-sm text-gray-600">
-              <Calendar className="h-4 w-4" />
-              <span>Ends {format(new Date(project.end_date), 'MMM d, yyyy')}</span>
-            </div>
-          )}
-          
-          <div className="flex items-center gap-2 text-sm text-gray-600">
-            <FolderOpen className="h-4 w-4" />
-            <span>{project.experiments_count} experiments</span>
-          </div>
+  const handleDeleteProject = async () => {
+    if (!projectToDelete) return;
+    
+    try {
+      await deleteProject.mutateAsync(projectToDelete);
+      toast({
+        title: "Success",
+        description: "Project deleted successfully",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete project",
+        variant: "destructive",
+      });
+    } finally {
+      setDeleteDialogOpen(false);
+      setProjectToDelete(null);
+    }
+  };
 
-          {project.budget && (
-            <div className="flex items-center gap-2 text-sm text-gray-600">
-              <DollarSign className="h-4 w-4" />
-              <span>Budget: {project.budget}</span>
+  const handleCardClick = (projectId: string, event: React.MouseEvent) => {
+    // Prevent navigation if clicking on action buttons
+    const target = event.target as HTMLElement;
+    if (target.closest('[data-no-navigate]')) {
+      return;
+    }
+    navigate(`/projects/${projectId}`);
+  };
+
+  const renderProjectCard = (project: any) => {
+    const experimentCount = getProjectExperimentCount(project.id);
+    
+    return (
+      <Card 
+        key={project.id} 
+        className="cursor-pointer hover:shadow-lg transition-shadow relative"
+        onClick={(e) => handleCardClick(project.id, e)}
+      >
+        <CardHeader className="pb-3">
+          <div className="flex items-start justify-between">
+            <CardTitle className="text-lg line-clamp-2 pr-2">{project.title}</CardTitle>
+            <div className="flex items-center gap-2" data-no-navigate>
+              <Badge className={getStatusColor(project.status)}>
+                {project.status.replace('_', ' ')}
+              </Badge>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                    <MoreVertical className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <EditProjectDialog project={project}>
+                    <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                      <Edit className="mr-2 h-4 w-4" />
+                      Edit
+                    </DropdownMenuItem>
+                  </EditProjectDialog>
+                  <DropdownMenuItem
+                    className="text-red-600"
+                    onSelect={() => {
+                      setProjectToDelete(project.id);
+                      setDeleteDialogOpen(true);
+                    }}
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Delete
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
-          )}
-        </div>
-      </CardContent>
-    </Card>
-  );
+          </div>
+          <CardDescription className="line-clamp-2">
+            <RichTextDisplay 
+              content={project.description || ""} 
+              maxLength={150}
+              className="text-sm"
+            />
+          </CardDescription>
+        </CardHeader>
+        
+        <CardContent>
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <Badge className={getCategoryColor(project.category)}>
+                {project.category}
+              </Badge>
+            </div>
+            
+            {project.start_date && (
+              <div className="flex items-center gap-2 text-sm text-gray-600">
+                <Calendar className="h-4 w-4" />
+                <span>Started {format(new Date(project.start_date), 'MMM d, yyyy')}</span>
+              </div>
+            )}
+
+            {project.end_date && (
+              <div className="flex items-center gap-2 text-sm text-gray-600">
+                <Calendar className="h-4 w-4" />
+                <span>Ends {format(new Date(project.end_date), 'MMM d, yyyy')}</span>
+              </div>
+            )}
+            
+            <div className="flex items-center gap-2 text-sm text-gray-600">
+              <Beaker className="h-4 w-4" />
+              <span>{experimentCount} experiments</span>
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-gray-600">Progress</span>
+                <span className="font-medium">{project.progress}%</span>
+              </div>
+              <Progress value={project.progress} className="h-2" />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
 
   const emptyState = (
     <div className="text-center py-12">
@@ -114,7 +224,7 @@ const Projects = () => {
       </p>
       {!(searchTerm || selectedStatus !== "all") && (
         <Button onClick={() => setCreateDialogOpen(true)}>
-          Create Project
+          New Project
         </Button>
       )}
     </div>
@@ -143,7 +253,7 @@ const Projects = () => {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-3xl font-bold">Projects</h1>
-            <p className="text-gray-600 mt-1">Manage your research projects</p>
+            <p className="text-gray-600 mt-1">Manage your research projects and track progress</p>
           </div>
           <Button onClick={() => setCreateDialogOpen(true)} className="gap-2">
             <Plus className="h-4 w-4" />
@@ -161,10 +271,10 @@ const Projects = () => {
               className="pl-10"
             />
           </div>
-          
+
           <Select value={selectedStatus} onValueChange={setSelectedStatus}>
             <SelectTrigger className="w-full sm:w-[200px]">
-              <SelectValue placeholder="Filter by status" />
+              <SelectValue placeholder="All Statuses" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Statuses</SelectItem>
@@ -180,7 +290,7 @@ const Projects = () => {
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center gap-2">
-                <FolderOpen className="h-5 w-5 text-blue-600" />
+                <Hash className="h-5 w-5 text-blue-600" />
                 <div>
                   <p className="text-sm text-gray-600">Total</p>
                   <p className="text-2xl font-bold">{projects.length}</p>
@@ -192,7 +302,7 @@ const Projects = () => {
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center gap-2">
-                <Calendar className="h-5 w-5 text-green-600" />
+                <FolderOpen className="h-5 w-5 text-orange-600" />
                 <div>
                   <p className="text-sm text-gray-600">Active</p>
                   <p className="text-2xl font-bold">
@@ -206,11 +316,11 @@ const Projects = () => {
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center gap-2">
-                <User className="h-5 w-5 text-yellow-600" />
+                <Calendar className="h-5 w-5 text-green-600" />
                 <div>
-                  <p className="text-sm text-gray-600">Planning</p>
+                  <p className="text-sm text-gray-600">Completed</p>
                   <p className="text-2xl font-bold">
-                    {projects.filter(p => p.status === 'planning').length}
+                    {projects.filter(p => p.status === 'completed').length}
                   </p>
                 </div>
               </div>
@@ -220,11 +330,11 @@ const Projects = () => {
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center gap-2">
-                <DollarSign className="h-5 w-5 text-purple-600" />
+                <Beaker className="h-5 w-5 text-yellow-600" />
                 <div>
-                  <p className="text-sm text-gray-600">Completed</p>
+                  <p className="text-sm text-gray-600">Planning</p>
                   <p className="text-2xl font-bold">
-                    {projects.filter(p => p.status === 'completed').length}
+                    {projects.filter(p => p.status === 'planning').length}
                   </p>
                 </div>
               </div>
@@ -239,12 +349,35 @@ const Projects = () => {
           droppableId="projects"
           itemsPerPage={6}
           emptyState={emptyState}
+          layout="grid"
         />
 
         <CreateProjectDialog 
           open={createDialogOpen} 
-          onOpenChange={setCreateDialogOpen} 
+          onOpenChange={setCreateDialogOpen}
         />
+
+        <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Project</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete this project? This action cannot be undone.
+                All associated experiments and data will be permanently removed.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleDeleteProject}
+                className="bg-red-600 hover:bg-red-700"
+                disabled={deleteProject.isPending}
+              >
+                {deleteProject.isPending ? "Deleting..." : "Delete"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </div>
   );

@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -6,7 +7,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Slider } from "@/components/ui/slider";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -110,27 +110,8 @@ const Experiments = () => {
     }
   };
 
-  const handleProgressUpdate = async (experimentId: string, newProgress: number) => {
-    try {
-      await updateExperiment.mutateAsync({
-        id: experimentId,
-        progress: newProgress,
-      });
-      toast({
-        title: "Success",
-        description: "Progress updated successfully",
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to update progress",
-        variant: "destructive",
-      });
-    }
-  };
-
   const handleCardClick = (experimentId: string, event: React.MouseEvent) => {
-    // Prevent navigation if clicking on action buttons or progress slider
+    // Prevent navigation if clicking on action buttons
     const target = event.target as HTMLElement;
     if (target.closest('[data-no-navigate]')) {
       return;
@@ -212,8 +193,8 @@ const Experiments = () => {
             <span>{experiment.protocols} protocols • {experiment.samples} samples</span>
           </div>
 
-          {/* Progress Section */}
-          <div className="space-y-2" data-no-navigate>
+          {/* Progress Section - Display only, no slider */}
+          <div className="space-y-2">
             <div className="flex items-center justify-between text-sm">
               <div className="flex items-center gap-2">
                 <TrendingUp className="h-4 w-4 text-blue-600" />
@@ -222,15 +203,6 @@ const Experiments = () => {
               <span className="font-medium">{experiment.progress}%</span>
             </div>
             <Progress value={experiment.progress} className="h-2" />
-            <div className="px-1">
-              <Slider
-                value={[experiment.progress]}
-                onValueChange={(value) => handleProgressUpdate(experiment.id, value[0])}
-                max={100}
-                step={5}
-                className="w-full"
-              />
-            </div>
           </div>
         </div>
       </CardContent>
