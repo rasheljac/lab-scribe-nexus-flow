@@ -14,27 +14,159 @@ export interface ProtocolPDFData {
 const normalizeSpecialCharacters = (text: string): string => {
   if (!text) return '';
   
-  // Handle superscript characters
+  console.log('Processing text for PDF:', text);
+  
+  // Handle superscript characters - process in order of specificity
   const superscriptMap: { [key: string]: string } = {
-    '⁰': '^0', '¹': '^1', '²': '^2', '³': '^3', '⁴': '^4', '⁵': '^5',
-    '⁶': '^6', '⁷': '^7', '⁸': '^8', '⁹': '^9', '⁺': '^+', '⁻': '^-'
+    // Common superscript sequences first
+    '²⁺': '^2+',
+    '³⁺': '^3+',
+    '⁴⁺': '^4+',
+    '²⁻': '^2-',
+    '³⁻': '^3-',
+    '⁴⁻': '^4-',
+    // Individual superscript characters
+    '⁰': '^0',
+    '¹': '^1', 
+    '²': '^2', 
+    '³': '^3', 
+    '⁴': '^4', 
+    '⁵': '^5',
+    '⁶': '^6', 
+    '⁷': '^7', 
+    '⁸': '^8', 
+    '⁹': '^9', 
+    '⁺': '^+', 
+    '⁻': '^-',
+    'ᵃ': '^a',
+    'ᵇ': '^b',
+    'ᶜ': '^c',
+    'ᵈ': '^d',
+    'ᵉ': '^e',
+    'ᶠ': '^f',
+    'ᵍ': '^g',
+    'ʰ': '^h',
+    'ⁱ': '^i',
+    'ʲ': '^j',
+    'ᵏ': '^k',
+    'ˡ': '^l',
+    'ᵐ': '^m',
+    'ⁿ': '^n',
+    'ᵒ': '^o',
+    'ᵖ': '^p',
+    'ʳ': '^r',
+    'ˢ': '^s',
+    'ᵗ': '^t',
+    'ᵘ': '^u',
+    'ᵛ': '^v',
+    'ʷ': '^w',
+    'ˣ': '^x',
+    'ʸ': '^y',
+    'ᶻ': '^z'
   };
   
   // Handle subscript characters
   const subscriptMap: { [key: string]: string } = {
-    '₀': '_0', '₁': '_1', '₂': '_2', '₃': '_3', '₄': '_4', '₅': '_5',
-    '₆': '_6', '₇': '_7', '₈': '_8', '₉': '_9', '₊': '_+', '₋': '_-'
+    // Common subscript sequences
+    '₂O': '_2O',
+    'H₂': 'H_2',
+    'CO₂': 'CO_2',
+    'H₂O': 'H_2O',
+    'SO₄': 'SO_4',
+    'PO₄': 'PO_4',
+    'NO₃': 'NO_3',
+    // Individual subscript characters
+    '₀': '_0', 
+    '₁': '_1', 
+    '₂': '_2', 
+    '₃': '_3', 
+    '₄': '_4', 
+    '₅': '_5',
+    '₆': '_6', 
+    '₇': '_7', 
+    '₈': '_8', 
+    '₉': '_9', 
+    '₊': '_+', 
+    '₋': '_-',
+    'ₐ': '_a',
+    'ₑ': '_e',
+    'ₕ': '_h',
+    'ᵢ': '_i',
+    'ⱼ': '_j',
+    'ₖ': '_k',
+    'ₗ': '_l',
+    'ₘ': '_m',
+    'ₙ': '_n',
+    'ₒ': '_o',
+    'ₚ': '_p',
+    'ᵣ': '_r',
+    'ₛ': '_s',
+    'ₜ': '_t',
+    'ᵤ': '_u',
+    'ᵥ': '_v',
+    'ₓ': '_x'
   };
   
-  // Handle other special characters
+  // Handle other special characters including Greek letters and symbols
   const specialCharMap: { [key: string]: string } = {
+    // Temperature and degrees
     '°': ' degrees',
+    '°C': ' degrees C',
+    '°F': ' degrees F',
+    '℃': ' degrees C',
+    '℉': ' degrees F',
+    
+    // Greek letters (commonly used in science)
     'α': 'alpha',
     'β': 'beta',
     'γ': 'gamma',
     'δ': 'delta',
     'ε': 'epsilon',
+    'ζ': 'zeta',
+    'η': 'eta',
+    'θ': 'theta',
+    'ι': 'iota',
+    'κ': 'kappa',
+    'λ': 'lambda',
     'μ': 'micro',
+    'ν': 'nu',
+    'ξ': 'xi',
+    'ο': 'omicron',
+    'π': 'pi',
+    'ρ': 'rho',
+    'σ': 'sigma',
+    'τ': 'tau',
+    'υ': 'upsilon',
+    'φ': 'phi',
+    'χ': 'chi',
+    'ψ': 'psi',
+    'ω': 'omega',
+    'Α': 'Alpha',
+    'Β': 'Beta',
+    'Γ': 'Gamma',
+    'Δ': 'Delta',
+    'Ε': 'Epsilon',
+    'Ζ': 'Zeta',
+    'Η': 'Eta',
+    'Θ': 'Theta',
+    'Ι': 'Iota',
+    'Κ': 'Kappa',
+    'Λ': 'Lambda',
+    'Μ': 'Mu',
+    'Ν': 'Nu',
+    'Ξ': 'Xi',
+    'Ο': 'Omicron',
+    'Π': 'Pi',
+    'Ρ': 'Rho',
+    'Σ': 'Sigma',
+    'Τ': 'Tau',
+    'Υ': 'Upsilon',
+    'Φ': 'Phi',
+    'Χ': 'Chi',
+    'Ψ': 'Psi',
+    'Ω': 'Omega',
+    
+    // Mathematical symbols
     '≤': '<=',
     '≥': '>=',
     '±': '+/-',
@@ -57,8 +189,8 @@ const normalizeSpecialCharacters = (text: string): string => {
     '∪': 'union',
     '∩': 'intersection',
     '∅': 'empty set',
-    '℃': 'C',
-    '℉': 'F',
+    
+    // Common symbols
     '™': '(TM)',
     '®': '(R)',
     '©': '(C)',
@@ -75,33 +207,83 @@ const normalizeSpecialCharacters = (text: string): string => {
     '“': '"',
     '…': '...',
     '‰': 'per mille',
-    '‱': 'per ten thousand'
+    '‱': 'per ten thousand',
+    
+    // Additional scientific notation
+    'Å': 'Angstrom',
+    '℉': 'F',
+    '℃': 'C',
+    '‱': 'basis point',
+    '∠': 'angle',
+    '⊥': 'perpendicular',
+    '∥': 'parallel',
+    '∟': 'right angle'
   };
   
   let normalizedText = text;
   
-  // Replace superscript characters
-  Object.entries(superscriptMap).forEach(([unicode, replacement]) => {
-    normalizedText = normalizedText.replace(new RegExp(unicode, 'g'), replacement);
+  // Process superscripts first (most specific patterns first)
+  const sortedSuperscriptEntries = Object.entries(superscriptMap)
+    .sort((a, b) => b[0].length - a[0].length); // Longer patterns first
+  
+  sortedSuperscriptEntries.forEach(([unicode, replacement]) => {
+    // Use a more robust regex that handles word boundaries properly
+    const regex = new RegExp(unicode.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
+    normalizedText = normalizedText.replace(regex, replacement);
+    if (normalizedText !== text) {
+      console.log(`Replaced superscript: "${unicode}" -> "${replacement}"`);
+    }
   });
   
-  // Replace subscript characters
-  Object.entries(subscriptMap).forEach(([unicode, replacement]) => {
-    normalizedText = normalizedText.replace(new RegExp(unicode, 'g'), replacement);
+  // Process subscripts (most specific patterns first)
+  const sortedSubscriptEntries = Object.entries(subscriptMap)
+    .sort((a, b) => b[0].length - a[0].length);
+  
+  sortedSubscriptEntries.forEach(([unicode, replacement]) => {
+    const regex = new RegExp(unicode.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
+    normalizedText = normalizedText.replace(regex, replacement);
+    if (normalizedText !== text) {
+      console.log(`Replaced subscript: "${unicode}" -> "${replacement}"`);
+    }
   });
   
-  // Replace other special characters
-  Object.entries(specialCharMap).forEach(([unicode, replacement]) => {
-    normalizedText = normalizedText.replace(new RegExp(unicode, 'g'), replacement);
+  // Process other special characters (most specific patterns first)
+  const sortedSpecialEntries = Object.entries(specialCharMap)
+    .sort((a, b) => b[0].length - a[0].length);
+  
+  sortedSpecialEntries.forEach(([unicode, replacement]) => {
+    const regex = new RegExp(unicode.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
+    normalizedText = normalizedText.replace(regex, replacement);
+    if (normalizedText !== text) {
+      console.log(`Replaced special char: "${unicode}" -> "${replacement}"`);
+    }
   });
   
-  // Handle remaining non-ASCII characters by removing or replacing them
+  // Handle remaining non-ASCII characters with better fallbacks
   normalizedText = normalizedText.replace(/[^\x00-\x7F]/g, (match) => {
-    // Log unhandled characters for future improvement
-    console.warn('Unhandled special character in PDF export:', match, 'Unicode:', match.charCodeAt(0));
-    return '?'; // Replace with question mark as fallback
+    const charCode = match.charCodeAt(0);
+    console.warn(`Unhandled special character in PDF export: "${match}" (U+${charCode.toString(16).toUpperCase().padStart(4, '0')})`);
+    
+    // Provide better fallbacks based on character ranges
+    if (charCode >= 0x2070 && charCode <= 0x209F) {
+      // Superscripts and subscripts range
+      return `[${match}]`;
+    } else if (charCode >= 0x0370 && charCode <= 0x03FF) {
+      // Greek and Coptic range
+      return `[Greek:${match}]`;
+    } else if (charCode >= 0x2190 && charCode <= 0x21FF) {
+      // Arrows range
+      return '->';
+    } else if (charCode >= 0x2200 && charCode <= 0x22FF) {
+      // Mathematical operators range
+      return `[Math:${match}]`;
+    }
+    
+    // Generic fallback
+    return '?';
   });
   
+  console.log('Final normalized text:', normalizedText);
   return normalizedText;
 };
 
