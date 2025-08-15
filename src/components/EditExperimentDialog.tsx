@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -25,9 +24,10 @@ import RichTextEditor from "@/components/RichTextEditor";
 
 interface EditExperimentDialogProps {
   experiment: Experiment;
+  children?: React.ReactNode;
 }
 
-const EditExperimentDialog = ({ experiment }: EditExperimentDialogProps) => {
+const EditExperimentDialog = ({ experiment, children }: EditExperimentDialogProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [formData, setFormData] = useState({
     title: experiment.title,
@@ -85,12 +85,18 @@ const EditExperimentDialog = ({ experiment }: EditExperimentDialogProps) => {
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger asChild>
-        <Button size="sm" variant="outline" className="gap-1">
-          <Edit className="h-3 w-3" />
-          Edit
-        </Button>
-      </DialogTrigger>
+      {children ? (
+        <DialogTrigger asChild onClick={() => setIsOpen(true)}>
+          {children}
+        </DialogTrigger>
+      ) : (
+        <DialogTrigger asChild>
+          <Button size="sm" variant="outline" className="gap-1">
+            <Edit className="h-3 w-3" />
+            Edit
+          </Button>
+        </DialogTrigger>
+      )}
       <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Edit Experiment</DialogTitle>

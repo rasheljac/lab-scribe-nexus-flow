@@ -1,25 +1,47 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Plus, Beaker, Calendar, User, Hash } from "lucide-react";
+import { Slider } from "@/components/ui/slider";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Search, Plus, Beaker, Calendar, User, Hash, MoreVertical, Edit, Trash2, TrendingUp } from "lucide-react";
 import { useExperiments } from "@/hooks/useExperiments";
+import { useToast } from "@/hooks/use-toast";
 import CreateExperimentDialog from "@/components/CreateExperimentDialog";
+import EditExperimentDialog from "@/components/EditExperimentDialog";
 import PaginatedDraggableGrid from "@/components/PaginatedDraggableGrid";
 import RichTextDisplay from "@/components/RichTextDisplay";
 import { format } from "date-fns";
 
 const Experiments = () => {
   const navigate = useNavigate();
-  const { experiments, isLoading, updateExperimentOrder } = useExperiments();
+  const { experiments, isLoading, updateExperiment, updateExperimentOrder, deleteExperiment } = useExperiments();
+  const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedProject, setSelectedProject] = useState<string>("all");
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [experimentToDelete, setExperimentToDelete] = useState<string | null>(null);
 
   const filteredExperiments = experiments.filter(experiment => {
     const matchesSearch = experiment.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -67,18 +89,94 @@ const Experiments = () => {
     await updateExperimentOrder.mutateAsync(updates);
   };
 
+  const handleDeleteExperiment = async () => {
+    if (!experimentToDelete) return;
+    
+    try {
+      await deleteExperiment.mutateAsync(experimentToDelete);
+      toast({
+        title: "Success",
+        description: "Experiment deleted successfully",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete experiment",
+        variant: "destructive",
+      });
+    } finally {
+      setDeleteDialogOpen(false);
+      setExperimentToDelete(null);
+    }
+  };
+
+  const handleProgressUpdate = async (experimentId: string, newProgress: number) => {
+    try {
+      await updateExperiment.mutateAsync({
+        id: experimentId,
+        progress: newProgress,
+      });
+      toast({
+        title: "Success",
+        description: "Progress updated successfully",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update progress",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleCardClick = (experimentId: string, event: React.MouseEvent) => {
+    // Prevent navigation if clicking on action buttons or progress slider
+    const target = event.target as HTMLElement;
+    if (target.closest('[data-no-navigate]')) {
+      return;
+    }
+    navigate(`/experiments/${experimentId}`);
+  };
+
   const renderExperimentCard = (experiment: any) => (
     <Card 
       key={experiment.id} 
-      className="cursor-pointer hover:shadow-lg transition-shadow"
-      onClick={() => navigate(`/experiments/${experiment.id}`)}
+      className="cursor-pointer hover:shadow-lg transition-shadow relative"
+      onClick={(e) => handleCardClick(experiment.id, e)}
     >
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
-          <CardTitle className="text-lg line-clamp-2">{experiment.title}</CardTitle>
-          <Badge className={getStatusColor(experiment.status)}>
-            {experiment.status.replace('_', ' ')}
-          </Badge>
+          <CardTitle className="text-lg line-clamp-2 pr-2">{experiment.title}</CardTitle>
+          <div className="flex items-center gap-2" data-no-navigate>
+            <Badge className={getStatusColor(experiment.status)}>
+              {experiment.status.replace('_', ' ')}
+            </Badge>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <EditExperimentDialog experiment={experiment}>
+                  <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                    <Edit className="mr-2 h-4 w-4" />
+                    Edit
+                  </DropdownMenuItem>
+                </EditExperimentDialog>
+                <DropdownMenuItem
+                  className="text-red-600"
+                  onSelect={() => {
+                    setExperimentToDelete(experiment.id);
+                    setDeleteDialogOpen(true);
+                  }}
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
         <CardDescription className="line-clamp-2">
           <RichTextDisplay 
@@ -90,7 +188,7 @@ const Experiments = () => {
       </CardHeader>
       
       <CardContent>
-        <div className="space-y-2">
+        <div className="space-y-3">
           <div className="flex items-center gap-2">
             <Badge className={getCategoryColor(experiment.category)}>
               {experiment.category.replace('-', ' ')}
@@ -112,6 +210,27 @@ const Experiments = () => {
           <div className="flex items-center gap-2 text-sm text-gray-600">
             <Beaker className="h-4 w-4" />
             <span>{experiment.protocols} protocols • {experiment.samples} samples</span>
+          </div>
+
+          {/* Progress Section */}
+          <div className="space-y-2" data-no-navigate>
+            <div className="flex items-center justify-between text-sm">
+              <div className="flex items-center gap-2">
+                <TrendingUp className="h-4 w-4 text-blue-600" />
+                <span className="text-gray-600">Progress</span>
+              </div>
+              <span className="font-medium">{experiment.progress}%</span>
+            </div>
+            <Progress value={experiment.progress} className="h-2" />
+            <div className="px-1">
+              <Slider
+                value={[experiment.progress]}
+                onValueChange={(value) => handleProgressUpdate(experiment.id, value[0])}
+                max={100}
+                step={5}
+                className="w-full"
+              />
+            </div>
           </div>
         </div>
       </CardContent>
@@ -270,6 +389,28 @@ const Experiments = () => {
           open={createDialogOpen} 
           onOpenChange={setCreateDialogOpen}
         />
+
+        <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Experiment</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete this experiment? This action cannot be undone.
+                All associated data, protocols, and notes will be permanently removed.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleDeleteExperiment}
+                className="bg-red-600 hover:bg-red-700"
+                disabled={deleteExperiment.isPending}
+              >
+                {deleteExperiment.isPending ? "Deleting..." : "Delete"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </div>
   );
