@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -120,36 +119,14 @@ const Experiments = () => {
     navigate(`/experiments/${experimentId}`);
   };
 
-  const handleEditClick = (experiment: any) => {
+  const handleEditClick = (experiment: any, event?: React.MouseEvent) => {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
     console.log("Edit button clicked for experiment:", experiment.id);
     setExperimentToEdit(experiment);
     setEditDialogOpen(true);
-  };
-
-  const handleMoveExperiment = async (experimentId: string, direction: 'up' | 'down', currentIndex: number, currentPage: number, itemsPerPage: number) => {
-    const globalIndex = currentPage * itemsPerPage + currentIndex;
-    
-    if (direction === 'up' && globalIndex > 0) {
-      const newOrder = [...filteredExperiments];
-      [newOrder[globalIndex], newOrder[globalIndex - 1]] = [newOrder[globalIndex - 1], newOrder[globalIndex]];
-      
-      const updates = newOrder.map((experiment, index) => ({
-        id: experiment.id,
-        display_order: index + 1
-      }));
-      
-      await updateExperimentOrder.mutateAsync(updates);
-    } else if (direction === 'down' && globalIndex < filteredExperiments.length - 1) {
-      const newOrder = [...filteredExperiments];
-      [newOrder[globalIndex], newOrder[globalIndex + 1]] = [newOrder[globalIndex + 1], newOrder[globalIndex]];
-      
-      const updates = newOrder.map((experiment, index) => ({
-        id: experiment.id,
-        display_order: index + 1
-      }));
-      
-      await updateExperimentOrder.mutateAsync(updates);
-    }
   };
 
   const renderExperimentCard = (experiment: any, index: number, onMoveUp?: () => void, onMoveDown?: () => void) => (
@@ -195,7 +172,15 @@ const Experiments = () => {
             )}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-8 w-8 p-0"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }}
+                >
                   <MoreVertical className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
@@ -203,11 +188,6 @@ const Experiments = () => {
                 <DropdownMenuItem 
                   onSelect={(e) => {
                     e.preventDefault();
-                    handleEditClick(experiment);
-                  }}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
                     handleEditClick(experiment);
                   }}
                 >
@@ -426,7 +406,6 @@ const Experiments = () => {
           itemsPerPage={6}
           emptyState={emptyState}
           layout="grid"
-          onMoveItem={handleMoveExperiment}
         />
 
         <CreateExperimentDialog 
