@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -119,11 +120,36 @@ const Experiments = () => {
     navigate(`/experiments/${experimentId}`);
   };
 
-  const handleEditClick = (experiment: any, e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
+  const handleEditClick = (experiment: any) => {
+    console.log("Edit button clicked for experiment:", experiment.id);
     setExperimentToEdit(experiment);
     setEditDialogOpen(true);
+  };
+
+  const handleMoveExperiment = async (experimentId: string, direction: 'up' | 'down', currentIndex: number, currentPage: number, itemsPerPage: number) => {
+    const globalIndex = currentPage * itemsPerPage + currentIndex;
+    
+    if (direction === 'up' && globalIndex > 0) {
+      const newOrder = [...filteredExperiments];
+      [newOrder[globalIndex], newOrder[globalIndex - 1]] = [newOrder[globalIndex - 1], newOrder[globalIndex]];
+      
+      const updates = newOrder.map((experiment, index) => ({
+        id: experiment.id,
+        display_order: index + 1
+      }));
+      
+      await updateExperimentOrder.mutateAsync(updates);
+    } else if (direction === 'down' && globalIndex < filteredExperiments.length - 1) {
+      const newOrder = [...filteredExperiments];
+      [newOrder[globalIndex], newOrder[globalIndex + 1]] = [newOrder[globalIndex + 1], newOrder[globalIndex]];
+      
+      const updates = newOrder.map((experiment, index) => ({
+        id: experiment.id,
+        display_order: index + 1
+      }));
+      
+      await updateExperimentOrder.mutateAsync(updates);
+    }
   };
 
   const renderExperimentCard = (experiment: any, index: number, onMoveUp?: () => void, onMoveDown?: () => void) => (
@@ -173,11 +199,16 @@ const Experiments = () => {
                   <MoreVertical className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
+              <DropdownMenuContent align="end" className="z-50">
                 <DropdownMenuItem 
                   onSelect={(e) => {
                     e.preventDefault();
-                    handleEditClick(experiment, e as any);
+                    handleEditClick(experiment);
+                  }}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleEditClick(experiment);
                   }}
                 >
                   <Edit className="mr-2 h-4 w-4" />
@@ -185,7 +216,8 @@ const Experiments = () => {
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   className="text-red-600"
-                  onSelect={() => {
+                  onSelect={(e) => {
+                    e.preventDefault();
                     setExperimentToDelete(experiment.id);
                     setDeleteDialogOpen(true);
                   }}
@@ -387,11 +419,14 @@ const Experiments = () => {
         <PaginatedDraggableGrid
           items={filteredExperiments}
           onReorder={handleReorder}
-          renderItem={renderExperimentCard}
+          renderItem={(experiment, index, onMoveUp, onMoveDown) => 
+            renderExperimentCard(experiment, index, onMoveUp, onMoveDown)
+          }
           droppableId="experiments"
           itemsPerPage={6}
           emptyState={emptyState}
           layout="grid"
+          onMoveItem={handleMoveExperiment}
         />
 
         <CreateExperimentDialog 
