@@ -20,6 +20,7 @@ interface PaginatedDraggableGridProps {
   droppableId: string;
   itemsPerPage?: number;
   emptyState?: ReactNode;
+  layout?: 'grid' | 'vertical';
 }
 
 const PaginatedDraggableGrid = ({
@@ -29,6 +30,7 @@ const PaginatedDraggableGrid = ({
   droppableId,
   itemsPerPage = 8,
   emptyState,
+  layout = 'grid',
 }: PaginatedDraggableGridProps) => {
   const {
     currentPage,
@@ -70,6 +72,7 @@ const PaginatedDraggableGrid = ({
         onReorder={handleReorder}
         renderItem={renderItem}
         droppableId={`${droppableId}-page-${currentPage}`}
+        layout={layout}
       />
 
       {totalPages > 1 && (

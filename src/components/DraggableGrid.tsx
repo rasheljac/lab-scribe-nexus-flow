@@ -7,9 +7,10 @@ interface DraggableGridProps {
   onReorder: (items: Array<{ id: string; [key: string]: any }>) => void;
   renderItem: (item: any, index: number) => ReactNode;
   droppableId: string;
+  layout?: 'grid' | 'vertical';
 }
 
-const DraggableGrid = ({ items, onReorder, renderItem, droppableId }: DraggableGridProps) => {
+const DraggableGrid = ({ items, onReorder, renderItem, droppableId, layout = 'grid' }: DraggableGridProps) => {
   const handleDragEnd = (result: DropResult) => {
     if (!result.destination) return;
 
@@ -20,6 +21,10 @@ const DraggableGrid = ({ items, onReorder, renderItem, droppableId }: DraggableG
     onReorder(reorderedItems);
   };
 
+  const containerClass = layout === 'grid' 
+    ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+    : "space-y-4";
+
   return (
     <DragDropContext onDragEnd={handleDragEnd}>
       <Droppable droppableId={droppableId}>
@@ -27,7 +32,7 @@ const DraggableGrid = ({ items, onReorder, renderItem, droppableId }: DraggableG
           <div
             {...provided.droppableProps}
             ref={provided.innerRef}
-            className="space-y-4"
+            className={containerClass}
           >
             {items.map((item, index) => (
               <Draggable key={item.id} draggableId={item.id} index={index}>

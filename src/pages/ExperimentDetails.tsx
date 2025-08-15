@@ -296,6 +296,7 @@ const ExperimentDetails = () => {
                   renderItem={renderNoteItem}
                   droppableId={`experiment-notes-${experiment.id}`}
                   itemsPerPage={6}
+                  layout="vertical"
                   emptyState={
                     <div className="text-center py-8 text-gray-500">
                       {searchTerm ? "No notes found matching your criteria." : "No notes yet. Add your first note to get started."}
