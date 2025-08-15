@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Calendar as CalendarIcon, Plus, ChevronLeft, ChevronRight } from "lucide-react";
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, isToday, addMonths, subMonths } from "date-fns";
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, isToday, addMonths, subMonths, startOfWeek, endOfWeek } from "date-fns";
 import { useCalendarEvents } from "@/hooks/useCalendarEvents";
 import CreateEventDialog from "@/components/CreateEventDialog";
 import EventDetailsDialog from "@/components/EventDetailsDialog";
@@ -22,7 +22,11 @@ const Calendar = () => {
 
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(currentDate);
-  const daysInMonth = eachDayOfInterval({ start: monthStart, end: monthEnd });
+  
+  // Calculate the full calendar view (6 weeks to ensure consistent layout)
+  const calendarStart = startOfWeek(monthStart, { weekStartsOn: 0 }); // Sunday = 0
+  const calendarEnd = endOfWeek(monthEnd, { weekStartsOn: 0 });
+  const calendarDays = eachDayOfInterval({ start: calendarStart, end: calendarEnd });
 
   const getEventsForDay = (date: Date) => {
     return events.filter(event => {
@@ -152,7 +156,7 @@ const Calendar = () => {
 
             {/* Calendar Days */}
             <div className="grid grid-cols-7 gap-4">
-              {daysInMonth.map(date => {
+              {calendarDays.map(date => {
                 const dayEvents = getEventsForDay(date);
                 const isCurrentMonth = isSameMonth(date, currentDate);
                 const isCurrentDay = isToday(date);
@@ -163,10 +167,11 @@ const Calendar = () => {
                     onClick={() => handleDateClick(date)}
                     className={`min-h-[120px] p-2 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors ${
                       isCurrentDay ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
-                    } ${!isCurrentMonth ? 'opacity-50' : ''}`}
+                    } ${!isCurrentMonth ? 'opacity-40 bg-gray-50/50' : ''}`}
                   >
                     <div className={`text-sm font-medium mb-2 ${
-                      isCurrentDay ? 'text-blue-700' : 'text-gray-900'
+                      isCurrentDay ? 'text-blue-700' : 
+                      !isCurrentMonth ? 'text-gray-400' : 'text-gray-900'
                     }`}>
                       {format(date, 'd')}
                     </div>
