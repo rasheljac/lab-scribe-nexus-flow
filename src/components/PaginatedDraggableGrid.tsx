@@ -1,7 +1,7 @@
 
 import { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, ArrowUp, ArrowDown } from "lucide-react";
 import { usePagination } from "@/hooks/usePagination";
 import DraggableGrid from "@/components/DraggableGrid";
 import {
@@ -16,7 +16,7 @@ import {
 interface PaginatedDraggableGridProps {
   items: Array<{ id: string; [key: string]: any }>;
   onReorder: (items: Array<{ id: string; [key: string]: any }>) => void;
-  renderItem: (item: any, index: number) => ReactNode;
+  renderItem: (item: any, index: number, onMoveUp?: () => void, onMoveDown?: () => void) => ReactNode;
   droppableId: string;
   itemsPerPage?: number;
   emptyState?: ReactNode;
@@ -49,16 +49,39 @@ const PaginatedDraggableGrid = ({
   const paginatedItems = items.slice(paginatedData.startIndex, paginatedData.endIndex);
 
   const handleReorder = (reorderedItems: any[]) => {
-    // Calculate the global indexes for reordered items
     const startIndex = paginatedData.startIndex;
     const newItems = [...items];
     
-    // Replace the items in the current page with reordered items
     reorderedItems.forEach((item, index) => {
       newItems[startIndex + index] = item;
     });
 
     onReorder(newItems);
+  };
+
+  const moveItemUp = (globalIndex: number) => {
+    if (globalIndex > 0) {
+      const newItems = [...items];
+      [newItems[globalIndex - 1], newItems[globalIndex]] = [newItems[globalIndex], newItems[globalIndex - 1]];
+      onReorder(newItems);
+    }
+  };
+
+  const moveItemDown = (globalIndex: number) => {
+    if (globalIndex < items.length - 1) {
+      const newItems = [...items];
+      [newItems[globalIndex], newItems[globalIndex + 1]] = [newItems[globalIndex + 1], newItems[globalIndex]];
+      onReorder(newItems);
+    }
+  };
+
+  const enhancedRenderItem = (item: any, localIndex: number) => {
+    const globalIndex = paginatedData.startIndex + localIndex;
+    
+    const handleMoveUp = () => moveItemUp(globalIndex);
+    const handleMoveDown = () => moveItemDown(globalIndex);
+    
+    return renderItem(item, localIndex, handleMoveUp, handleMoveDown);
   };
 
   if (items.length === 0 && emptyState) {
@@ -70,7 +93,7 @@ const PaginatedDraggableGrid = ({
       <DraggableGrid
         items={paginatedItems}
         onReorder={handleReorder}
-        renderItem={renderItem}
+        renderItem={enhancedRenderItem}
         droppableId={`${droppableId}-page-${currentPage}`}
         layout={layout}
       />

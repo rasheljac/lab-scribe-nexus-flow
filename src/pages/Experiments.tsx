@@ -22,7 +22,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Search, Plus, Beaker, Calendar, User, Hash, MoreVertical, Edit, Trash2, TrendingUp } from "lucide-react";
+import { Search, Plus, Beaker, Calendar, User, Hash, MoreVertical, Edit, Trash2, TrendingUp, ArrowUp, ArrowDown } from "lucide-react";
 import { useExperiments } from "@/hooks/useExperiments";
 import { useToast } from "@/hooks/use-toast";
 import CreateExperimentDialog from "@/components/CreateExperimentDialog";
@@ -41,6 +41,8 @@ const Experiments = () => {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [experimentToDelete, setExperimentToDelete] = useState<string | null>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [experimentToEdit, setExperimentToEdit] = useState<any>(null);
 
   const filteredExperiments = experiments.filter(experiment => {
     const matchesSearch = experiment.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -110,7 +112,6 @@ const Experiments = () => {
   };
 
   const handleCardClick = (experimentId: string, event: React.MouseEvent) => {
-    // Prevent navigation if clicking on action buttons
     const target = event.target as HTMLElement;
     if (target.closest('[data-no-navigate]')) {
       return;
@@ -118,7 +119,14 @@ const Experiments = () => {
     navigate(`/experiments/${experimentId}`);
   };
 
-  const renderExperimentCard = (experiment: any) => (
+  const handleEditClick = (experiment: any, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setExperimentToEdit(experiment);
+    setEditDialogOpen(true);
+  };
+
+  const renderExperimentCard = (experiment: any, index: number, onMoveUp?: () => void, onMoveDown?: () => void) => (
     <Card 
       key={experiment.id} 
       className="cursor-pointer hover:shadow-lg transition-shadow relative"
@@ -131,6 +139,34 @@ const Experiments = () => {
             <Badge className={getStatusColor(experiment.status)}>
               {experiment.status.replace('_', ' ')}
             </Badge>
+            {onMoveUp && onMoveDown && (
+              <div className="flex flex-col gap-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 w-6 p-0"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onMoveUp();
+                  }}
+                >
+                  <ArrowUp className="h-3 w-3" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 w-6 p-0"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onMoveDown();
+                  }}
+                >
+                  <ArrowDown className="h-3 w-3" />
+                </Button>
+              </div>
+            )}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
@@ -138,12 +174,15 @@ const Experiments = () => {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <EditExperimentDialog experiment={experiment}>
-                  <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                    <Edit className="mr-2 h-4 w-4" />
-                    Edit
-                  </DropdownMenuItem>
-                </EditExperimentDialog>
+                <DropdownMenuItem 
+                  onSelect={(e) => {
+                    e.preventDefault();
+                    handleEditClick(experiment, e as any);
+                  }}
+                >
+                  <Edit className="mr-2 h-4 w-4" />
+                  Edit
+                </DropdownMenuItem>
                 <DropdownMenuItem
                   className="text-red-600"
                   onSelect={() => {
@@ -359,6 +398,14 @@ const Experiments = () => {
           open={createDialogOpen} 
           onOpenChange={setCreateDialogOpen}
         />
+
+        {experimentToEdit && (
+          <EditExperimentDialog 
+            experiment={experimentToEdit}
+            open={editDialogOpen}
+            onOpenChange={setEditDialogOpen}
+          />
+        )}
 
         <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
           <AlertDialogContent>
