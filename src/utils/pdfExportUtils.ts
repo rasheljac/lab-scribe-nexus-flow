@@ -18,13 +18,18 @@ const normalizeSpecialCharacters = (text: string): string => {
   
   // Handle superscript characters - process in order of specificity
   const superscriptMap: { [key: string]: string } = {
-    // Common superscript sequences first
+    // Common superscript sequences first (most specific patterns)
     '²⁺': '^2+',
     '³⁺': '^3+',
     '⁴⁺': '^4+',
+    '⁵⁺': '^5+',
+    '⁶⁺': '^6+',
     '²⁻': '^2-',
     '³⁻': '^3-',
     '⁴⁻': '^4-',
+    '⁵⁻': '^5-',
+    '⁶⁻': '^6-',
+    
     // Individual superscript characters
     '⁰': '^0',
     '¹': '^1', 
@@ -38,6 +43,8 @@ const normalizeSpecialCharacters = (text: string): string => {
     '⁹': '^9', 
     '⁺': '^+', 
     '⁻': '^-',
+    
+    // Superscript letters
     'ᵃ': '^a',
     'ᵇ': '^b',
     'ᶜ': '^c',
@@ -67,14 +74,21 @@ const normalizeSpecialCharacters = (text: string): string => {
   
   // Handle subscript characters
   const subscriptMap: { [key: string]: string } = {
-    // Common subscript sequences
-    '₂O': '_2O',
-    'H₂': 'H_2',
-    'CO₂': 'CO_2',
+    // Common chemical formulas (most specific first)
     'H₂O': 'H_2O',
+    'CO₂': 'CO_2',
+    'H₂SO₄': 'H_2SO_4',
+    'CaCO₃': 'CaCO_3',
+    'NaCl': 'NaCl',
+    'H₂': 'H_2',
+    'O₂': 'O_2',
+    'N₂': 'N_2',
     'SO₄': 'SO_4',
     'PO₄': 'PO_4',
     'NO₃': 'NO_3',
+    'NH₃': 'NH_3',
+    'CH₄': 'CH_4',
+    
     // Individual subscript characters
     '₀': '_0', 
     '₁': '_1', 
@@ -88,11 +102,11 @@ const normalizeSpecialCharacters = (text: string): string => {
     '₉': '_9', 
     '₊': '_+', 
     '₋': '_-',
+    
+    // Subscript letters
     'ₐ': '_a',
     'ₑ': '_e',
     'ₕ': '_h',
-    'ᵢ': '_i',
-    'ⱼ': '_j',
     'ₖ': '_k',
     'ₗ': '_l',
     'ₘ': '_m',
@@ -110,11 +124,11 @@ const normalizeSpecialCharacters = (text: string): string => {
   // Handle other special characters including Greek letters and symbols
   const specialCharMap: { [key: string]: string } = {
     // Temperature and degrees
-    '°': ' degrees',
     '°C': ' degrees C',
     '°F': ' degrees F',
     '℃': ' degrees C',
     '℉': ' degrees F',
+    '°': ' degrees',
     
     // Greek letters (commonly used in science)
     'α': 'alpha',
@@ -141,6 +155,8 @@ const normalizeSpecialCharacters = (text: string): string => {
     'χ': 'chi',
     'ψ': 'psi',
     'ω': 'omega',
+    
+    // Capital Greek letters
     'Α': 'Alpha',
     'Β': 'Beta',
     'Γ': 'Gamma',
@@ -211,9 +227,6 @@ const normalizeSpecialCharacters = (text: string): string => {
     
     // Additional scientific notation
     'Å': 'Angstrom',
-    '℉': 'F',
-    '℃': 'C',
-    '‱': 'basis point',
     '∠': 'angle',
     '⊥': 'perpendicular',
     '∥': 'parallel',
@@ -229,8 +242,9 @@ const normalizeSpecialCharacters = (text: string): string => {
   sortedSuperscriptEntries.forEach(([unicode, replacement]) => {
     // Use a more robust regex that handles word boundaries properly
     const regex = new RegExp(unicode.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
+    const beforeReplace = normalizedText;
     normalizedText = normalizedText.replace(regex, replacement);
-    if (normalizedText !== text) {
+    if (normalizedText !== beforeReplace) {
       console.log(`Replaced superscript: "${unicode}" -> "${replacement}"`);
     }
   });
@@ -241,8 +255,9 @@ const normalizeSpecialCharacters = (text: string): string => {
   
   sortedSubscriptEntries.forEach(([unicode, replacement]) => {
     const regex = new RegExp(unicode.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
+    const beforeReplace = normalizedText;
     normalizedText = normalizedText.replace(regex, replacement);
-    if (normalizedText !== text) {
+    if (normalizedText !== beforeReplace) {
       console.log(`Replaced subscript: "${unicode}" -> "${replacement}"`);
     }
   });
@@ -253,8 +268,9 @@ const normalizeSpecialCharacters = (text: string): string => {
   
   sortedSpecialEntries.forEach(([unicode, replacement]) => {
     const regex = new RegExp(unicode.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
+    const beforeReplace = normalizedText;
     normalizedText = normalizedText.replace(regex, replacement);
-    if (normalizedText !== text) {
+    if (normalizedText !== beforeReplace) {
       console.log(`Replaced special char: "${unicode}" -> "${replacement}"`);
     }
   });
