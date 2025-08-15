@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -55,9 +55,24 @@ const EditExperimentDialog = ({
   const isOpen = controlledOpen !== undefined ? controlledOpen : internalOpen;
   const setIsOpen = controlledOnOpenChange || setInternalOpen;
 
+  // Update form data when experiment changes
+  useEffect(() => {
+    setFormData({
+      title: experiment.title,
+      description: experiment.description || "",
+      status: experiment.status,
+      progress: experiment.progress,
+      start_date: experiment.start_date,
+      end_date: experiment.end_date || "",
+      researcher: experiment.researcher,
+      protocols: experiment.protocols,
+      samples: experiment.samples,
+      category: experiment.category,
+    });
+  }, [experiment]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    e.stopPropagation();
     
     if (!formData.title.trim()) {
       toast({
@@ -94,21 +109,19 @@ const EditExperimentDialog = ({
     }));
   };
 
+  // Handle trigger click when using children
   const handleTriggerClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    console.log("Opening edit dialog for experiment:", experiment.id);
     setIsOpen(true);
-  };
-
-  // Prevent dialog from closing when clicking inside form elements
-  const handleContentClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
   };
 
   const dialogContent = (
     <DialogContent 
       className="max-w-4xl max-h-[80vh] overflow-y-auto"
-      onClick={handleContentClick}
+      onPointerDownOutside={(e) => e.preventDefault()}
+      onInteractOutside={(e) => e.preventDefault()}
     >
       <DialogHeader>
         <DialogTitle>Edit Experiment</DialogTitle>
@@ -116,7 +129,7 @@ const EditExperimentDialog = ({
           Update experiment details and settings.
         </DialogDescription>
       </DialogHeader>
-      <form onSubmit={handleSubmit} className="space-y-4" onClick={handleContentClick}>
+      <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">
           <Label htmlFor="title">Title *</Label>
           <Input
@@ -124,20 +137,17 @@ const EditExperimentDialog = ({
             value={formData.title}
             onChange={(e) => handleInputChange("title", e.target.value)}
             required
-            onClick={(e) => e.stopPropagation()}
           />
         </div>
 
         <div className="space-y-2">
           <Label htmlFor="description">Description</Label>
-          <div onClick={(e) => e.stopPropagation()}>
-            <RichTextEditor
-              value={formData.description}
-              onChange={(value) => handleInputChange("description", value)}
-              placeholder="Enter experiment description..."
-              className="mt-2"
-            />
-          </div>
+          <RichTextEditor
+            value={formData.description}
+            onChange={(value) => handleInputChange("description", value)}
+            placeholder="Enter experiment description..."
+            className="mt-2"
+          />
         </div>
 
         <div className="grid grid-cols-2 gap-4">
@@ -147,7 +157,7 @@ const EditExperimentDialog = ({
               value={formData.status}
               onValueChange={(value) => handleInputChange("status", value)}
             >
-              <SelectTrigger onClick={(e) => e.stopPropagation()}>
+              <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -165,7 +175,6 @@ const EditExperimentDialog = ({
               id="category"
               value={formData.category}
               onChange={(e) => handleInputChange("category", e.target.value)}
-              onClick={(e) => e.stopPropagation()}
             />
           </div>
         </div>
@@ -179,7 +188,6 @@ const EditExperimentDialog = ({
             max="100"
             value={formData.progress}
             onChange={(e) => handleInputChange("progress", parseInt(e.target.value) || 0)}
-            onClick={(e) => e.stopPropagation()}
           />
         </div>
 
@@ -191,7 +199,6 @@ const EditExperimentDialog = ({
               type="date"
               value={formData.start_date}
               onChange={(e) => handleInputChange("start_date", e.target.value)}
-              onClick={(e) => e.stopPropagation()}
             />
           </div>
 
@@ -202,7 +209,6 @@ const EditExperimentDialog = ({
               type="date"
               value={formData.end_date}
               onChange={(e) => handleInputChange("end_date", e.target.value)}
-              onClick={(e) => e.stopPropagation()}
             />
           </div>
         </div>
@@ -213,7 +219,6 @@ const EditExperimentDialog = ({
             id="researcher"
             value={formData.researcher}
             onChange={(e) => handleInputChange("researcher", e.target.value)}
-            onClick={(e) => e.stopPropagation()}
           />
         </div>
 
@@ -226,7 +231,6 @@ const EditExperimentDialog = ({
               min="0"
               value={formData.protocols}
               onChange={(e) => handleInputChange("protocols", parseInt(e.target.value) || 0)}
-              onClick={(e) => e.stopPropagation()}
             />
           </div>
 
@@ -238,7 +242,6 @@ const EditExperimentDialog = ({
               min="0"
               value={formData.samples}
               onChange={(e) => handleInputChange("samples", parseInt(e.target.value) || 0)}
-              onClick={(e) => e.stopPropagation()}
             />
           </div>
         </div>
@@ -248,17 +251,13 @@ const EditExperimentDialog = ({
             type="submit" 
             disabled={updateExperiment.isPending} 
             className="flex-1"
-            onClick={(e) => e.stopPropagation()}
           >
             {updateExperiment.isPending ? "Updating..." : "Update Experiment"}
           </Button>
           <Button
             type="button"
             variant="outline"
-            onClick={(e) => {
-              e.stopPropagation();
-              setIsOpen(false);
-            }}
+            onClick={() => setIsOpen(false)}
           >
             Cancel
           </Button>
@@ -270,7 +269,7 @@ const EditExperimentDialog = ({
   if (children) {
     return (
       <>
-        <div onClick={handleTriggerClick} className="w-full">
+        <div onClick={handleTriggerClick}>
           {children}
         </div>
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
