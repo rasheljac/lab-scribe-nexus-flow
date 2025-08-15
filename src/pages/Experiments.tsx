@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -193,7 +192,6 @@ const Experiments = () => {
             <span>{experiment.protocols} protocols • {experiment.samples} samples</span>
           </div>
 
-          {/* Progress Section - Display only, no slider */}
           <div className="space-y-2">
             <div className="flex items-center justify-between text-sm">
               <div className="flex items-center gap-2">
