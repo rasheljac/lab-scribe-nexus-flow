@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -113,9 +114,18 @@ const Experiments = () => {
 
   const handleCardClick = (experimentId: string, event: React.MouseEvent) => {
     const target = event.target as HTMLElement;
-    if (target.closest('[data-no-navigate]')) {
+    console.log("Card clicked, target:", target);
+    
+    // Check if the click is from a dropdown menu or any of its children
+    if (target.closest('[data-dropdown-menu]') || 
+        target.closest('[role="menu"]') || 
+        target.closest('button[aria-haspopup="menu"]') ||
+        target.closest('[data-no-navigate]')) {
+      console.log("Click prevented - dropdown interaction detected");
       return;
     }
+    
+    console.log("Navigating to experiment:", experimentId);
     navigate(`/experiments/${experimentId}`);
   };
 
@@ -124,9 +134,24 @@ const Experiments = () => {
       event.preventDefault();
       event.stopPropagation();
     }
-    console.log("Edit button clicked for experiment:", experiment.id);
+    console.log("=== EDIT CLICK HANDLER ===");
+    console.log("Experiment to edit:", experiment.id);
+    console.log("Current editDialogOpen state:", editDialogOpen);
+    
     setExperimentToEdit(experiment);
     setEditDialogOpen(true);
+    
+    console.log("Set experimentToEdit and editDialogOpen to true");
+  };
+
+  const handleDeleteClick = (experimentId: string, event?: React.MouseEvent) => {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    console.log("Delete click for experiment:", experimentId);
+    setExperimentToDelete(experimentId);
+    setDeleteDialogOpen(true);
   };
 
   const renderExperimentCard = (experiment: any, index: number, onMoveUp?: () => void, onMoveDown?: () => void) => (
@@ -170,43 +195,47 @@ const Experiments = () => {
                 </Button>
               </div>
             )}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="h-8 w-8 p-0"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                  }}
-                >
-                  <MoreVertical className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="z-50">
-                <DropdownMenuItem 
-                  onSelect={(e) => {
-                    e.preventDefault();
-                    handleEditClick(experiment);
-                  }}
-                >
-                  <Edit className="mr-2 h-4 w-4" />
-                  Edit
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  className="text-red-600"
-                  onSelect={(e) => {
-                    e.preventDefault();
-                    setExperimentToDelete(experiment.id);
-                    setDeleteDialogOpen(true);
-                  }}
-                >
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Delete
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <div data-dropdown-menu>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="h-8 w-8 p-0"
+                    aria-haspopup="menu"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      console.log("Dropdown trigger clicked");
+                    }}
+                  >
+                    <MoreVertical className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="z-[100] bg-background border shadow-md">
+                  <DropdownMenuItem 
+                    onSelect={(e) => {
+                      console.log("Edit menu item selected");
+                      handleEditClick(experiment);
+                    }}
+                    className="cursor-pointer"
+                  >
+                    <Edit className="mr-2 h-4 w-4" />
+                    Edit
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    className="text-red-600 cursor-pointer"
+                    onSelect={(e) => {
+                      console.log("Delete menu item selected");
+                      handleDeleteClick(experiment.id);
+                    }}
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Delete
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </div>
         </div>
         <CardDescription className="line-clamp-2">
@@ -417,7 +446,13 @@ const Experiments = () => {
           <EditExperimentDialog 
             experiment={experimentToEdit}
             open={editDialogOpen}
-            onOpenChange={setEditDialogOpen}
+            onOpenChange={(open) => {
+              console.log("EditExperimentDialog onOpenChange called with:", open);
+              setEditDialogOpen(open);
+              if (!open) {
+                setExperimentToEdit(null);
+              }
+            }}
           />
         )}
 

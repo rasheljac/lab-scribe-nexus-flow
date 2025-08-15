@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -31,6 +32,10 @@ const EditExperimentDialog = ({
   open,
   onOpenChange 
 }: EditExperimentDialogProps) => {
+  console.log("=== EditExperimentDialog Render ===");
+  console.log("Open prop:", open);
+  console.log("Experiment:", experiment?.id);
+
   const [formData, setFormData] = useState({
     title: experiment.title,
     description: experiment.description || "",
@@ -49,6 +54,7 @@ const EditExperimentDialog = ({
 
   // Update form data when experiment changes
   useEffect(() => {
+    console.log("Updating form data for experiment:", experiment.id);
     setFormData({
       title: experiment.title,
       description: experiment.description || "",
@@ -65,6 +71,8 @@ const EditExperimentDialog = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    console.log("Form submitted for experiment:", experiment.id);
     
     if (!formData.title.trim()) {
       toast({
@@ -86,6 +94,7 @@ const EditExperimentDialog = ({
       });
       onOpenChange(false);
     } catch (error) {
+      console.error("Error updating experiment:", error);
       toast({
         title: "Error",
         description: "Failed to update experiment",
@@ -102,9 +111,21 @@ const EditExperimentDialog = ({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog 
+      open={open} 
+      onOpenChange={(newOpen) => {
+        console.log("Dialog onOpenChange called with:", newOpen);
+        onOpenChange(newOpen);
+      }}
+    >
       <DialogContent 
-        className="max-w-4xl max-h-[80vh] overflow-y-auto z-50"
+        className="max-w-4xl max-h-[80vh] overflow-y-auto z-[100]"
+        onPointerDownOutside={(e) => {
+          console.log("Pointer down outside dialog");
+        }}
+        onEscapeKeyDown={(e) => {
+          console.log("Escape key pressed");
+        }}
       >
         <DialogHeader>
           <DialogTitle>Edit Experiment</DialogTitle>
@@ -240,7 +261,10 @@ const EditExperimentDialog = ({
             <Button
               type="button"
               variant="outline"
-              onClick={() => onOpenChange(false)}
+              onClick={() => {
+                console.log("Cancel button clicked");
+                onOpenChange(false);
+              }}
             >
               Cancel
             </Button>
