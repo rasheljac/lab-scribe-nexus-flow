@@ -10,6 +10,7 @@ export interface ExperimentNote {
   title: string;
   content: string | null;
   folder_id: string | null;
+  display_order: number;
   created_at: string;
   updated_at: string;
 }
@@ -27,6 +28,7 @@ export const useExperimentNotes = (experimentId: string, page: number = 1, pageS
         .from('experiment_notes')
         .select('*')
         .eq('experiment_id', experimentId)
+        .order('display_order', { ascending: false })
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -43,14 +45,25 @@ export const useExperimentNotes = (experimentId: string, page: number = 1, pageS
   const paginatedNotes = allNotes?.slice(startIndex, endIndex) || [];
 
   const createNote = useMutation({
-    mutationFn: async (note: Omit<ExperimentNote, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => {
+    mutationFn: async (note: Omit<ExperimentNote, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'display_order'>) => {
       if (!user) throw new Error('User not authenticated');
+
+      // Get the highest display_order for this experiment
+      const { data: maxOrderData } = await supabase
+        .from('experiment_notes')
+        .select('display_order')
+        .eq('experiment_id', experimentId)
+        .order('display_order', { ascending: false })
+        .limit(1);
+
+      const maxOrder = maxOrderData?.[0]?.display_order || 0;
 
       const { data, error } = await supabase
         .from('experiment_notes')
         .insert([{ 
           ...note, 
-          user_id: user.id
+          user_id: user.id,
+          display_order: maxOrder + 1
         }])
         .select()
         .single();
