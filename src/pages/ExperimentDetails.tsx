@@ -22,6 +22,7 @@ import { Label } from "@/components/ui/label";
 import RichTextDisplay from "@/components/RichTextDisplay";
 import RichTextEditor from "@/components/RichTextEditor";
 import EditNoteDialog from "@/components/EditNoteDialog";
+import PaginatedDraggableGrid from "@/components/PaginatedDraggableGrid";
 import { useExperiments } from "@/hooks/useExperiments";
 import { useExperimentNotes } from "@/hooks/useExperimentNotes";
 import { useExperimentAttachments } from "@/hooks/useExperimentAttachments";
@@ -30,7 +31,7 @@ import { useToast } from "@/hooks/use-toast";
 const ExperimentDetails = () => {
   const { id } = useParams<{ id: string }>();
   const { experiments } = useExperiments();
-  const { notes, createNote, deleteNote } = useExperimentNotes(id || '');
+  const { notes, createNote, deleteNote, updateNoteOrder } = useExperimentNotes(id || '');
   const { attachments, uploadAttachment, deleteAttachment, getAttachmentUrl } = useExperimentAttachments(id || '');
   const { toast } = useToast();
   
@@ -41,7 +42,12 @@ const ExperimentDetails = () => {
 
   const experiment = experiments.find(exp => exp.id === id);
 
-  const filteredNotes = notes.filter(note => {
+  // Sort notes by created_at descending (newest first) when no search is applied
+  const sortedNotes = notes.slice().sort((a, b) => 
+    new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+  );
+
+  const filteredNotes = sortedNotes.filter(note => {
     const matchesSearch = note.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          (note.content && note.content.toLowerCase().includes(searchTerm.toLowerCase()));
     return matchesSearch;
@@ -101,6 +107,45 @@ const ExperimentDetails = () => {
       });
     }
   };
+
+  const handleNotesReorder = (reorderedNotes: any[]) => {
+    if (updateNoteOrder) {
+      const noteUpdates = reorderedNotes.map((note, index) => ({
+        id: note.id,
+        display_order: index + 1
+      }));
+      updateNoteOrder.mutate(noteUpdates);
+    }
+  };
+
+  const renderNoteItem = (note: any, index: number) => (
+    <div className="border border-gray-200 rounded-lg p-4">
+      <div className="flex items-start justify-between">
+        <div className="flex-1">
+          <h4 className="font-medium">{note.title}</h4>
+          <div className="text-sm text-gray-600 mt-1">
+            <RichTextDisplay 
+              content={note.content || ""} 
+              className="text-sm"
+            />
+          </div>
+          <p className="text-xs text-gray-500 mt-2">
+            {new Date(note.created_at).toLocaleDateString()}
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <EditNoteDialog note={note} experimentId={experiment.id} />
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => deleteNote.mutate(note.id)}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
 
   return (
     <div className="max-w-7xl mx-auto space-y-6 p-6">
@@ -240,41 +285,24 @@ const ExperimentDetails = () => {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {filteredNotes.map((note) => (
-                  <div key={note.id} className="border border-gray-200 rounded-lg p-4">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <h4 className="font-medium">{note.title}</h4>
-                        <div className="text-sm text-gray-600 mt-1">
-                          <RichTextDisplay 
-                            content={note.content || ""} 
-                            className="text-sm"
-                          />
-                        </div>
-                        <p className="text-xs text-gray-500 mt-2">
-                          {new Date(note.created_at).toLocaleDateString()}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <EditNoteDialog note={note} experimentId={experiment.id} />
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => deleteNote.mutate(note.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
+              {filteredNotes.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  {searchTerm ? "No notes found matching your criteria." : "No notes yet. Add your first note to get started."}
+                </div>
+              ) : (
+                <PaginatedDraggableGrid
+                  items={filteredNotes}
+                  onReorder={handleNotesReorder}
+                  renderItem={renderNoteItem}
+                  droppableId={`experiment-notes-${experiment.id}`}
+                  itemsPerPage={6}
+                  emptyState={
+                    <div className="text-center py-8 text-gray-500">
+                      {searchTerm ? "No notes found matching your criteria." : "No notes yet. Add your first note to get started."}
                     </div>
-                  </div>
-                ))}
-                {filteredNotes.length === 0 && (
-                  <div className="text-center py-8 text-gray-500">
-                    {searchTerm ? "No notes found matching your criteria." : "No notes yet. Add your first note to get started."}
-                  </div>
-                )}
-              </div>
+                  }
+                />
+              )}
             </CardContent>
           </Card>
 

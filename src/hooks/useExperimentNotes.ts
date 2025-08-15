@@ -27,7 +27,7 @@ export const useExperimentNotes = (experimentId: string, page: number = 1, pageS
         .from('experiment_notes')
         .select('*')
         .eq('experiment_id', experimentId)
-        .order('created_at', { ascending: true });
+        .order('created_at', { ascending: false });
 
       if (error) throw error;
       return data as ExperimentNote[];
@@ -80,6 +80,27 @@ export const useExperimentNotes = (experimentId: string, page: number = 1, pageS
     },
   });
 
+  const updateNoteOrder = useMutation({
+    mutationFn: async (noteUpdates: { id: string; display_order: number }[]) => {
+      const updates = noteUpdates.map(noteUpdate => 
+        supabase
+          .from('experiment_notes')
+          .update({ display_order: noteUpdate.display_order })
+          .eq('id', noteUpdate.id)
+          .eq('user_id', user?.id)
+      );
+
+      const results = await Promise.all(updates);
+      const errors = results.filter(result => result.error);
+      if (errors.length > 0) {
+        throw new Error('Failed to update note order');
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['experimentNotes', experimentId] });
+    },
+  });
+
   const deleteNote = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase
@@ -104,6 +125,7 @@ export const useExperimentNotes = (experimentId: string, page: number = 1, pageS
     error: null,
     createNote,
     updateNote,
+    updateNoteOrder,
     deleteNote,
   };
 };
