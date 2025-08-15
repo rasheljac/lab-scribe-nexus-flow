@@ -4,7 +4,6 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { 
   ArrowLeft, 
@@ -21,6 +20,8 @@ import {
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import RichTextDisplay from "@/components/RichTextDisplay";
+import RichTextEditor from "@/components/RichTextEditor";
+import EditNoteDialog from "@/components/EditNoteDialog";
 import { useExperiments } from "@/hooks/useExperiments";
 import { useExperimentNotes } from "@/hooks/useExperimentNotes";
 import { useExperimentAttachments } from "@/hooks/useExperimentAttachments";
@@ -202,7 +203,7 @@ const ExperimentDetails = () => {
                       Add Note
                     </Button>
                   </DialogTrigger>
-                  <DialogContent>
+                  <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
                     <DialogHeader>
                       <DialogTitle>Add New Note</DialogTitle>
                     </DialogHeader>
@@ -218,12 +219,11 @@ const ExperimentDetails = () => {
                       </div>
                       <div>
                         <Label htmlFor="note-content">Content</Label>
-                        <Textarea
-                          id="note-content"
+                        <RichTextEditor
                           value={newNote.content}
-                          onChange={(e) => setNewNote({ ...newNote, content: e.target.value })}
-                          placeholder="Note content"
-                          rows={6}
+                          onChange={(value) => setNewNote({ ...newNote, content: value })}
+                          placeholder="Enter your note content..."
+                          className="mt-2"
                         />
                       </div>
                       <div className="flex justify-end gap-2">
@@ -256,13 +256,16 @@ const ExperimentDetails = () => {
                           {new Date(note.created_at).toLocaleDateString()}
                         </p>
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => deleteNote.mutate(note.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        <EditNoteDialog note={note} experimentId={experiment.id} />
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => deleteNote.mutate(note.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 ))}
