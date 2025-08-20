@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -142,19 +141,14 @@ const ExperimentNotes = () => {
   };
 
   const handleReorder = async (reorderedNotes: any[]) => {
-    const updates = reorderedNotes.map((note, index) => ({
-      id: note.id,
-      display_order: index + 1
-    }));
-    
     try {
-      await updateNoteOrder.mutateAsync(updates);
+      await updateNoteOrder.mutateAsync(reorderedNotes);
       toast({
         title: "Success",
         description: "Notes reordered successfully",
       });
     } catch (error) {
-      console.log('Note order update requested:', updates);
+      console.log('Note order update requested:', reorderedNotes);
       // Note: The updateNoteOrder is currently a no-op as mentioned in useExperimentNotes
       // This will work once the migration is applied
     }

@@ -1,4 +1,3 @@
-
 import { useParams } from "react-router-dom";
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -110,11 +109,7 @@ const ExperimentDetails = () => {
 
   const handleNotesReorder = (reorderedNotes: any[]) => {
     if (updateNoteOrder) {
-      const noteUpdates = reorderedNotes.map((note, index) => ({
-        id: note.id,
-        display_order: index + 1
-      }));
-      updateNoteOrder.mutate(noteUpdates);
+      updateNoteOrder.mutate(reorderedNotes);
     }
   };
 
