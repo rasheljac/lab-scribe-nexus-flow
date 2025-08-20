@@ -81,13 +81,35 @@ export const useExperimentNotes = (experimentId: string, page: number = 1, pageS
   });
 
   const updateNoteOrder = useMutation({
-    mutationFn: async (noteUpdates: { id: string; display_order: number }[]) => {
-      // For now, this is a no-op since display_order doesn't exist yet
-      // This will be implemented once the migration is applied
-      console.log('Note order update requested:', noteUpdates);
+    mutationFn: async (reorderedNotes: ExperimentNote[]) => {
+      console.log('Updating note order for experiment:', experimentId);
+      console.log('New order:', reorderedNotes.map(note => ({ id: note.id, title: note.title })));
+      
+      // For now, we'll update the query cache directly since there's no display_order column yet
+      // This provides immediate UI feedback while maintaining the new order
+      queryClient.setQueryData(['experimentNotes', experimentId, 'all'], reorderedNotes);
+      
+      // TODO: Once display_order column is added to experiment_notes table,
+      // uncomment this code to persist the order to the database:
+      /*
+      const updates = reorderedNotes.map((note, index) => 
+        supabase
+          .from('experiment_notes')
+          .update({ display_order: index + 1 })
+          .eq('id', note.id)
+          .eq('user_id', user?.id)
+      );
+
+      const results = await Promise.all(updates);
+      const errors = results.filter(result => result.error);
+      if (errors.length > 0) {
+        throw new Error('Failed to update note order');
+      }
+      */
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['experimentNotes', experimentId] });
+      // Don't invalidate queries since we're manually updating the cache
+      console.log('Note order updated successfully');
     },
   });
 
