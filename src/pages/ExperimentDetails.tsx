@@ -1,3 +1,4 @@
+
 import { useParams } from "react-router-dom";
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -30,7 +31,11 @@ import { useToast } from "@/hooks/use-toast";
 const ExperimentDetails = () => {
   const { id } = useParams<{ id: string }>();
   const { experiments } = useExperiments();
-  const { notes, createNote, deleteNote, updateNoteOrder } = useExperimentNotes(id || '');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 6;
+  
+  // Get all notes without pagination limit in the hook
+  const { allNotes, createNote, deleteNote, updateNoteOrder, isLoading } = useExperimentNotes(id || '', 1, 1000);
   const { attachments, uploadAttachment, deleteAttachment, getAttachmentUrl } = useExperimentAttachments(id || '');
   const { toast } = useToast();
   
@@ -41,8 +46,8 @@ const ExperimentDetails = () => {
 
   const experiment = experiments.find(exp => exp.id === id);
 
-  // Sort notes by created_at descending (newest first) when no search is applied
-  const sortedNotes = notes.slice().sort((a, b) => 
+  // Sort notes by created_at descending (newest first)
+  const sortedNotes = allNotes.slice().sort((a, b) => 
     new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
   );
 
@@ -234,7 +239,7 @@ const ExperimentDetails = () => {
               <div className="flex items-center justify-between">
                 <CardTitle className="flex items-center gap-2">
                   <FileText className="h-5 w-5" />
-                  Notes ({filteredNotes.length})
+                  Notes ({filteredNotes.length} total)
                 </CardTitle>
                 <Dialog open={noteDialogOpen} onOpenChange={setNoteDialogOpen}>
                   <DialogTrigger asChild>
@@ -280,7 +285,9 @@ const ExperimentDetails = () => {
               </div>
             </CardHeader>
             <CardContent>
-              {filteredNotes.length === 0 ? (
+              {isLoading ? (
+                <div className="text-center py-8 text-gray-500">Loading notes...</div>
+              ) : filteredNotes.length === 0 ? (
                 <div className="text-center py-8 text-gray-500">
                   {searchTerm ? "No notes found matching your criteria." : "No notes yet. Add your first note to get started."}
                 </div>
@@ -290,7 +297,7 @@ const ExperimentDetails = () => {
                   onReorder={handleNotesReorder}
                   renderItem={renderNoteItem}
                   droppableId={`experiment-notes-${experiment.id}`}
-                  itemsPerPage={6}
+                  itemsPerPage={8}
                   layout="vertical"
                   emptyState={
                     <div className="text-center py-8 text-gray-500">

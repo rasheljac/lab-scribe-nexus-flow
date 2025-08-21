@@ -14,38 +14,48 @@ export interface ExperimentNote {
   updated_at: string;
 }
 
-export const useExperimentNotes = (experimentId: string, page: number = 1, pageSize: number = 4) => {
+export const useExperimentNotes = (experimentId: string, page: number = 1, pageSize: number = 1000) => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
-  const { data: allNotes, isLoading: isLoadingAll } = useQuery({
+  const { data: allNotes, isLoading: isLoadingAll, error } = useQuery({
     queryKey: ['experimentNotes', experimentId, 'all'],
     queryFn: async () => {
       if (!user) throw new Error('User not authenticated');
+      
+      console.log('Fetching notes for experiment:', experimentId, 'user:', user.id);
       
       const { data, error } = await supabase
         .from('experiment_notes')
         .select('*')
         .eq('experiment_id', experimentId)
+        .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching experiment notes:', error);
+        throw error;
+      }
+      
+      console.log('Fetched notes:', data?.length || 0);
       return data as ExperimentNote[];
     },
     enabled: !!user && !!experimentId,
   });
 
-  // Calculate pagination
+  // For backward compatibility, return paginated notes if needed
   const totalNotes = allNotes?.length || 0;
   const totalPages = Math.ceil(totalNotes / pageSize);
   const startIndex = (page - 1) * pageSize;
   const endIndex = startIndex + pageSize;
-  const paginatedNotes = allNotes?.slice(startIndex, endIndex) || [];
+  const paginatedNotes = pageSize < 100 ? allNotes?.slice(startIndex, endIndex) || [] : allNotes || [];
 
   const createNote = useMutation({
     mutationFn: async (note: Omit<ExperimentNote, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => {
       if (!user) throw new Error('User not authenticated');
 
+      console.log('Creating note:', note);
+      
       const { data, error } = await supabase
         .from('experiment_notes')
         .insert([{ 
@@ -55,11 +65,26 @@ export const useExperimentNotes = (experimentId: string, page: number = 1, pageS
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error creating note:', error);
+        throw error;
+      }
+      
+      console.log('Note created successfully:', data);
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (newNote) => {
+      // Optimistically update the cache
+      queryClient.setQueryData(['experimentNotes', experimentId, 'all'], (oldData: ExperimentNote[] | undefined) => {
+        if (!oldData) return [newNote];
+        return [newNote, ...oldData];
+      });
+      
+      // Also invalidate to ensure fresh data
       queryClient.invalidateQueries({ queryKey: ['experimentNotes', experimentId] });
+    },
+    onError: (error) => {
+      console.error('Failed to create note:', error);
     },
   });
 
@@ -85,8 +110,7 @@ export const useExperimentNotes = (experimentId: string, page: number = 1, pageS
       console.log('Updating note order for experiment:', experimentId);
       console.log('New order:', reorderedNotes.map(note => ({ id: note.id, title: note.title })));
       
-      // For now, we'll update the query cache directly since there's no display_order column yet
-      // This provides immediate UI feedback while maintaining the new order
+      // Update the query cache directly since there's no display_order column yet
       queryClient.setQueryData(['experimentNotes', experimentId, 'all'], reorderedNotes);
       
       // TODO: Once display_order column is added to experiment_notes table,
@@ -108,7 +132,6 @@ export const useExperimentNotes = (experimentId: string, page: number = 1, pageS
       */
     },
     onSuccess: () => {
-      // Don't invalidate queries since we're manually updating the cache
       console.log('Note order updated successfully');
     },
   });
@@ -134,7 +157,7 @@ export const useExperimentNotes = (experimentId: string, page: number = 1, pageS
     totalPages,
     currentPage: page,
     isLoading: isLoadingAll,
-    error: null,
+    error,
     createNote,
     updateNote,
     updateNoteOrder,
