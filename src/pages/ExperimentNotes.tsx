@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -52,12 +53,15 @@ const ExperimentNotes = () => {
     createNote, 
     updateNoteOrder,
     deleteNote
-  } = useExperimentNotes(experimentId || "", 1, 1000); // Get all notes for reordering
+  } = useExperimentNotes(experimentId || "");
   const { experiments } = useExperiments();
   const { experimentProtocols } = useExperimentProtocols(experimentId || "");
   const { detachFromExperiment } = useProtocols();
   
   const experiment = experiments.find(exp => exp.id === experimentId);
+
+  console.log('ExperimentNotes - All notes:', allNotes);
+  console.log('ExperimentNotes - Total notes count:', allNotes.length);
 
   // Helper function to strip HTML tags for search
   const stripHtmlTags = (html: string): string => {
@@ -348,7 +352,7 @@ const ExperimentNotes = () => {
           onReorder={handleReorder}
           renderItem={renderNoteCard}
           droppableId="experiment-notes"
-          itemsPerPage={4}
+          itemsPerPage={8}
           emptyState={emptyState}
           layout="vertical"
         />
