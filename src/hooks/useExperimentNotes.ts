@@ -44,12 +44,21 @@ export const useExperimentNotes = (experimentId: string, page: number = 1, pageS
     enabled: !!user && !!experimentId,
   });
 
-  // Calculate pagination
+  // Calculate pagination - only paginate if pageSize is reasonable (not trying to get "all")
   const totalNotes = allNotes?.length || 0;
-  const totalPages = Math.ceil(totalNotes / pageSize);
-  const startIndex = (page - 1) * pageSize;
-  const endIndex = startIndex + pageSize;
-  const paginatedNotes = allNotes?.slice(startIndex, endIndex) || [];
+  const shouldPaginate = pageSize < 100; // If pageSize is large, don't paginate
+  
+  let paginatedNotes = allNotes || [];
+  let totalPages = 1;
+  let startIndex = 0;
+  let endIndex = totalNotes;
+
+  if (shouldPaginate && totalNotes > 0) {
+    totalPages = Math.ceil(totalNotes / pageSize);
+    startIndex = (page - 1) * pageSize;
+    endIndex = Math.min(startIndex + pageSize, totalNotes);
+    paginatedNotes = allNotes?.slice(startIndex, endIndex) || [];
+  }
 
   const createNote = useMutation({
     mutationFn: async (note: Omit<ExperimentNote, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'display_order'>) => {
