@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,7 +22,10 @@ const DietCohorts = () => {
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [selectedCohort, setSelectedCohort] = useState<any>(null);
 
-  const filteredCohorts = cohorts.filter(cohort => {
+  // Sort cohorts by display_order first, then apply filters
+  const sortedCohorts = [...cohorts].sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
+  
+  const filteredCohorts = sortedCohorts.filter(cohort => {
     const matchesSearch = cohort.cohort_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          cohort.diet_type.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = selectedStatus === "all" || cohort.status === selectedStatus;
@@ -54,21 +56,21 @@ const DietCohorts = () => {
   const handleReorder = async (reorderedCohorts: any[]) => {
     console.log("Reordering cohorts:", reorderedCohorts);
     
-    // Update display_order for each cohort based on its new position
-    const updates = reorderedCohorts.map((cohort, index) => ({
-      id: cohort.id,
-      display_order: index + 1
-    }));
-
-    // Process updates sequentially to avoid conflicts
+    // Update display_order for each cohort based on its new position in the full sorted list
     try {
-      for (const update of updates) {
-        const cohort = reorderedCohorts.find(c => c.id === update.id);
-        if (cohort && cohort.display_order !== update.display_order) {
+      for (let i = 0; i < reorderedCohorts.length; i++) {
+        const cohort = reorderedCohorts[i];
+        const newDisplayOrder = i + 1;
+        
+        // Only update if the order has actually changed
+        if (cohort.display_order !== newDisplayOrder) {
           await updateMutation.mutateAsync({
-            id: update.id,
-            display_order: update.display_order
+            id: cohort.id,
+            display_order: newDisplayOrder
           });
+          
+          // Update local state immediately to reflect the change
+          cohort.display_order = newDisplayOrder;
         }
       }
     } catch (error) {
