@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -53,15 +54,25 @@ const DietCohorts = () => {
   const handleReorder = async (reorderedCohorts: any[]) => {
     console.log("Reordering cohorts:", reorderedCohorts);
     
-    // Update display_order for each cohort
-    for (let i = 0; i < reorderedCohorts.length; i++) {
-      const cohort = reorderedCohorts[i];
-      if (cohort.display_order !== i + 1) {
-        await updateMutation.mutateAsync({
-          id: cohort.id,
-          display_order: i + 1
-        });
+    // Update display_order for each cohort based on its new position
+    const updates = reorderedCohorts.map((cohort, index) => ({
+      id: cohort.id,
+      display_order: index + 1
+    }));
+
+    // Process updates sequentially to avoid conflicts
+    try {
+      for (const update of updates) {
+        const cohort = reorderedCohorts.find(c => c.id === update.id);
+        if (cohort && cohort.display_order !== update.display_order) {
+          await updateMutation.mutateAsync({
+            id: update.id,
+            display_order: update.display_order
+          });
+        }
       }
+    } catch (error) {
+      console.error("Error updating cohort order:", error);
     }
   };
 
