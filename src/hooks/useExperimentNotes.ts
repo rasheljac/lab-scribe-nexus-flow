@@ -24,13 +24,21 @@ export const useExperimentNotes = (experimentId: string, page: number = 1, pageS
     queryFn: async () => {
       if (!user) throw new Error('User not authenticated');
       
+      console.log('Fetching notes for experiment:', experimentId);
+      
       const { data, error } = await supabase
         .from('experiment_notes')
         .select('*')
         .eq('experiment_id', experimentId)
+        .eq('user_id', user.id)
         .order('display_order', { ascending: true });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching notes:', error);
+        throw error;
+      }
+      
+      console.log('Fetched notes:', data);
       return data as ExperimentNote[];
     },
     enabled: !!user && !!experimentId,
@@ -49,7 +57,7 @@ export const useExperimentNotes = (experimentId: string, page: number = 1, pageS
 
       console.log('Creating note for experiment:', note.experiment_id);
 
-      // Get the highest display_order for this experiment
+      // Get the highest display_order for this experiment and user
       const { data: existingNotes, error: countError } = await supabase
         .from('experiment_notes')
         .select('display_order')
@@ -63,7 +71,7 @@ export const useExperimentNotes = (experimentId: string, page: number = 1, pageS
         throw countError;
       }
 
-      // Calculate next display_order (highest + 1, or 1 if no notes exist)
+      // Calculate next display_order
       const nextOrder = existingNotes && existingNotes.length > 0 
         ? (existingNotes[0].display_order || 0) + 1
         : 1;
@@ -88,8 +96,16 @@ export const useExperimentNotes = (experimentId: string, page: number = 1, pageS
       console.log('Note created successfully:', data);
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (newNote) => {
+      console.log('Invalidating queries after note creation');
+      // Invalidate and refetch the notes query
       queryClient.invalidateQueries({ queryKey: ['experimentNotes', experimentId] });
+      
+      // Optimistically update the cache to show the new note immediately
+      queryClient.setQueryData(['experimentNotes', experimentId, 'all'], (oldData: ExperimentNote[] | undefined) => {
+        if (!oldData) return [newNote];
+        return [...oldData, newNote].sort((a, b) => a.display_order - b.display_order);
+      });
     },
     onError: (error) => {
       console.error('Create note mutation error:', error);
@@ -102,6 +118,7 @@ export const useExperimentNotes = (experimentId: string, page: number = 1, pageS
         .from('experiment_notes')
         .update(updates)
         .eq('id', id)
+        .eq('user_id', user?.id)
         .select()
         .single();
 
@@ -156,7 +173,8 @@ export const useExperimentNotes = (experimentId: string, page: number = 1, pageS
       const { error } = await supabase
         .from('experiment_notes')
         .delete()
-        .eq('id', id);
+        .eq('id', id)
+        .eq('user_id', user?.id);
 
       if (error) throw error;
     },
