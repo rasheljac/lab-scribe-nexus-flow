@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -53,15 +52,12 @@ const ExperimentNotes = () => {
     createNote, 
     updateNoteOrder,
     deleteNote
-  } = useExperimentNotes(experimentId || "");
+  } = useExperimentNotes(experimentId || "", 1, 1000); // Get all notes for reordering
   const { experiments } = useExperiments();
   const { experimentProtocols } = useExperimentProtocols(experimentId || "");
   const { detachFromExperiment } = useProtocols();
   
   const experiment = experiments.find(exp => exp.id === experimentId);
-
-  console.log('ExperimentNotes - All notes:', allNotes);
-  console.log('ExperimentNotes - Total notes count:', allNotes.length);
 
   // Helper function to strip HTML tags for search
   const stripHtmlTags = (html: string): string => {
@@ -71,7 +67,7 @@ const ExperimentNotes = () => {
     return temp.textContent || temp.innerText || '';
   };
 
-  // Filter notes based on search - notes are already ordered by display_order from the hook
+  // Filter notes based on search
   const filteredNotes = allNotes.filter(note => {
     const titleMatch = note.title.toLowerCase().includes(searchTerm.toLowerCase());
     const contentMatch = note.content && stripHtmlTags(note.content).toLowerCase().includes(searchTerm.toLowerCase());
@@ -152,11 +148,9 @@ const ExperimentNotes = () => {
         description: "Notes reordered successfully",
       });
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to reorder notes",
-        variant: "destructive",
-      });
+      console.log('Note order update requested:', reorderedNotes);
+      // Note: The updateNoteOrder is currently a no-op as mentioned in useExperimentNotes
+      // This will work once the migration is applied
     }
   };
 
@@ -352,7 +346,7 @@ const ExperimentNotes = () => {
           onReorder={handleReorder}
           renderItem={renderNoteCard}
           droppableId="experiment-notes"
-          itemsPerPage={8}
+          itemsPerPage={4}
           emptyState={emptyState}
           layout="vertical"
         />

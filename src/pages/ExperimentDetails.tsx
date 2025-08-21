@@ -41,8 +41,12 @@ const ExperimentDetails = () => {
 
   const experiment = experiments.find(exp => exp.id === id);
 
-  // Don't sort by created_at when no search is applied - let drag and drop reordering work
-  const filteredNotes = notes.filter(note => {
+  // Sort notes by created_at descending (newest first) when no search is applied
+  const sortedNotes = notes.slice().sort((a, b) => 
+    new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+  );
+
+  const filteredNotes = sortedNotes.filter(note => {
     const matchesSearch = note.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          (note.content && note.content.toLowerCase().includes(searchTerm.toLowerCase()));
     return matchesSearch;
@@ -103,20 +107,9 @@ const ExperimentDetails = () => {
     }
   };
 
-  const handleNotesReorder = async (reorderedNotes: any[]) => {
-    console.log('Reordering notes in ExperimentDetails:', reorderedNotes);
-    try {
-      await updateNoteOrder.mutateAsync(reorderedNotes);
-      toast({
-        title: "Success",
-        description: "Notes reordered successfully",
-      });
-    } catch (error) {
-      toast({
-        title: "Error", 
-        description: "Failed to reorder notes",
-        variant: "destructive",
-      });
+  const handleNotesReorder = (reorderedNotes: any[]) => {
+    if (updateNoteOrder) {
+      updateNoteOrder.mutate(reorderedNotes);
     }
   };
 
@@ -291,10 +284,6 @@ const ExperimentDetails = () => {
                 <div className="text-center py-8 text-gray-500">
                   {searchTerm ? "No notes found matching your criteria." : "No notes yet. Add your first note to get started."}
                 </div>
-              ) : searchTerm ? (
-                <div className="space-y-4">
-                  {filteredNotes.map((note, index) => renderNoteItem(note, index))}
-                </div>
               ) : (
                 <PaginatedDraggableGrid
                   items={filteredNotes}
@@ -305,7 +294,7 @@ const ExperimentDetails = () => {
                   layout="vertical"
                   emptyState={
                     <div className="text-center py-8 text-gray-500">
-                      No notes yet. Add your first note to get started.
+                      {searchTerm ? "No notes found matching your criteria." : "No notes yet. Add your first note to get started."}
                     </div>
                   }
                 />

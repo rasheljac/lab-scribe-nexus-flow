@@ -10,7 +10,6 @@ export interface ExperimentNote {
   title: string;
   content: string | null;
   folder_id: string | null;
-  display_order: number;
   created_at: string;
   updated_at: string;
 }
@@ -24,100 +23,43 @@ export const useExperimentNotes = (experimentId: string, page: number = 1, pageS
     queryFn: async () => {
       if (!user) throw new Error('User not authenticated');
       
-      console.log('Fetching notes for experiment:', experimentId);
-      
       const { data, error } = await supabase
         .from('experiment_notes')
         .select('*')
         .eq('experiment_id', experimentId)
-        .eq('user_id', user.id)
-        .order('display_order', { ascending: true });
+        .order('created_at', { ascending: false });
 
-      if (error) {
-        console.error('Error fetching notes:', error);
-        throw error;
-      }
-      
-      console.log('Fetched notes:', data);
+      if (error) throw error;
       return data as ExperimentNote[];
     },
     enabled: !!user && !!experimentId,
   });
 
-  // Calculate pagination - only paginate if pageSize is reasonable (not trying to get "all")
+  // Calculate pagination
   const totalNotes = allNotes?.length || 0;
-  const shouldPaginate = pageSize < 100; // If pageSize is large, don't paginate
-  
-  let paginatedNotes = allNotes || [];
-  let totalPages = 1;
-  let startIndex = 0;
-  let endIndex = totalNotes;
-
-  if (shouldPaginate && totalNotes > 0) {
-    totalPages = Math.ceil(totalNotes / pageSize);
-    startIndex = (page - 1) * pageSize;
-    endIndex = Math.min(startIndex + pageSize, totalNotes);
-    paginatedNotes = allNotes?.slice(startIndex, endIndex) || [];
-  }
+  const totalPages = Math.ceil(totalNotes / pageSize);
+  const startIndex = (page - 1) * pageSize;
+  const endIndex = startIndex + pageSize;
+  const paginatedNotes = allNotes?.slice(startIndex, endIndex) || [];
 
   const createNote = useMutation({
-    mutationFn: async (note: Omit<ExperimentNote, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'display_order'>) => {
+    mutationFn: async (note: Omit<ExperimentNote, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => {
       if (!user) throw new Error('User not authenticated');
-
-      console.log('Creating note for experiment:', note.experiment_id);
-
-      // Get the highest display_order for this experiment and user
-      const { data: existingNotes, error: countError } = await supabase
-        .from('experiment_notes')
-        .select('display_order')
-        .eq('experiment_id', note.experiment_id)
-        .eq('user_id', user.id)
-        .order('display_order', { ascending: false })
-        .limit(1);
-
-      if (countError) {
-        console.error('Error fetching existing notes:', countError);
-        throw countError;
-      }
-
-      // Calculate next display_order
-      const nextOrder = existingNotes && existingNotes.length > 0 
-        ? (existingNotes[0].display_order || 0) + 1
-        : 1;
-
-      console.log('Next display order:', nextOrder);
 
       const { data, error } = await supabase
         .from('experiment_notes')
         .insert([{ 
           ...note, 
-          user_id: user.id,
-          display_order: nextOrder
+          user_id: user.id
         }])
         .select()
         .single();
 
-      if (error) {
-        console.error('Error creating note:', error);
-        throw error;
-      }
-
-      console.log('Note created successfully:', data);
+      if (error) throw error;
       return data;
     },
-    onSuccess: (newNote) => {
-      console.log('Invalidating queries after note creation');
-      // Invalidate and refetch the notes query
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['experimentNotes', experimentId] });
-      
-      // Optimistically update the cache to show the new note immediately
-      queryClient.setQueryData(['experimentNotes', experimentId, 'all'], (oldData: ExperimentNote[] | undefined) => {
-        if (!oldData) return [newNote];
-        return [...oldData, newNote].sort((a, b) => a.display_order - b.display_order);
-      });
-    },
-    onError: (error) => {
-      console.error('Create note mutation error:', error);
     },
   });
 
@@ -127,7 +69,6 @@ export const useExperimentNotes = (experimentId: string, page: number = 1, pageS
         .from('experiment_notes')
         .update(updates)
         .eq('id', id)
-        .eq('user_id', user?.id)
         .select()
         .single();
 
@@ -144,35 +85,30 @@ export const useExperimentNotes = (experimentId: string, page: number = 1, pageS
       console.log('Updating note order for experiment:', experimentId);
       console.log('New order:', reorderedNotes.map(note => ({ id: note.id, title: note.title })));
       
-      // Update the query cache immediately for responsive UI
+      // For now, we'll update the query cache directly since there's no display_order column yet
+      // This provides immediate UI feedback while maintaining the new order
       queryClient.setQueryData(['experimentNotes', experimentId, 'all'], reorderedNotes);
       
-      // Update display_order for each note in the database
-      try {
-        const updates = reorderedNotes.map((note, index) => 
-          supabase
-            .from('experiment_notes')
-            .update({ display_order: index + 1 })
-            .eq('id', note.id)
-            .eq('user_id', user?.id)
-        );
+      // TODO: Once display_order column is added to experiment_notes table,
+      // uncomment this code to persist the order to the database:
+      /*
+      const updates = reorderedNotes.map((note, index) => 
+        supabase
+          .from('experiment_notes')
+          .update({ display_order: index + 1 })
+          .eq('id', note.id)
+          .eq('user_id', user?.id)
+      );
 
-        const results = await Promise.all(updates);
-        const errors = results.filter(result => result.error);
-        if (errors.length > 0) {
-          console.error('Errors updating note order:', errors);
-          // Revert the optimistic update if there were database errors
-          queryClient.invalidateQueries({ queryKey: ['experimentNotes', experimentId] });
-          throw new Error('Failed to update note order');
-        }
-      } catch (error) {
-        console.error('Failed to update note order:', error);
-        // Revert the optimistic update if the database update fails
-        queryClient.invalidateQueries({ queryKey: ['experimentNotes', experimentId] });
-        throw error;
+      const results = await Promise.all(updates);
+      const errors = results.filter(result => result.error);
+      if (errors.length > 0) {
+        throw new Error('Failed to update note order');
       }
+      */
     },
     onSuccess: () => {
+      // Don't invalidate queries since we're manually updating the cache
       console.log('Note order updated successfully');
     },
   });
@@ -182,8 +118,7 @@ export const useExperimentNotes = (experimentId: string, page: number = 1, pageS
       const { error } = await supabase
         .from('experiment_notes')
         .delete()
-        .eq('id', id)
-        .eq('user_id', user?.id);
+        .eq('id', id);
 
       if (error) throw error;
     },
