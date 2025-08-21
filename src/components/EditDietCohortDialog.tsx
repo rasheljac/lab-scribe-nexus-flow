@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -118,6 +119,7 @@ export const EditDietCohortDialog = ({ cohort, open, onOpenChange }: EditDietCoh
                   <SelectItem value="active">Active</SelectItem>
                   <SelectItem value="completed">Completed</SelectItem>
                   <SelectItem value="paused">Paused</SelectItem>
+                  <SelectItem value="planning">Planning</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -141,6 +143,128 @@ export const EditDietCohortDialog = ({ cohort, open, onOpenChange }: EditDietCoh
                 value={formData.number_of_mice}
                 onChange={(e) => handleInputChange("number_of_mice", e.target.value)}
                 required
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="diet_description">Diet Description</Label>
+            <Textarea
+              id="diet_description"
+              value={formData.diet_description}
+              onChange={(e) => handleInputChange("diet_description", e.target.value)}
+              rows={3}
+            />
+          </div>
+
+          <div className="grid grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="sex">Sex *</Label>
+              <Select value={formData.sex} onValueChange={(value) => handleInputChange("sex", value)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select sex" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="male">Male</SelectItem>
+                  <SelectItem value="female">Female</SelectItem>
+                  <SelectItem value="mixed">Mixed</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="mouse_strain">Mouse Strain</Label>
+              <Input
+                id="mouse_strain"
+                value={formData.mouse_strain}
+                onChange={(e) => handleInputChange("mouse_strain", e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="monitoring_frequency">Monitoring Frequency</Label>
+              <Select value={formData.monitoring_frequency} onValueChange={(value) => handleInputChange("monitoring_frequency", value)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="daily">Daily</SelectItem>
+                  <SelectItem value="weekly">Weekly</SelectItem>
+                  <SelectItem value="biweekly">Bi-weekly</SelectItem>
+                  <SelectItem value="monthly">Monthly</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="start_date">Start Date *</Label>
+              <Input
+                id="start_date"
+                type="date"
+                value={formData.start_date}
+                onChange={(e) => handleInputChange("start_date", e.target.value)}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="end_date">End Date</Label>
+              <Input
+                id="end_date"
+                type="date"
+                value={formData.end_date}
+                onChange={(e) => handleInputChange("end_date", e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="duration_weeks">Duration (weeks)</Label>
+              <Input
+                id="duration_weeks"
+                type="number"
+                value={formData.duration_weeks}
+                onChange={(e) => handleInputChange("duration_weeks", e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="age_at_start_weeks">Age at Start (weeks)</Label>
+              <Input
+                id="age_at_start_weeks"
+                type="number"
+                value={formData.age_at_start_weeks}
+                onChange={(e) => handleInputChange("age_at_start_weeks", e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="weight_at_start_grams">Start Weight (g)</Label>
+              <Input
+                id="weight_at_start_grams"
+                type="number"
+                step="0.1"
+                value={formData.weight_at_start_grams}
+                onChange={(e) => handleInputChange("weight_at_start_grams", e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="expected_weight_change_percent">Expected Weight Change (%)</Label>
+              <Input
+                id="expected_weight_change_percent"
+                type="number"
+                step="0.1"
+                value={formData.expected_weight_change_percent}
+                onChange={(e) => handleInputChange("expected_weight_change_percent", e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="cage_numbers">Cage Numbers (comma-separated)</Label>
+              <Input
+                id="cage_numbers"
+                value={formData.cage_numbers}
+                onChange={(e) => handleInputChange("cage_numbers", e.target.value)}
               />
             </div>
           </div>
