@@ -85,30 +85,31 @@ export const useExperimentNotes = (experimentId: string, page: number = 1, pageS
       console.log('Updating note order for experiment:', experimentId);
       console.log('New order:', reorderedNotes.map(note => ({ id: note.id, title: note.title })));
       
-      // For now, we'll update the query cache directly since there's no display_order column yet
-      // This provides immediate UI feedback while maintaining the new order
+      // Update the query cache immediately for responsive UI
       queryClient.setQueryData(['experimentNotes', experimentId, 'all'], reorderedNotes);
       
-      // TODO: Once display_order column is added to experiment_notes table,
-      // uncomment this code to persist the order to the database:
-      /*
-      const updates = reorderedNotes.map((note, index) => 
-        supabase
-          .from('experiment_notes')
-          .update({ display_order: index + 1 })
-          .eq('id', note.id)
-          .eq('user_id', user?.id)
-      );
-
-      const results = await Promise.all(updates);
-      const errors = results.filter(result => result.error);
-      if (errors.length > 0) {
-        throw new Error('Failed to update note order');
+      // Since there's no display_order column yet, we'll simulate the reordering by updating timestamps
+      // This provides a workaround until the database schema is updated
+      try {
+        for (let i = 0; i < reorderedNotes.length; i++) {
+          const note = reorderedNotes[i];
+          // Update with a slight timestamp offset to maintain order
+          const adjustedTimestamp = new Date(Date.now() - (i * 1000)).toISOString();
+          
+          await supabase
+            .from('experiment_notes')
+            .update({ updated_at: adjustedTimestamp })
+            .eq('id', note.id)
+            .eq('user_id', user?.id);
+        }
+      } catch (error) {
+        console.error('Failed to update note order:', error);
+        // Revert the optimistic update if the database update fails
+        queryClient.invalidateQueries({ queryKey: ['experimentNotes', experimentId] });
+        throw error;
       }
-      */
     },
     onSuccess: () => {
-      // Don't invalidate queries since we're manually updating the cache
       console.log('Note order updated successfully');
     },
   });
