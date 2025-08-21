@@ -67,7 +67,7 @@ const ExperimentNotes = () => {
     return temp.textContent || temp.innerText || '';
   };
 
-  // Filter notes based on search
+  // Filter notes based on search - notes are already ordered by display_order from the hook
   const filteredNotes = allNotes.filter(note => {
     const titleMatch = note.title.toLowerCase().includes(searchTerm.toLowerCase());
     const contentMatch = note.content && stripHtmlTags(note.content).toLowerCase().includes(searchTerm.toLowerCase());
@@ -148,9 +148,11 @@ const ExperimentNotes = () => {
         description: "Notes reordered successfully",
       });
     } catch (error) {
-      console.log('Note order update requested:', reorderedNotes);
-      // Note: The updateNoteOrder is currently a no-op as mentioned in useExperimentNotes
-      // This will work once the migration is applied
+      toast({
+        title: "Error",
+        description: "Failed to reorder notes",
+        variant: "destructive",
+      });
     }
   };
 

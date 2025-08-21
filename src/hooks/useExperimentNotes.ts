@@ -10,6 +10,7 @@ export interface ExperimentNote {
   title: string;
   content: string | null;
   folder_id: string | null;
+  display_order: number;
   created_at: string;
   updated_at: string;
 }
@@ -27,7 +28,7 @@ export const useExperimentNotes = (experimentId: string, page: number = 1, pageS
         .from('experiment_notes')
         .select('*')
         .eq('experiment_id', experimentId)
-        .order('created_at', { ascending: false });
+        .order('display_order', { ascending: true });
 
       if (error) throw error;
       return data as ExperimentNote[];
@@ -43,14 +44,25 @@ export const useExperimentNotes = (experimentId: string, page: number = 1, pageS
   const paginatedNotes = allNotes?.slice(startIndex, endIndex) || [];
 
   const createNote = useMutation({
-    mutationFn: async (note: Omit<ExperimentNote, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => {
+    mutationFn: async (note: Omit<ExperimentNote, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'display_order'>) => {
       if (!user) throw new Error('User not authenticated');
+
+      // Get the highest display_order for this experiment and add 1
+      const { data: maxOrderData } = await supabase
+        .from('experiment_notes')
+        .select('display_order')
+        .eq('experiment_id', note.experiment_id)
+        .order('display_order', { ascending: false })
+        .limit(1);
+
+      const nextOrder = (maxOrderData?.[0]?.display_order || 0) + 1;
 
       const { data, error } = await supabase
         .from('experiment_notes')
         .insert([{ 
           ...note, 
-          user_id: user.id
+          user_id: user.id,
+          display_order: nextOrder
         }])
         .select()
         .single();
@@ -88,19 +100,23 @@ export const useExperimentNotes = (experimentId: string, page: number = 1, pageS
       // Update the query cache immediately for responsive UI
       queryClient.setQueryData(['experimentNotes', experimentId, 'all'], reorderedNotes);
       
-      // Since there's no display_order column yet, we'll simulate the reordering by updating timestamps
-      // This provides a workaround until the database schema is updated
+      // Update display_order for each note in the database
       try {
-        for (let i = 0; i < reorderedNotes.length; i++) {
-          const note = reorderedNotes[i];
-          // Update with a slight timestamp offset to maintain order
-          const adjustedTimestamp = new Date(Date.now() - (i * 1000)).toISOString();
-          
-          await supabase
+        const updates = reorderedNotes.map((note, index) => 
+          supabase
             .from('experiment_notes')
-            .update({ updated_at: adjustedTimestamp })
+            .update({ display_order: index + 1 })
             .eq('id', note.id)
-            .eq('user_id', user?.id);
+            .eq('user_id', user?.id)
+        );
+
+        const results = await Promise.all(updates);
+        const errors = results.filter(result => result.error);
+        if (errors.length > 0) {
+          console.error('Errors updating note order:', errors);
+          // Revert the optimistic update if there were database errors
+          queryClient.invalidateQueries({ queryKey: ['experimentNotes', experimentId] });
+          throw new Error('Failed to update note order');
         }
       } catch (error) {
         console.error('Failed to update note order:', error);
