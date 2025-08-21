@@ -47,15 +47,27 @@ export const useExperimentNotes = (experimentId: string, page: number = 1, pageS
     mutationFn: async (note: Omit<ExperimentNote, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'display_order'>) => {
       if (!user) throw new Error('User not authenticated');
 
-      // Get the highest display_order for this experiment and add 1
-      const { data: maxOrderData } = await supabase
+      console.log('Creating note for experiment:', note.experiment_id);
+
+      // Get the current notes count to determine the next display_order
+      const { data: existingNotes, error: countError } = await supabase
         .from('experiment_notes')
         .select('display_order')
         .eq('experiment_id', note.experiment_id)
-        .order('display_order', { ascending: false })
-        .limit(1);
+        .eq('user_id', user.id);
 
-      const nextOrder = (maxOrderData?.[0]?.display_order || 0) + 1;
+      if (countError) {
+        console.error('Error fetching existing notes:', countError);
+        throw countError;
+      }
+
+      // Calculate next display_order (highest + 1, or 1 if no notes exist)
+      const maxOrder = existingNotes && existingNotes.length > 0 
+        ? Math.max(...existingNotes.map(n => n.display_order || 0))
+        : 0;
+      const nextOrder = maxOrder + 1;
+
+      console.log('Next display order:', nextOrder);
 
       const { data, error } = await supabase
         .from('experiment_notes')
@@ -67,11 +79,19 @@ export const useExperimentNotes = (experimentId: string, page: number = 1, pageS
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error creating note:', error);
+        throw error;
+      }
+
+      console.log('Note created successfully:', data);
       return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['experimentNotes', experimentId] });
+    },
+    onError: (error) => {
+      console.error('Create note mutation error:', error);
     },
   });
 
