@@ -17,9 +17,10 @@ export const useSMS = () => {
       if (!user) throw new Error('User not authenticated');
 
       // Log security event for SMS send attempt
-      await logSecurityEvent.mutateAsync({
-        event_type: 'sms_send_attempt',
-        details: {
+      logSecurityEvent({
+        eventType: 'sms_send_attempt',
+        description: `SMS send attempt to ${mobile_number}`,
+        metadata: {
           mobile_number,
           message_length: message.length
         }

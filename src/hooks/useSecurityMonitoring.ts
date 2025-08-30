@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 
-// Define the security log type locally until migration is applied
+// Define the security log type to match the actual database schema
 interface SecurityLog {
   id: string;
   user_id: string | null;
@@ -33,7 +33,20 @@ export const useSecurityMonitoring = () => {
           console.error('Error fetching security logs:', error);
           return [];
         }
-        return data as SecurityLog[] || [];
+        
+        // Map the database fields to our interface
+        const mappedData = (data || []).map(item => ({
+          id: item.id,
+          user_id: item.user_id,
+          event_type: item.event_type,
+          event_description: item.details ? JSON.stringify(item.details) : item.event_type,
+          ip_address: item.ip_address,
+          user_agent: item.user_agent,
+          metadata: item.details || {},
+          created_at: item.created_at,
+        }));
+        
+        return mappedData as SecurityLog[];
       } catch (error) {
         console.error('Security logs table may not exist yet:', error);
         return [];
@@ -58,10 +71,9 @@ export const useSecurityMonitoring = () => {
           .insert({
             user_id: user?.id || null,
             event_type: eventType,
-            event_description: description,
+            details: { description, ...metadata },
             ip_address: null, // Could be enhanced with actual IP detection
             user_agent: navigator.userAgent,
-            metadata,
           });
 
         if (error) throw error;
