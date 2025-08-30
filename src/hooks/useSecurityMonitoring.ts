@@ -4,16 +4,9 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { Tables } from "@/integrations/supabase/types";
 
-export interface SecurityEvent {
-  id: string;
-  user_id: string;
-  event_type: string;
-  ip_address: string;
-  user_agent: string;
-  created_at: string;
-  details: any;
-}
+export type SecurityEvent = Tables<'security_logs'>;
 
 export const useSecurityMonitoring = () => {
   const { user } = useAuth();
@@ -33,7 +26,7 @@ export const useSecurityMonitoring = () => {
         .limit(100);
 
       if (error) throw error;
-      return (data || []) as SecurityEvent[];
+      return data || [];
     },
     enabled: !!user,
   });
@@ -114,7 +107,7 @@ export const useSecurityMonitoring = () => {
       case 'csv':
         content = 'Timestamp,Event Type,IP Address,User Agent,Details\n' +
           securityEvents.map(event => 
-            `"${event.created_at}","${event.event_type}","${event.ip_address}","${event.user_agent}","${JSON.stringify(event.details)}"`
+            `"${event.created_at}","${event.event_type}","${event.ip_address || 'unknown'}","${event.user_agent || 'unknown'}","${JSON.stringify(event.details)}"`
           ).join('\n');
         filename += '.csv';
         mimeType = 'text/csv';

@@ -111,15 +111,15 @@ const SecurityMonitoring = () => {
                         </span>
                       </div>
                       <div className="text-xs text-muted-foreground">
-                        IP: {event.ip_address}
+                        IP: {event.ip_address || 'unknown'}
                       </div>
                     </div>
                     
                     <div className="text-sm text-muted-foreground mb-2">
-                      User Agent: {event.user_agent}
+                      User Agent: {event.user_agent || 'unknown'}
                     </div>
                     
-                    {event.details && Object.keys(event.details).length > 0 && (
+                    {event.details && Object.keys(event.details as object).length > 0 && (
                       <details className="mt-2">
                         <summary className="text-xs cursor-pointer text-muted-foreground flex items-center gap-1">
                           <Eye className="w-3 h-3" />
