@@ -37,6 +37,16 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
+    // Get SMS API key from Supabase secrets
+    const smsApiKey = Deno.env.get("SMS_API_KEY");
+    if (!smsApiKey) {
+      console.error('SMS_API_KEY not found in environment variables');
+      return new Response(
+        JSON.stringify({ error: 'SMS service configuration error' }),
+        { status: 500, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
+      );
+    }
+
     // Create a unique request identifier to prevent duplicates
     const requestId = `${user_id}-${mobile_number}-${message.substring(0, 50)}-${Date.now()}`;
     const truncatedRequestId = `${user_id}-${mobile_number}-${message.substring(0, 50)}`;
@@ -80,8 +90,24 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // For demo purposes, we'll assume admin check passes
-    // In production, you'd check user roles here
+    // Log security event for SMS send attempt
+    const { error: logError } = await supabaseClient
+      .from('security_logs')
+      .insert({
+        user_id: user_id,
+        event_type: 'sms_send_attempt',
+        ip_address: req.headers.get('cf-connecting-ip') || req.headers.get('x-forwarded-for') || 'unknown',
+        user_agent: req.headers.get('user-agent') || 'unknown',
+        details: {
+          mobile_number: mobile_number,
+          message_length: message.length,
+          request_id: requestId
+        }
+      });
+
+    if (logError) {
+      console.error('Failed to log security event:', logError);
+    }
 
     const parameters = new URLSearchParams({
       message: message,
@@ -93,7 +119,7 @@ const handler = async (req: Request): Promise<Response> => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
-        'apikey': '2JQY95FNU8LTSSOQLYBB4AWNTPXSLC3PRYI5HMRD'
+        'apikey': smsApiKey
       },
       body: parameters.toString()
     });
@@ -102,11 +128,26 @@ const handler = async (req: Request): Promise<Response> => {
     console.log('SMS API Response:', smsResult);
 
     if (!smsResponse.ok) {
+      // Log failed SMS attempt
+      await supabaseClient
+        .from('security_logs')
+        .insert({
+          user_id: user_id,
+          event_type: 'sms_send_failed',
+          ip_address: req.headers.get('cf-connecting-ip') || req.headers.get('x-forwarded-for') || 'unknown',
+          user_agent: req.headers.get('user-agent') || 'unknown',
+          details: {
+            mobile_number: mobile_number,
+            error: smsResult,
+            request_id: requestId
+          }
+        });
+
       throw new Error(`SMS API error: ${smsResult}`);
     }
 
     // Log the SMS in database for audit trail with request ID
-    const { error: logError } = await supabaseClient
+    const { error: smsLogError } = await supabaseClient
       .from('sms_logs')
       .insert({
         user_id: user_id,
@@ -117,9 +158,24 @@ const handler = async (req: Request): Promise<Response> => {
         sent_at: new Date().toISOString()
       });
 
-    if (logError) {
-      console.error('Error logging SMS:', logError);
+    if (smsLogError) {
+      console.error('Error logging SMS:', smsLogError);
     }
+
+    // Log successful SMS send
+    await supabaseClient
+      .from('security_logs')
+      .insert({
+        user_id: user_id,
+        event_type: 'sms_send_success',
+        ip_address: req.headers.get('cf-connecting-ip') || req.headers.get('x-forwarded-for') || 'unknown',
+        user_agent: req.headers.get('user-agent') || 'unknown',
+        details: {
+          mobile_number: mobile_number,
+          message_length: message.length,
+          request_id: requestId
+        }
+      });
 
     return new Response(
       JSON.stringify({ 

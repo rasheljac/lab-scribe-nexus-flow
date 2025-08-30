@@ -1,4 +1,3 @@
-
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.8'
 
 const corsHeaders = {
@@ -14,6 +13,71 @@ interface iDriveE2Config {
   endpoint: string;
 }
 
+// Simple encryption key derivation for credentials (basic protection)
+function deriveKey(userId: string): string {
+  // Use a combination of user ID and environment secret for key derivation
+  const baseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+  return btoa(userId + baseKey).substring(0, 32);
+}
+
+// Basic encryption/decryption for sensitive data
+async function encryptData(data: string, key: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const keyData = encoder.encode(key.padEnd(32, '0').substring(0, 32));
+  const dataArray = encoder.encode(data);
+  
+  const cryptoKey = await crypto.subtle.importKey(
+    'raw',
+    keyData,
+    { name: 'AES-GCM' },
+    false,
+    ['encrypt']
+  );
+  
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const encrypted = await crypto.subtle.encrypt(
+    { name: 'AES-GCM', iv },
+    cryptoKey,
+    dataArray
+  );
+  
+  const combined = new Uint8Array(iv.length + encrypted.byteLength);
+  combined.set(iv);
+  combined.set(new Uint8Array(encrypted), iv.length);
+  
+  return btoa(String.fromCharCode(...combined));
+}
+
+async function decryptData(encryptedData: string, key: string): Promise<string> {
+  try {
+    const encoder = new TextEncoder();
+    const keyData = encoder.encode(key.padEnd(32, '0').substring(0, 32));
+    
+    const combined = new Uint8Array(atob(encryptedData).split('').map(c => c.charCodeAt(0)));
+    const iv = combined.slice(0, 12);
+    const encrypted = combined.slice(12);
+    
+    const cryptoKey = await crypto.subtle.importKey(
+      'raw',
+      keyData,
+      { name: 'AES-GCM' },
+      false,
+      ['decrypt']
+    );
+    
+    const decrypted = await crypto.subtle.decrypt(
+      { name: 'AES-GCM', iv },
+      cryptoKey,
+      encrypted
+    );
+    
+    return new TextDecoder().decode(decrypted);
+  } catch (error) {
+    console.error('Decryption failed:', error);
+    throw new Error('Failed to decrypt credentials');
+  }
+}
+
 async function getE2ConfigFromUserPreferences(supabaseClient: any, userId: string): Promise<iDriveE2Config | null> {
   console.log('Fetching iDrive E2 config for user:', userId);
   
@@ -25,7 +89,7 @@ async function getE2ConfigFromUserPreferences(supabaseClient: any, userId: strin
       .single();
 
     if (error || !userPrefs?.preferences?.s3Config) {
-      console.error('No iDrive E2 config found in user preferences:', error);
+      console.error('No iDrive E2 config found in user preferences');
       return null;
     }
 
@@ -42,9 +106,19 @@ async function getE2ConfigFromUserPreferences(supabaseClient: any, userId: strin
       endpoint = `https://${endpoint}`;
     }
 
+    // Decrypt sensitive credentials if they're encrypted
+    let accessKeyId = config.access_key_id;
+    let secretAccessKey = config.secret_access_key;
+    
+    if (config.encrypted) {
+      const encryptionKey = deriveKey(userId);
+      accessKeyId = await decryptData(config.access_key_id, encryptionKey);
+      secretAccessKey = await decryptData(config.secret_access_key, encryptionKey);
+    }
+
     const e2Config: iDriveE2Config = {
-      accessKeyId: config.access_key_id,
-      secretAccessKey: config.secret_access_key,
+      accessKeyId,
+      secretAccessKey,
       region: config.region || 'us-east-1',
       bucketName: config.bucket_name,
       endpoint: endpoint
@@ -100,25 +174,18 @@ async function createE2Request(
   console.log('Creating iDrive E2 request:', { method, objectKey, endpoint: config.endpoint });
   
   try {
-    // Build the correct URL format for iDrive E2
-    // The endpoint already includes the bucket in the path: https://v2j1.c1.e2-9.dev/kapelczak-eln
     const fullUrl = `${config.endpoint}/${objectKey}`;
     
-    // Create timestamp in ISO format
     const now = new Date();
     const dateString = now.toISOString().slice(0, 10).replace(/-/g, '');
     const timestamp = now.toISOString().replace(/[:\-]|\.\d{3}/g, '');
     
-    // For iDrive E2, use a simpler authorization approach
-    // Create the string to sign based on the actual request
     const stringToSign = `${method}\n\n${contentType || ''}\n${now.toUTCString()}\n/${config.bucketName}/${objectKey}`;
     
     console.log('String to sign:', stringToSign);
     
-    // Create signature
     const signature = await hmacSha256(config.secretAccessKey, stringToSign);
     
-    // Build authorization header in AWS format
     const authorization = `AWS ${config.accessKeyId}:${signature}`;
     
     const headers: Record<string, string> = {
@@ -157,7 +224,6 @@ async function uploadToE2(file: File, key: string, config: iDriveE2Config): Prom
     const { url, headers } = await createE2Request('PUT', key, config, file.type);
     
     console.log('Uploading to URL:', url);
-    console.log('Upload headers:', headers);
     
     const response = await fetch(url, {
       method: 'PUT',
@@ -166,7 +232,6 @@ async function uploadToE2(file: File, key: string, config: iDriveE2Config): Prom
     });
     
     console.log('Upload response status:', response.status);
-    console.log('Upload response headers:', Object.fromEntries(response.headers.entries()));
     
     if (!response.ok) {
       const responseText = await response.text();
@@ -248,6 +313,24 @@ Deno.serve(async (req) => {
 
     console.log('Authenticated user:', user.id);
 
+    // Log security event for file operation attempt
+    const { error: logError } = await supabaseClient
+      .from('security_logs')
+      .insert({
+        user_id: user.id,
+        event_type: 's3_operation_attempt',
+        ip_address: req.headers.get('cf-connecting-ip') || req.headers.get('x-forwarded-for') || 'unknown',
+        user_agent: req.headers.get('user-agent') || 'unknown',
+        details: {
+          method: req.method,
+          url: req.url
+        }
+      });
+
+    if (logError) {
+      console.error('Failed to log security event:', logError);
+    }
+
     // Get iDrive E2 config from user preferences
     const e2Config = await getE2ConfigFromUserPreferences(supabaseClient, user.id);
     if (!e2Config) {
@@ -313,12 +396,42 @@ Deno.serve(async (req) => {
           throw new Error(`Database error: ${error.message}`);
         }
 
+        // Log successful upload
+        await supabaseClient
+          .from('security_logs')
+          .insert({
+            user_id: user.id,
+            event_type: 's3_upload_success',
+            ip_address: req.headers.get('cf-connecting-ip') || req.headers.get('x-forwarded-for') || 'unknown',
+            user_agent: req.headers.get('user-agent') || 'unknown',
+            details: {
+              filename: file.name,
+              fileSize: file.size,
+              objectKey: uploadedKey
+            }
+          });
+
         console.log('Upload and database insert successful:', data);
         return new Response(JSON.stringify(data), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       } catch (uploadError) {
         console.error('Upload process failed:', uploadError);
+        
+        // Log failed upload
+        await supabaseClient
+          .from('security_logs')
+          .insert({
+            user_id: user.id,
+            event_type: 's3_upload_failed',
+            ip_address: req.headers.get('cf-connecting-ip') || req.headers.get('x-forwarded-for') || 'unknown',
+            user_agent: req.headers.get('user-agent') || 'unknown',
+            details: {
+              filename: file.name,
+              error: uploadError.message
+            }
+          });
+
         return new Response(JSON.stringify({ 
           error: `Upload failed: ${uploadError.message}`,
           details: uploadError.toString()
@@ -374,6 +487,20 @@ Deno.serve(async (req) => {
           console.error('Database delete error:', deleteError);
           throw new Error(`Database delete error: ${deleteError.message}`);
         }
+
+        // Log successful delete
+        await supabaseClient
+          .from('security_logs')
+          .insert({
+            user_id: user.id,
+            event_type: 's3_delete_success',
+            ip_address: req.headers.get('cf-connecting-ip') || req.headers.get('x-forwarded-for') || 'unknown',
+            user_agent: req.headers.get('user-agent') || 'unknown',
+            details: {
+              attachmentId: body.attachmentId,
+              filePath: attachment.file_path
+            }
+          });
 
         console.log('Delete operation completed successfully');
         return new Response(JSON.stringify({ success: true }), {

@@ -4,15 +4,26 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { SMSLog } from "@/types/sms";
+import { useSecurityMonitoring } from "@/hooks/useSecurityMonitoring";
 
 export const useSMS = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { logSecurityEvent } = useSecurityMonitoring();
 
   const sendSMS = useMutation({
     mutationFn: async ({ message, mobile_number }: { message: string; mobile_number: string }) => {
       if (!user) throw new Error('User not authenticated');
+
+      // Log security event for SMS send attempt
+      await logSecurityEvent.mutateAsync({
+        event_type: 'sms_send_attempt',
+        details: {
+          mobile_number,
+          message_length: message.length
+        }
+      });
 
       const { data, error } = await supabase.functions.invoke('send-sms', {
         body: { 
