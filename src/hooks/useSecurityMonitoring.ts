@@ -55,7 +55,7 @@ export const useSecurityMonitoring = () => {
     enabled: !!user,
   });
 
-  const logSecurityEvent = useMutation({
+  const logSecurityEventMutation = useMutation({
     mutationFn: async ({ 
       eventType, 
       description, 
@@ -87,9 +87,19 @@ export const useSecurityMonitoring = () => {
     },
   });
 
+  // Create a simple function that doesn't return a promise to avoid async issues
+  const logSecurityEvent = ({ eventType, description, metadata = {} }: { 
+    eventType: string; 
+    description: string; 
+    metadata?: Record<string, any> 
+  }) => {
+    // Fire and forget - don't wait for the result
+    logSecurityEventMutation.mutate({ eventType, description, metadata });
+  };
+
   return {
     securityLogs,
     isLoading,
-    logSecurityEvent: logSecurityEvent.mutate,
+    logSecurityEvent,
   };
 };
