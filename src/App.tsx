@@ -16,6 +16,7 @@ import Tasks from "./pages/Tasks";
 import Analytics from "./pages/Analytics";
 import Reports from "./pages/Reports";
 import Inventory from "./pages/Inventory";
+import Files from "./pages/Files";
 import LabelPrinter from "./pages/LabelPrinter";
 import Orders from "./pages/Orders";
 import MiceOrders from "./pages/MiceOrders";
