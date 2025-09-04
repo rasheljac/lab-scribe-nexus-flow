@@ -119,7 +119,7 @@ export const useFiles = () => {
     },
   });
 
-  // Download file function
+  // Download file function - opens file in new tab
   const downloadFile = async (fileId: string, filename: string) => {
     if (!user) throw new Error("User not authenticated");
 
@@ -136,18 +136,10 @@ export const useFiles = () => {
         throw new Error(response.error.message || 'Download failed');
       }
 
-      const { downloadUrl, contentType } = response.data;
+      const { downloadUrl } = response.data;
 
-      // Create a temporary link and trigger download
-      const link = document.createElement('a');
-      link.href = downloadUrl;
-      link.download = filename;
-      link.target = '_blank';
-      
-      // Add to DOM temporarily to ensure it works in all browsers
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      // Open file in new tab instead of forcing download
+      window.open(downloadUrl, '_blank');
 
     } catch (error) {
       console.error('Download failed:', error);
