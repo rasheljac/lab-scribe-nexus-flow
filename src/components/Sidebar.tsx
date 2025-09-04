@@ -22,7 +22,8 @@ import {
   Lightbulb,
   MousePointer2,
   Smartphone,
-  Apple
+  Apple,
+  Upload
 } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useExperiments } from "@/hooks/useExperiments";
@@ -67,6 +68,7 @@ const Sidebar = () => {
     { icon: BarChart3, label: "Analytics", path: "/analytics", badge: null, key: "analytics" },
     { icon: FileText, label: "Reports", path: "/reports", badge: reports.length.toString(), key: "reports" },
     { icon: Package, label: "Inventory", path: "/inventory", badge: null, key: "inventory" },
+    { icon: Upload, label: "Files", path: "/files", badge: null, key: "files" },
     { icon: Printer, label: "Label Printer", path: "/labels", badge: null, key: "labels" },
     { icon: ShoppingCart, label: "Order Portal", path: "/orders", badge: "2", key: "orders" },
     { icon: MousePointer2, label: "Mice Orders", path: "/mice-orders", badge: orders.length.toString(), key: "mice-orders" },

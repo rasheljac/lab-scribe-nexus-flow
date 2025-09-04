@@ -68,10 +68,11 @@ const App = () => (
                         <Route path="/protocols/:id" element={<ProtocolDetails />} />
                         <Route path="/calendar" element={<Calendar />} />
                         <Route path="/tasks" element={<Tasks />} />
-                        <Route path="/analytics" element={<Analytics />} />
-                        <Route path="/reports" element={<Reports />} />
-                        <Route path="/inventory" element={<Inventory />} />
-                        <Route path="/labels" element={<LabelPrinter />} />
+                  <Route path="/analytics" element={<Analytics />} />
+                  <Route path="/reports" element={<Reports />} />
+                  <Route path="/inventory" element={<Inventory />} />
+                  <Route path="/files" element={<Files />} />
+                  <Route path="/labels" element={<LabelPrinter />} />
                         <Route path="/orders" element={<Orders />} />
                         <Route path="/mice-orders" element={<MiceOrders />} />
                         <Route path="/diet-cohorts" element={<DietCohorts />} />
