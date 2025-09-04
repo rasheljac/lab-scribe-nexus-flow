@@ -6,13 +6,40 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Upload, FileIcon, Trash2, Download } from "lucide-react";
 import { useFiles } from "@/hooks/useFiles";
+import { usePagination } from "@/hooks/usePagination";
 import { Badge } from "@/components/ui/badge";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 
 const Files = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const { toast } = useToast();
   const { files, uploadFile, deleteFile, downloadFile, isLoading } = useFiles();
+  
+  // Pagination setup
+  const itemsPerPage = 10;
+  const {
+    currentPage,
+    totalPages,
+    paginatedData,
+    goToPage,
+    goToNextPage,
+    goToPreviousPage,
+    hasNextPage,
+    hasPreviousPage,
+  } = usePagination({
+    totalItems: files.length,
+    itemsPerPage,
+  });
+
+  const paginatedFiles = files.slice(paginatedData.startIndex, paginatedData.endIndex);
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -144,22 +171,35 @@ const Files = () => {
         </CardContent>
       </Card>
 
-      {/* Files List */}
       <Card>
         <CardHeader>
-          <CardTitle>Your Files</CardTitle>
-          <CardDescription>
-            Manage your uploaded files
-          </CardDescription>
+          <div className="flex justify-between items-center">
+            <div>
+              <CardTitle>Your Files</CardTitle>
+              <CardDescription>
+                Manage your uploaded files ({files.length} total)
+              </CardDescription>
+            </div>
+            {totalPages > 1 && (
+              <div className="text-sm text-muted-foreground">
+                Page {currentPage} of {totalPages}
+              </div>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <p className="text-center py-8 text-muted-foreground">Loading files...</p>
+            <div className="space-y-4">
+              <p className="text-center py-8 text-muted-foreground">Loading files...</p>
+            </div>
           ) : files.length === 0 ? (
-            <p className="text-center py-8 text-muted-foreground">No files uploaded yet</p>
+            <div className="space-y-4">
+              <p className="text-center py-8 text-muted-foreground">No files uploaded yet</p>
+            </div>
           ) : (
-            <div className="space-y-3">
-              {files.map((file) => (
+            <div className="space-y-4">
+              <div className="space-y-3">
+                {paginatedFiles.map((file) => (
                 <div key={file.id} className="flex items-center justify-between p-4 border rounded-lg">
                   <div className="flex items-center gap-3">
                     <FileIcon className="h-8 w-8 text-muted-foreground" />
@@ -198,6 +238,54 @@ const Files = () => {
                   </div>
                 </div>
               ))}
+              </div>
+              
+              {/* Pagination Controls */}
+              {totalPages > 1 && (
+                <div className="flex justify-center pt-4 border-t">
+                  <Pagination>
+                    <PaginationContent>
+                      <PaginationItem>
+                        <PaginationPrevious 
+                          href="#"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            goToPreviousPage();
+                          }}
+                          className={!hasPreviousPage ? "pointer-events-none opacity-50" : ""}
+                        />
+                      </PaginationItem>
+                      
+                      {/* Page Numbers */}
+                      {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                        <PaginationItem key={page}>
+                          <PaginationLink
+                            href="#"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              goToPage(page);
+                            }}
+                            isActive={currentPage === page}
+                          >
+                            {page}
+                          </PaginationLink>
+                        </PaginationItem>
+                      ))}
+                      
+                      <PaginationItem>
+                        <PaginationNext 
+                          href="#"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            goToNextPage();
+                          }}
+                          className={!hasNextPage ? "pointer-events-none opacity-50" : ""}
+                        />
+                      </PaginationItem>
+                    </PaginationContent>
+                  </Pagination>
+                </div>
+              )}
             </div>
           )}
         </CardContent>
