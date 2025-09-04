@@ -164,6 +164,44 @@ async function hmacSha256(key: string, message: string): Promise<string> {
   return btoa(String.fromCharCode(...signatureArray));
 }
 
+// Generate signed URL for downloads
+async function generateDownloadUrl(objectKey: string, config: iDriveE2Config, expirationSeconds: number = 3600): Promise<string> {
+  const method = 'GET';
+  const now = new Date();
+  const amzDate = now.toISOString().replace(/[:\-]|\.\d{3}/g, '');
+  const dateStamp = amzDate.substr(0, 8);
+  
+  const canonicalUri = `/${objectKey}`;
+  const canonicalQuerystring = `X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=${encodeURIComponent(config.accessKeyId)}%2F${dateStamp}%2F${config.region}%2Fs3%2Faws4_request&X-Amz-Date=${amzDate}&X-Amz-Expires=${expirationSeconds}&X-Amz-SignedHeaders=host`;
+  const canonicalHeaders = `host:${config.endpoint.replace('https://', '')}\n`;
+  const signedHeaders = 'host';
+  
+  const payloadHash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('')).then(buffer => 
+    Array.from(new Uint8Array(buffer)).map(b => b.toString(16).padStart(2, '0')).join('')
+  );
+  
+  const canonicalRequest = `${method}\n${canonicalUri}\n${canonicalQuerystring}\n${canonicalHeaders}\n${signedHeaders}\n${payloadHash}`;
+  
+  const algorithm = 'AWS4-HMAC-SHA256';
+  const credentialScope = `${dateStamp}/${config.region}/s3/aws4_request`;
+  const stringToSign = `${algorithm}\n${amzDate}\n${credentialScope}\n${await crypto.subtle.digest('SHA-256', new TextEncoder().encode(canonicalRequest)).then(buffer => 
+    Array.from(new Uint8Array(buffer)).map(b => b.toString(16).padStart(2, '0')).join('')
+  )}`;
+  
+  const signingKey = await getSignatureKey(config.secretAccessKey, dateStamp, config.region, 's3');
+  const signature = await hmacSha256(signingKey, stringToSign);
+  
+  return `${config.endpoint}/${objectKey}?${canonicalQuerystring}&X-Amz-Signature=${signature}`;
+}
+
+async function getSignatureKey(key: string, dateStamp: string, regionName: string, serviceName: string): Promise<string> {
+  const kDate = await hmacSha256(`AWS4${key}`, dateStamp);
+  const kRegion = await hmacSha256(kDate, regionName);
+  const kService = await hmacSha256(kRegion, serviceName);
+  const kSigning = await hmacSha256(kService, 'aws4_request');
+  return kSigning;
+}
+
 // Create iDrive E2 compatible request
 async function createE2Request(
   method: string,
@@ -507,8 +545,65 @@ Deno.serve(async (req) => {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
 
+      } else if (body.action === 'download' && body.attachmentId) {
+        // Download operation - generate signed URL
+        console.log('Download request for attachment:', body.attachmentId);
+        
+        // Get attachment details
+        const { data: attachment, error: fetchError } = await supabaseClient
+          .from('experiment_attachments')
+          .select('*')
+          .eq('id', body.attachmentId)
+          .eq('user_id', user.id)
+          .single();
+
+        if (fetchError || !attachment) {
+          console.error('Attachment not found:', fetchError);
+          return new Response(JSON.stringify({ error: 'Attachment not found' }), {
+            status: 404,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+
+        try {
+          // Generate signed URL for download (valid for 1 hour)
+          const downloadUrl = await generateDownloadUrl(attachment.file_path, e2Config, 3600);
+          
+          // Log download request
+          await supabaseClient
+            .from('security_logs')
+            .insert({
+              user_id: user.id,
+              event_type: 's3_download_requested',
+              ip_address: req.headers.get('cf-connecting-ip') || req.headers.get('x-forwarded-for') || 'unknown',
+              user_agent: req.headers.get('user-agent') || 'unknown',
+              details: {
+                attachmentId: body.attachmentId,
+                filename: attachment.filename,
+                filePath: attachment.file_path
+              }
+            });
+
+          console.log('Download URL generated successfully');
+          return new Response(JSON.stringify({ 
+            downloadUrl,
+            filename: attachment.filename,
+            contentType: attachment.file_type 
+          }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        } catch (downloadError) {
+          console.error('Download URL generation failed:', downloadError);
+          return new Response(JSON.stringify({ 
+            error: `Download URL generation failed: ${downloadError.message}` 
+          }), {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+
       } else {
-        return new Response(JSON.stringify({ error: 'Invalid request body. Expected attachmentId for delete operation.' }), {
+        return new Response(JSON.stringify({ error: 'Invalid request body. Expected attachmentId for delete operation or action=download with attachmentId for download operation.' }), {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });

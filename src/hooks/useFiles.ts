@@ -123,21 +123,36 @@ export const useFiles = () => {
   const downloadFile = async (fileId: string, filename: string) => {
     if (!user) throw new Error("User not authenticated");
 
-    // Get file details
-    const { data: file, error } = await supabase
-      .from('experiment_attachments')
-      .select('*')
-      .eq('id', fileId)
-      .eq('user_id', user.id)
-      .single();
+    try {
+      // Request download URL from edge function
+      const response = await supabase.functions.invoke('s3-file-operations', {
+        body: {
+          action: 'download',
+          attachmentId: fileId,
+        },
+      });
 
-    if (error || !file) {
-      throw new Error('File not found');
+      if (response.error) {
+        throw new Error(response.error.message || 'Download failed');
+      }
+
+      const { downloadUrl, contentType } = response.data;
+
+      // Create a temporary link and trigger download
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = filename;
+      link.target = '_blank';
+      
+      // Add to DOM temporarily to ensure it works in all browsers
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+    } catch (error) {
+      console.error('Download failed:', error);
+      throw error;
     }
-
-    // For now, we'll show an alert that download functionality needs S3 integration
-    // In a full implementation, you'd need to generate a signed URL from your S3 provider
-    alert(`Download functionality requires S3 signed URL generation. File path: ${file.file_path}`);
   };
 
   return {
