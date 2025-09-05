@@ -212,7 +212,7 @@ async function createE2Request(
   console.log('Creating iDrive E2 request:', { method, objectKey, endpoint: config.endpoint });
   
   try {
-    const fullUrl = `${config.endpoint}/${objectKey}`;
+    const fullUrl = `${config.endpoint}/${config.bucketName}/${objectKey}`;
     
     const now = new Date();
     const dateString = now.toISOString().slice(0, 10).replace(/-/g, '');
@@ -255,7 +255,8 @@ async function uploadToE2(file: File, key: string, config: iDriveE2Config): Prom
     fileType: file.type, 
     key, 
     bucket: config.bucketName,
-    endpoint: config.endpoint
+    endpoint: config.endpoint,
+    fullConfig: config
   });
   
   try {
@@ -424,7 +425,7 @@ Deno.serve(async (req) => {
             .insert([{
               user_id: user.id,
               filename: file.name,
-              file_path: `${e2Config.endpoint}/${uploadedKey}`,
+              file_path: `${e2Config.endpoint}/${e2Config.bucketName}/${uploadedKey}`,
               file_type: file.type,
               file_size: file.size,
             }])
