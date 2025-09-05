@@ -66,6 +66,7 @@ const SystemSettings = () => {
     { key: "labels", label: "Label Printer" },
     { key: "orders", label: "Order Portal" },
     { key: "mice-orders", label: "Mice Orders" },
+    { key: "files", label: "Files" },
     { key: "messages", label: "Messages" },
     { key: "sms", label: "SMS" },
     { key: "video-chat", label: "Video Chat" },
