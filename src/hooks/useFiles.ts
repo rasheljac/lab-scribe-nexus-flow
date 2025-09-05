@@ -119,27 +119,25 @@ export const useFiles = () => {
     },
   });
 
-  // Download file function - opens file in new tab
+  // Download file function - opens file in new tab using stored file_path
   const downloadFile = async (fileId: string, filename: string) => {
     if (!user) throw new Error("User not authenticated");
 
     try {
-      // Request download URL from edge function
-      const response = await supabase.functions.invoke('s3-file-operations', {
-        body: {
-          action: 'download',
-          attachmentId: fileId,
-        },
-      });
+      // Get the file details to access the stored file_path
+      const { data: file, error: fetchError } = await supabase
+        .from('experiment_attachments')
+        .select('file_path')
+        .eq('id', fileId)
+        .eq('user_id', user.id)
+        .single();
 
-      if (response.error) {
-        throw new Error(response.error.message || 'Download failed');
+      if (fetchError || !file) {
+        throw new Error('File not found');
       }
 
-      const { downloadUrl } = response.data;
-
-      // Open file in new tab instead of forcing download
-      window.open(downloadUrl, '_blank');
+      // Open file directly using the stored file_path
+      window.open(file.file_path, '_blank');
 
     } catch (error) {
       console.error('Download failed:', error);
