@@ -407,7 +407,7 @@ Deno.serve(async (req) => {
       }
 
       const fileExt = file.name.split('.').pop();
-      const objectKey = `notes/${user.id}/${noteId}/${Date.now()}.${fileExt}`;
+      const objectKey = `${user.id}/${noteId}/${Date.now()}.${fileExt}`;
       
       console.log('Uploading to iDrive E2 with key:', objectKey);
       
@@ -415,19 +415,40 @@ Deno.serve(async (req) => {
         // Upload to iDrive E2
         const uploadedKey = await uploadToE2(file, objectKey, e2Config);
         
-        // Save attachment record to database
-        const { data, error } = await supabaseClient
-          .from('experiment_note_attachments')
-          .insert([{
-            note_id: noteId,
-            user_id: user.id,
-            filename: file.name,
-            file_path: uploadedKey,
-            file_type: file.type,
-            file_size: file.size,
-          }])
-          .select()
-          .single();
+        // Determine which table to save to based on noteId prefix
+        let data, error;
+        if (noteId.startsWith('user-file-')) {
+          // Save to user_files table for Files page uploads
+          const { data: fileData, error: fileError } = await supabaseClient
+            .from('user_files')
+            .insert([{
+              user_id: user.id,
+              filename: file.name,
+              file_path: `${e2Config.endpoint}/${uploadedKey}`,
+              file_type: file.type,
+              file_size: file.size,
+            }])
+            .select()
+            .single();
+          data = fileData;
+          error = fileError;
+        } else {
+          // Save to experiment_note_attachments for experiment note uploads
+          const { data: noteData, error: noteError } = await supabaseClient
+            .from('experiment_note_attachments')
+            .insert([{
+              note_id: noteId,
+              user_id: user.id,
+              filename: file.name,
+              file_path: uploadedKey,
+              file_type: file.type,
+              file_size: file.size,
+            }])
+            .select()
+            .single();
+          data = noteData;
+          error = noteError;
+        }
 
         if (error) {
           console.error('Database insert error:', error);
@@ -488,16 +509,38 @@ Deno.serve(async (req) => {
         // Delete operation
         console.log('Delete request for attachment:', body.attachmentId);
         
-        // Get attachment details
-        const { data: attachment, error: fetchError } = await supabaseClient
-          .from('experiment_note_attachments')
+        // Try to get attachment from both tables
+        let attachment = null;
+        let isUserFile = false;
+        
+        // First try user_files table
+        const { data: userFile, error: userFileError } = await supabaseClient
+          .from('user_files')
           .select('*')
           .eq('id', body.attachmentId)
           .eq('user_id', user.id)
           .single();
+        
+        if (userFile && !userFileError) {
+          attachment = userFile;
+          isUserFile = true;
+        } else {
+          // Try experiment_note_attachments table
+          const { data: noteAttachment, error: noteAttachmentError } = await supabaseClient
+            .from('experiment_note_attachments')
+            .select('*')
+            .eq('id', body.attachmentId)
+            .eq('user_id', user.id)
+            .single();
+            
+          if (noteAttachment && !noteAttachmentError) {
+            attachment = noteAttachment;
+            isUserFile = false;
+          }
+        }
 
-        if (fetchError || !attachment) {
-          console.error('Attachment not found:', fetchError);
+        if (!attachment) {
+          console.error('Attachment not found in any table');
           return new Response(JSON.stringify({ error: 'Attachment not found' }), {
             status: 404,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -507,17 +550,24 @@ Deno.serve(async (req) => {
         console.log('Deleting from iDrive E2:', attachment.file_path);
         
         try {
+          // For user files, the file_path already includes the endpoint, so extract just the key
+          let fileKey = attachment.file_path;
+          if (isUserFile && fileKey.includes(e2Config.endpoint)) {
+            fileKey = fileKey.replace(`${e2Config.endpoint}/`, '');
+          }
+          
           // Delete from iDrive E2
-          await deleteFromE2(attachment.file_path, e2Config);
+          await deleteFromE2(fileKey, e2Config);
           console.log('iDrive E2 delete successful');
         } catch (e2Error) {
           console.error('iDrive E2 delete error (continuing with database delete):', e2Error);
           // Continue with database deletion even if iDrive E2 delete fails
         }
         
-        // Delete record from database
+        // Delete record from appropriate database table
+        const tableName = isUserFile ? 'user_files' : 'experiment_note_attachments';
         const { error: deleteError } = await supabaseClient
-          .from('experiment_note_attachments')
+          .from(tableName)
           .delete()
           .eq('id', body.attachmentId);
 
