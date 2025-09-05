@@ -218,7 +218,7 @@ async function createE2Request(
     const dateString = now.toISOString().slice(0, 10).replace(/-/g, '');
     const timestamp = now.toISOString().replace(/[:\-]|\.\d{3}/g, '');
     
-    const stringToSign = `${method}\n\n${contentType || ''}\n${now.toUTCString()}\n/${objectKey}`;
+    const stringToSign = `${method}\n\n${contentType || ''}\n${now.toUTCString()}\n/${config.bucketName}/${objectKey}`;
     
     console.log('String to sign:', stringToSign);
     
