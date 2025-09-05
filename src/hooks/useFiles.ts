@@ -23,7 +23,7 @@ export const useFiles = () => {
       if (!user) throw new Error("User not authenticated");
       
       const { data, error } = await supabase
-        .from('experiment_attachments')
+        .from('user_files')
         .select('*')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
@@ -54,12 +54,11 @@ export const useFiles = () => {
         throw new Error(response.error.message || 'Upload failed');
       }
 
-      // Create our own user files entry in experiment_attachments for now
+      // Create user file entry in the user_files table
       const { data, error } = await supabase
-        .from('experiment_attachments')
+        .from('user_files')
         .insert([{
           user_id: user.id,
-          experiment_id: tempNoteId, // Using temp ID until we have proper user_files table
           filename: file.name,
           file_path: response.data.file_path,
           file_type: file.type,
@@ -83,7 +82,7 @@ export const useFiles = () => {
 
       // First get the file details
       const { data: file, error: fetchError } = await supabase
-        .from('experiment_attachments')
+        .from('user_files')
         .select('*')
         .eq('id', fileId)
         .eq('user_id', user.id)
@@ -107,7 +106,7 @@ export const useFiles = () => {
 
       // Delete from database
       const { error: deleteError } = await supabase
-        .from('experiment_attachments')
+        .from('user_files')
         .delete()
         .eq('id', fileId)
         .eq('user_id', user.id);
@@ -126,7 +125,7 @@ export const useFiles = () => {
     try {
       // Get the file details to access the stored file_path
       const { data: file, error: fetchError } = await supabase
-        .from('experiment_attachments')
+        .from('user_files')
         .select('file_path')
         .eq('id', fileId)
         .eq('user_id', user.id)
