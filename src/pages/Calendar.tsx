@@ -6,9 +6,13 @@ import { Badge } from "@/components/ui/badge";
 import { Calendar as CalendarIcon, Plus, ChevronLeft, ChevronRight } from "lucide-react";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, isToday, addMonths, subMonths, startOfWeek, endOfWeek } from "date-fns";
 import { useCalendarEvents } from "@/hooks/useCalendarEvents";
+import { useAuth } from "@/hooks/useAuth";
 import CreateEventDialog from "@/components/CreateEventDialog";
 import EventDetailsDialog from "@/components/EventDetailsDialog";
 import DayEventsPopup from "@/components/DayEventsPopup";
+import { Input } from "@/components/ui/input";
+import { Copy } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 const Calendar = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -19,6 +23,10 @@ const Calendar = () => {
   const [selectedEvent, setSelectedEvent] = useState<any>(null);
   
   const { events, isLoading } = useCalendarEvents();
+  const { user } = useAuth();
+  const { toast } = useToast();
+
+  const icalUrl = user ? `${window.location.origin}/api/ical-feed?user_id=${user.id}` : '';
 
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(currentDate);
@@ -107,6 +115,41 @@ const Calendar = () => {
             New Event
           </Button>
         </div>
+
+        {/* iCal URL Section */}
+        {user && (
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle>Calendar Subscription</CardTitle>
+              <CardDescription>Subscribe to your calendar in external applications</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex gap-2">
+                <Input 
+                  value={icalUrl} 
+                  readOnly 
+                  className="font-mono text-sm"
+                />
+                <Button 
+                  variant="outline" 
+                  size="icon"
+                  onClick={() => {
+                    navigator.clipboard.writeText(icalUrl);
+                    toast({
+                      title: "Copied!",
+                      description: "iCal URL copied to clipboard",
+                    });
+                  }}
+                >
+                  <Copy className="h-4 w-4" />
+                </Button>
+              </div>
+              <p className="text-sm text-muted-foreground mt-2">
+                Use this URL to subscribe to your calendar in Google Calendar, Outlook, or any other calendar application that supports iCal feeds.
+              </p>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Calendar Navigation */}
         <div className="flex items-center justify-between mb-6">

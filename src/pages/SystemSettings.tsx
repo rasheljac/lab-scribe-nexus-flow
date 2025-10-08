@@ -11,7 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useUserPreferences } from "@/hooks/useUserPreferences";
 import { useServerStats } from "@/hooks/useServerStats";
 import { useDatabaseBackups } from "@/hooks/useDatabaseBackups";
-import { useSecurityLogs } from "@/hooks/useSecurityLogs";
+import { supabase } from "@/integrations/supabase/client";
 import DatabaseBackupsDialog from "@/components/DatabaseBackupsDialog";
 import SecurityLogsDialog from "@/components/SecurityLogsDialog";
 
@@ -20,7 +20,6 @@ const SystemSettings = () => {
   const { preferences, updatePreferences } = useUserPreferences();
   const { stats, isLoading: statsLoading } = useServerStats();
   const { createBackup, isLoading: backupLoading } = useDatabaseBackups();
-  const { exportLogs } = useSecurityLogs();
   
   // Dialog states
   const [showBackupsDialog, setShowBackupsDialog] = useState(false);
@@ -211,7 +210,7 @@ const SystemSettings = () => {
     }
   };
 
-  const handleSecurityAction = (action: string) => {
+  const handleSecurityAction = async (action: string) => {
     console.log(`Performing security action: ${action}`);
     
     switch (action) {
@@ -219,24 +218,111 @@ const SystemSettings = () => {
         setShowSecurityLogsDialog(true);
         break;
       case "Export Audit Trail":
-        exportLogs('csv');
-        toast({
-          title: "Export Started",
-          description: "Audit trail export has been started.",
-        });
+        await handleExportAuditTrail();
         break;
       case "Security Report":
-        exportLogs('pdf');
-        toast({
-          title: "Report Generated",
-          description: "Security report has been generated and downloaded.",
-        });
+        await handleGenerateSecurityReport();
         break;
       default:
         toast({
           title: "Security Operation",
           description: `${action} operation has been completed.`,
         });
+    }
+  };
+
+  const handleExportAuditTrail = async () => {
+    try {
+      const { data: logs, error } = await supabase
+        .from('security_logs')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      const csvHeaders = ['Timestamp', 'Event Type', 'User ID', 'IP Address', 'User Agent', 'Details'];
+      const csvRows = (logs || []).map(log => [
+        new Date(log.created_at).toISOString(),
+        log.event_type,
+        log.user_id || '',
+        log.ip_address || '',
+        log.user_agent || '',
+        JSON.stringify(log.details),
+      ]);
+      
+      const csvContent = [csvHeaders, ...csvRows]
+        .map(row => row.map(cell => `"${cell}"`).join(','))
+        .join('\n');
+
+      const blob = new Blob([csvContent], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `audit-trail-${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      toast({
+        title: "Export Complete",
+        description: "Audit trail has been exported successfully.",
+      });
+    } catch (error) {
+      console.error('Error exporting audit trail:', error);
+      toast({
+        title: "Export Failed",
+        description: "Failed to export audit trail.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleGenerateSecurityReport = async () => {
+    try {
+      const { data: logs, error } = await supabase
+        .from('security_logs')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(100);
+
+      if (error) throw error;
+
+      const reportContent = `SECURITY REPORT
+Generated: ${new Date().toLocaleString()}
+Total Events: ${logs?.length || 0}
+
+EVENT SUMMARY:
+${(logs || []).map((log, index) => `
+${index + 1}. ${log.event_type}
+   Time: ${new Date(log.created_at).toLocaleString()}
+   User: ${log.user_id || 'System'}
+   IP: ${log.ip_address || 'N/A'}
+   Details: ${JSON.stringify(log.details)}
+`).join('\n')}
+`;
+
+      const blob = new Blob([reportContent], { type: 'text/plain' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `security-report-${new Date().toISOString().split('T')[0]}.txt`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      toast({
+        title: "Report Generated",
+        description: "Security report has been generated successfully.",
+      });
+    } catch (error) {
+      console.error('Error generating security report:', error);
+      toast({
+        title: "Generation Failed",
+        description: "Failed to generate security report.",
+        variant: "destructive",
+      });
     }
   };
 
