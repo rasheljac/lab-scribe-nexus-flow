@@ -11,6 +11,7 @@ import { useConversations, useMessages } from "@/hooks/useConversations";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { formatDistanceToNow } from "date-fns";
+import { StartConversationDialog } from "@/components/StartConversationDialog";
 
 const Messages = () => {
   const { user } = useAuth();
@@ -53,6 +54,7 @@ const Messages = () => {
           <h1 className="text-3xl font-bold">Messages</h1>
           <p className="text-muted-foreground mt-1">Communicate with your lab team</p>
         </div>
+        <StartConversationDialog onConversationCreated={setSelectedConversation} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-200px)]">

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,21 +6,33 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { User, Bell, Shield, Database, Navigation, Users } from "lucide-react";
+import { User, Bell, Shield, Navigation, Upload } from "lucide-react";
 import { useUserProfile } from "@/hooks/useUserProfile";
 import { useUserPreferences } from "@/hooks/useUserPreferences";
 import { toast } from "sonner";
+import { ChangePasswordDialog } from "@/components/ChangePasswordDialog";
+import { ActiveSessionsDialog } from "@/components/ActiveSessionsDialog";
 
 const Settings = () => {
-  const { profile, updateProfile } = useUserProfile();
+  const { profile, updateProfile, uploadAvatar } = useUserProfile();
   const { preferences, updatePreferences } = useUserPreferences();
   const [profileData, setProfileData] = useState({
-    first_name: profile?.first_name || '',
-    last_name: profile?.last_name || '',
-    email: profile?.email || '',
+    first_name: '',
+    last_name: '',
+    email: '',
   });
+
+  // Update form when profile loads
+  useEffect(() => {
+    if (profile) {
+      setProfileData({
+        first_name: profile.first_name || '',
+        last_name: profile.last_name || '',
+        email: profile.email || '',
+      });
+    }
+  }, [profile]);
 
   const handleProfileUpdate = async () => {
     try {
@@ -28,6 +40,22 @@ const Settings = () => {
       toast.success("Profile updated successfully");
     } catch (error) {
       toast.error("Failed to update profile");
+    }
+  };
+
+  const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error("File size must be less than 2MB");
+      return;
+    }
+
+    try {
+      await uploadAvatar(file);
+    } catch (error) {
+      // Error already handled in hook
     }
   };
 
@@ -111,8 +139,22 @@ const Settings = () => {
                     </AvatarFallback>
                   </Avatar>
                   <div>
-                    <Button variant="outline">Upload Photo</Button>
-                    <p className="text-sm text-gray-600 mt-1">
+                    <input
+                      type="file"
+                      id="avatar-upload"
+                      accept="image/jpeg,image/png,image/gif"
+                      className="hidden"
+                      onChange={handleAvatarUpload}
+                    />
+                    <Button 
+                      variant="outline" 
+                      onClick={() => document.getElementById('avatar-upload')?.click()}
+                      className="gap-2"
+                    >
+                      <Upload className="h-4 w-4" />
+                      Upload Photo
+                    </Button>
+                    <p className="text-sm text-muted-foreground mt-1">
                       JPG, PNG or GIF. Max size 2MB.
                     </p>
                   </div>
@@ -242,23 +284,22 @@ const Settings = () => {
                 <div className="space-y-4">
                   <div>
                     <Label>Change Password</Label>
-                    <p className="text-sm text-gray-600 mb-2">Update your account password</p>
-                    <Button variant="outline">Change Password</Button>
+                    <p className="text-sm text-muted-foreground mb-2">Update your account password</p>
+                    <ChangePasswordDialog />
                   </div>
                   
                   <div>
                     <Label>Two-Factor Authentication</Label>
-                    <p className="text-sm text-gray-600 mb-2">Add an extra layer of security</p>
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline">Not Enabled</Badge>
-                      <Button variant="outline" size="sm">Enable 2FA</Button>
-                    </div>
+                    <p className="text-sm text-muted-foreground mb-2">
+                      Two-factor authentication is managed through your Supabase authentication settings
+                    </p>
+                    <Badge variant="outline">Managed by Supabase Auth</Badge>
                   </div>
                   
                   <div>
                     <Label>Active Sessions</Label>
-                    <p className="text-sm text-gray-600 mb-2">Manage your active login sessions</p>
-                    <Button variant="outline">View Sessions</Button>
+                    <p className="text-sm text-muted-foreground mb-2">Manage your active login sessions</p>
+                    <ActiveSessionsDialog />
                   </div>
                 </div>
               </CardContent>
