@@ -2,44 +2,25 @@ import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Upload, FileIcon, Trash2, Download } from "lucide-react";
+import { Upload, FileIcon, Trash2, Download, FolderIcon, CloudUpload, HardDrive } from "lucide-react";
 import { useFiles } from "@/hooks/useFiles";
-import { usePagination } from "@/hooks/usePagination";
 import { Badge } from "@/components/ui/badge";
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { formatDistanceToNow } from "date-fns";
 
 const Files = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [sortBy, setSortBy] = useState<'name' | 'date' | 'size'>('date');
   const { toast } = useToast();
   const { files, uploadFile, deleteFile, downloadFile, isLoading } = useFiles();
-  
-  // Pagination setup
-  const itemsPerPage = 10;
-  const {
-    currentPage,
-    totalPages,
-    paginatedData,
-    goToPage,
-    goToNextPage,
-    goToPreviousPage,
-    hasNextPage,
-    hasPreviousPage,
-  } = usePagination({
-    totalItems: files.length,
-    itemsPerPage,
-  });
 
-  const paginatedFiles = files.slice(paginatedData.startIndex, paginatedData.endIndex);
+  const sortedFiles = [...files].sort((a, b) => {
+    if (sortBy === 'name') return a.filename.localeCompare(b.filename);
+    if (sortBy === 'size') return (b.file_size || 0) - (a.file_size || 0);
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+  });
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -124,8 +105,11 @@ const Files = () => {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
+  const totalStorageUsed = files.reduce((acc, file) => acc + (file.file_size || 0), 0);
+  const totalStorageGB = totalStorageUsed / (1024 * 1024 * 1024);
+
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="container mx-auto p-6 space-y-6 max-w-7xl">
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold">File Manager</h1>
@@ -133,160 +117,160 @@ const Files = () => {
         </div>
       </div>
 
-      {/* Upload Section */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Upload className="h-5 w-5" />
-            Upload File
-          </CardTitle>
-          <CardDescription>
-            Upload files to your secure cloud storage
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid w-full max-w-sm items-center gap-1.5">
-            <Label htmlFor="file-input">File</Label>
+      {/* Storage Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <HardDrive className="h-4 w-4 text-muted-foreground" />
+              Total Storage
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{totalStorageGB.toFixed(2)} GB</div>
+            <p className="text-xs text-muted-foreground">Used storage</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <FolderIcon className="h-4 w-4 text-muted-foreground" />
+              Total Files
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{files.length}</div>
+            <p className="text-xs text-muted-foreground">Files uploaded</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <CloudUpload className="h-4 w-4 text-muted-foreground" />
+              Upload
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
             <Input
-              id="file-input"
+              id="file-upload"
               type="file"
               onChange={handleFileSelect}
               disabled={uploading}
+              className="cursor-pointer"
             />
-          </div>
-          
-          {selectedFile && (
-            <div className="text-sm text-muted-foreground">
-              Selected: {selectedFile.name} ({formatFileSize(selectedFile.size)})
-            </div>
-          )}
-          
-          <Button 
-            onClick={handleUpload} 
-            disabled={!selectedFile || uploading}
-            className="w-full max-w-sm"
-          >
-            {uploading ? "Uploading..." : "Upload File"}
-          </Button>
-        </CardContent>
-      </Card>
+            {selectedFile && (
+              <Button 
+                onClick={handleUpload} 
+                disabled={uploading}
+                className="w-full mt-2"
+                size="sm"
+              >
+                {uploading ? "Uploading..." : "Upload"}
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+      </div>
 
+      {/* Files Table */}
       <Card>
         <CardHeader>
           <div className="flex justify-between items-center">
             <div>
-              <CardTitle>Your Files</CardTitle>
+              <CardTitle>All Files</CardTitle>
               <CardDescription>
-                Manage your uploaded files ({files.length} total)
+                Manage your uploaded files
               </CardDescription>
             </div>
-            {totalPages > 1 && (
-              <div className="text-sm text-muted-foreground">
-                Page {currentPage} of {totalPages}
-              </div>
-            )}
+            <div className="flex items-center gap-2">
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => setSortBy('name')}
+                className={sortBy === 'name' ? 'bg-muted' : ''}
+              >
+                Name
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => setSortBy('date')}
+                className={sortBy === 'date' ? 'bg-muted' : ''}
+              >
+                Date
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => setSortBy('size')}
+                className={sortBy === 'size' ? 'bg-muted' : ''}
+              >
+                Size
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <div className="space-y-4">
-              <p className="text-center py-8 text-muted-foreground">Loading files...</p>
-            </div>
+            <div className="py-8 text-center text-muted-foreground">Loading files...</div>
           ) : files.length === 0 ? (
-            <div className="space-y-4">
-              <p className="text-center py-8 text-muted-foreground">No files uploaded yet</p>
+            <div className="py-8 text-center">
+              <FolderIcon className="h-12 w-12 mx-auto text-muted-foreground mb-2" />
+              <p className="text-muted-foreground">No files uploaded yet</p>
+              <p className="text-sm text-muted-foreground mt-1">Upload your first file to get started</p>
             </div>
           ) : (
-            <div className="space-y-4">
-              <div className="space-y-3">
-                {paginatedFiles.map((file) => (
-                <div key={file.id} className="flex items-center justify-between p-4 border rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <FileIcon className="h-8 w-8 text-muted-foreground" />
-                    <div>
-                      <p className="font-medium">{file.filename}</p>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <span>{formatFileSize(file.file_size || 0)}</span>
-                        <span>•</span>
-                        <span>{new Date(file.created_at).toLocaleDateString()}</span>
-                        {file.file_type && (
-                          <>
-                            <span>•</span>
-                            <Badge variant="secondary" className="text-xs">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Last Modified</TableHead>
+                  <TableHead>Size</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {sortedFiles.map((file) => (
+                  <TableRow key={file.id}>
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-2">
+                        <FileIcon className="h-5 w-5 text-muted-foreground" />
+                        <div>
+                          <div className="font-medium">{file.filename}</div>
+                          {file.file_type && (
+                            <Badge variant="secondary" className="text-xs mt-1">
                               {file.file_type}
                             </Badge>
-                          </>
-                        )}
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleDownload(file.id, file.filename)}
-                    >
-                      <Download className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleDelete(file.id, file.filename)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
-              </div>
-              
-              {/* Pagination Controls */}
-              {totalPages > 1 && (
-                <div className="flex justify-center pt-4 border-t">
-                  <Pagination>
-                    <PaginationContent>
-                      <PaginationItem>
-                        <PaginationPrevious 
-                          href="#"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            goToPreviousPage();
-                          }}
-                          className={!hasPreviousPage ? "pointer-events-none opacity-50" : ""}
-                        />
-                      </PaginationItem>
-                      
-                      {/* Page Numbers */}
-                      {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                        <PaginationItem key={page}>
-                          <PaginationLink
-                            href="#"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              goToPage(page);
-                            }}
-                            isActive={currentPage === page}
-                          >
-                            {page}
-                          </PaginationLink>
-                        </PaginationItem>
-                      ))}
-                      
-                      <PaginationItem>
-                        <PaginationNext 
-                          href="#"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            goToNextPage();
-                          }}
-                          className={!hasNextPage ? "pointer-events-none opacity-50" : ""}
-                        />
-                      </PaginationItem>
-                    </PaginationContent>
-                  </Pagination>
-                </div>
-              )}
-            </div>
+                    </TableCell>
+                    <TableCell>
+                      {formatDistanceToNow(new Date(file.created_at), { addSuffix: true })}
+                    </TableCell>
+                    <TableCell>{formatFileSize(file.file_size || 0)}</TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDownload(file.id, file.filename)}
+                        >
+                          <Download className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDelete(file.id, file.filename)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           )}
         </CardContent>
       </Card>

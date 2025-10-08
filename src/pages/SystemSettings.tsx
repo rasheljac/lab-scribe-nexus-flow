@@ -50,6 +50,14 @@ const SystemSettings = () => {
   const [logUserActivities, setLogUserActivities] = useState(true);
   const [securityUpdating, setSecurityUpdating] = useState(false);
 
+  // S3 Storage Settings State
+  const [s3AccessKey, setS3AccessKey] = useState("");
+  const [s3SecretKey, setS3SecretKey] = useState("");
+  const [s3Endpoint, setS3Endpoint] = useState("");
+  const [s3BucketName, setS3BucketName] = useState("");
+  const [s3Region, setS3Region] = useState("");
+  const [showS3SecretKey, setShowS3SecretKey] = useState(false);
+
   // Navigation options
   const navigationOptions = [
     { key: "dashboard", label: "Dashboard" },
@@ -79,6 +87,18 @@ const SystemSettings = () => {
   useEffect(() => {
     if (preferences?.hidden_pages) {
       setHiddenPages(preferences.hidden_pages);
+    }
+    
+    // Load S3 configuration
+    if (preferences?.preferences && typeof preferences.preferences === 'object') {
+      const prefs = preferences.preferences as any;
+      if (prefs.idrive_e2) {
+        setS3Endpoint(prefs.idrive_e2.endpoint || "");
+        setS3BucketName(prefs.idrive_e2.bucket_name || "");
+        setS3Region(prefs.idrive_e2.region || "");
+        setS3AccessKey(prefs.idrive_e2.access_key_id || "");
+        setS3SecretKey(prefs.idrive_e2.secret_access_key || "");
+      }
     }
   }, [preferences]);
 
@@ -334,7 +354,7 @@ ${index + 1}. ${log.event_type}
       </div>
 
       <Tabs defaultValue="general" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="general" className="flex items-center gap-2">
             <Settings className="w-4 h-4" />
             General
@@ -342,6 +362,10 @@ ${index + 1}. ${log.event_type}
           <TabsTrigger value="navigation" className="flex items-center gap-2">
             <Navigation className="w-4 h-4" />
             Navigation
+          </TabsTrigger>
+          <TabsTrigger value="s3-storage" className="flex items-center gap-2">
+            <Database className="w-4 h-4" />
+            S3 Storage
           </TabsTrigger>
           <TabsTrigger value="database" className="flex items-center gap-2">
             <Database className="w-4 h-4" />
@@ -412,6 +436,112 @@ ${index + 1}. ${log.event_type}
 
               <div className="flex justify-end">
                 <Button onClick={handleSaveGeneral}>Save General Settings</Button>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="s3-storage">
+          <Card>
+            <CardHeader>
+              <CardTitle>S3 Storage Configuration</CardTitle>
+              <CardDescription>Configure your iDrive E2 or S3-compatible storage settings for file uploads</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <Label htmlFor="s3Endpoint">Storage Endpoint</Label>
+                  <Input 
+                    id="s3Endpoint" 
+                    value={s3Endpoint}
+                    onChange={(e) => setS3Endpoint(e.target.value)}
+                    placeholder="https://f1o1.la.idrivee2-20.com" 
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    The full URL to your S3-compatible storage endpoint
+                  </p>
+                </div>
+                <div>
+                  <Label htmlFor="s3BucketName">Bucket Name</Label>
+                  <Input 
+                    id="s3BucketName" 
+                    value={s3BucketName}
+                    onChange={(e) => setS3BucketName(e.target.value)}
+                    placeholder="my-lab-files" 
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="s3Region">Region</Label>
+                  <Input 
+                    id="s3Region" 
+                    value={s3Region}
+                    onChange={(e) => setS3Region(e.target.value)}
+                    placeholder="us-la" 
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="s3AccessKey">Access Key ID</Label>
+                  <Input 
+                    id="s3AccessKey" 
+                    value={s3AccessKey}
+                    onChange={(e) => setS3AccessKey(e.target.value)}
+                    placeholder="Your access key" 
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <Label htmlFor="s3SecretKey">Secret Access Key</Label>
+                  <div className="flex gap-2">
+                    <Input 
+                      id="s3SecretKey" 
+                      type={showS3SecretKey ? "text" : "password"}
+                      value={s3SecretKey}
+                      onChange={(e) => setS3SecretKey(e.target.value)}
+                      placeholder="Your secret key" 
+                      className="flex-1"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={() => setShowS3SecretKey(!showS3SecretKey)}
+                    >
+                      {showS3SecretKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Keep this secure - it will be encrypted before storage
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex justify-end">
+                <Button onClick={async () => {
+                  try {
+                    // Save to user preferences as encrypted data
+                    const config = {
+                      idrive_e2: {
+                        endpoint: s3Endpoint,
+                        bucket_name: s3BucketName,
+                        region: s3Region,
+                        access_key_id: s3AccessKey,
+                        secret_access_key: s3SecretKey,
+                      }
+                    };
+                    await updatePreferences({ preferences: config });
+                    toast({
+                      title: "S3 Settings Saved",
+                      description: "Your storage configuration has been saved securely.",
+                    });
+                  } catch (error) {
+                    toast({
+                      title: "Save Failed",
+                      description: "Failed to save S3 settings.",
+                      variant: "destructive",
+                    });
+                  }
+                }}>
+                  Save S3 Configuration
+                </Button>
               </div>
             </CardContent>
           </Card>
